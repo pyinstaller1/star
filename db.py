@@ -1,0 +1,1050 @@
+import os
+import time
+import requests
+import duckdb
+import pandas as pd
+import numpy as np
+import xml.etree.ElementTree as ET
+from dotenv import load_dotenv
+from sqlalchemy import create_engine, text
+
+
+
+load_dotenv()
+
+# 1. MariaDB 연결 (SQLAlchemy Engine)
+DB_URL = f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@127.0.0.1:3306/db_ls?charset=utf8mb4"
+engine = create_engine(DB_URL)
+
+# 2. SQLite 경로 설정 (기존 stock.db 유지)
+# base_dir = os.path.dirname(os.path.abspath(__file__))
+# db_path = os.path.abspath(os.path.join(base_dir, '..', 'stock.db'))
+
+
+
+
+
+def get_ilbong_data(shcode: str):
+    con = duckdb.connect(db_path)
+    
+    query = "SELECT * FROM tb_ilbong WHERE code = $shcode ORDER BY date ASC"
+    df = con.execute(query, {"shcode": shcode}).df()
+    con.close()
+
+    return df.to_dict('records')
+
+
+
+
+
+
+base_dir = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.abspath(os.path.join(base_dir, '..', '..', 'stock.duckdb'))
+# db_path = os.path.abspath(os.path.join(base_dir, '..', '..', 'stock.duckdb'))
+
+
+
+def get_ilbong_db(shcode: str):
+    """DuckDB를 사용하여 최근 500개 일봉 데이터 조회"""
+    
+    if 'db_path' not in globals():
+        _base = os.path.dirname(os.path.abspath(__file__))
+        target_path = os.path.abspath(os.path.join(_base, '..', '..', 'stock_data.duckdb'))
+    else:
+        target_path = db_path
+
+    try:
+        # 1. DuckDB 연결 (read_only=True로 설정하면 여러 프로세스에서 동시에 읽기 좋습니다)
+        con = duckdb.connect(target_path, read_only=True) 
+        
+        # 2. 쿼리 실행
+        query = "SELECT * FROM tb_ilbong WHERE code = ? ORDER BY date DESC LIMIT 500"
+        df = con.execute(query, [shcode]).df()
+        
+        if df.empty:
+            return []
+
+        # 3. 날짜 역순 정렬 (최근 데이터가 뒤로 가게)
+        df = df.iloc[::-1]
+
+        # 4. 데이터 정제 함수 (반복되는 clean 로직 최적화)
+        def clean(val, is_int=False):
+            if pd.isna(val): return None
+            if isinstance(val, (np.floating, np.integer)):
+                val = val.item()
+            try:
+                return int(val) if is_int else float(val)
+            except (ValueError, TypeError):
+                return val
+
+        # 5. 리스트 컴프리헨션을 사용하여 속도 향상
+        ilbong_list = [
+            {
+                'code': shcode,
+                'date': str(row['date']),
+                'open': clean(row.get('open')),
+                'high': clean(row.get('high')),
+                'low': clean(row.get('low')),
+                'close': clean(row.get('close')),
+                'volume': clean(row.get('volume'), is_int=True),
+                'ma5': clean(row.get('ma5')),
+                'ma20': clean(row.get('ma20')),
+                'ma60': clean(row.get('ma60')),
+                'ma120': clean(row.get('ma120')),
+                '개인': clean(row.get('개인')),
+                '외국인': clean(row.get('외국인')),
+                '기관': clean(row.get('기관')),
+                '연기금': clean(row.get('연기금')),
+                '사모펀드': clean(row.get('사모펀드')),
+                '프로그램': clean(row.get('프로그램')),
+                '공매도수량': clean(row.get('공매도수량')),
+                '공매도대금': clean(row.get('공매도대금')),
+                'rsi14': clean(row.get('rsi14')),
+                'macd': clean(row.get('macd', 0.0)),
+                'macd9': clean(row.get('macd9', 0.0)),
+                'bol_u': clean(row.get('bol_u')),
+                'bol_l': clean(row.get('bol_l')),
+                'bol_size': clean(row.get('bol_size')),
+                'bol_dolpa': clean(row.get('bol_dolpa')),
+                'ilmok_a': clean(row.get('ilmok_a')),
+                'ilmok_b': clean(row.get('ilmok_b')),
+                'ilmok_yang': clean(row.get('ilmok_yang')),
+                'ilmok_dolpa': clean(row.get('ilmok_dolpa')),
+            }
+            for _, row in df.iterrows()
+        ]
+        
+        return ilbong_list
+            
+    except Exception as e:
+        print(f"DuckDB 조회 오류 ({shcode}): {e}")
+        return []
+    finally:
+        if 'con' in locals():
+            con.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def insert_df_to_db(table, df):
+    """SQLite에 DataFrame을 안전하게 Upsert 합니다."""
+    with sqlite3.connect(db_path) as conn:
+        temp_table = f"{table}_temp"
+        df.to_sql(temp_table, conn, if_exists="replace", index=True, index_label="date")
+        cur = conn.cursor()
+        cur.execute(f'SELECT name FROM sqlite_master WHERE type="table" AND name="{table}"')
+        if not cur.fetchone():
+            df.head(0).to_sql(table, conn, if_exists="replace", index=True, index_label="date")
+            cur.execute(f'CREATE UNIQUE INDEX IF NOT EXISTS idx_{table}_date ON "{table}" (date)')
+        
+        col_str = ", ".join(list(df.columns))
+        cur.execute(f'INSERT INTO "{temp_table}" (date, {col_str}) SELECT date, {col_str} FROM "{table}" WHERE date NOT IN (SELECT date FROM "{temp_table}")')
+        cur.execute(f'DELETE FROM "{table}"')
+        cur.execute(f'INSERT INTO "{table}" (date, {col_str}) SELECT date, {col_str} FROM "{temp_table}"')
+        cur.execute(f'DROP TABLE IF EXISTS "{temp_table}"')
+        conn.commit()
+
+def get_kospi_codes():
+    with sqlite3.connect(db_path) as conn:
+        return [row[0] for row in conn.execute("SELECT 코드 FROM KOSPI").fetchall()]
+
+def get_kospi300_code():
+    with sqlite3.connect(db_path) as conn:
+        return pd.read_sql("SELECT 코드, 종목명, 현재가, 등락률, 시가총액, 시장, 순위 FROM KOSPI", conn)
+
+
+
+
+
+
+
+
+
+
+
+
+def create_tb_kospi(df, option="replace"):
+
+    con = duckdb.connect(db_path)
+
+    try:
+        if option == "replace":
+            con.execute("DROP TABLE IF EXISTS tb_kospi")
+            con.execute("CREATE TABLE tb_kospi AS SELECT * FROM df")
+        
+        con.execute("CREATE INDEX IF NOT EXISTS idx_kospi_code ON tb_kospi (코드)")
+        
+    except Exception as e:
+        print(f"DuckDB 테이블 생성 오류: {e}")
+    finally:
+        con.close()
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def select_tb_kospi(shcode=None):
+    """전체 코스피 종목과 최신 일봉 RSI를 계산하여 순서대로 반환"""
+    con = duckdb.connect(db_path)
+    
+    # 0=코드, 1=종목명, 2=현재가, 3=등락률, 4=시가총액, 5=RSI
+    sql = """
+        SELECT 
+            "코드", "종목명", "현재가", "등락률", "시가총액",
+            (SELECT ROUND(rsi14, 0) FROM tb_ilbong WHERE code = tb_kospi."코드" ORDER BY date DESC LIMIT 1) as rsi
+        FROM tb_kospi
+    """
+    
+    if shcode:
+        sql = """
+            SELECT 
+                "코드", "종목명", "현재가", "등락률", "시가총액",
+                (SELECT ROUND(rsi14, 0) FROM tb_ilbong WHERE code = tb_kospi."코드" ORDER BY date DESC LIMIT 1) as rsi
+            FROM tb_kospi WHERE "코드" = ?
+        """
+        res = con.execute(sql, [shcode]).fetchall()
+    else:
+        res = con.execute(sql).fetchall()
+        
+    con.close()
+    return res
+
+
+def select_tb_kospi8(code=None):
+    """MariaDB tb_kospi 조회 (views.py 호출용)"""
+    with engine.connect() as conn:
+        if code:
+            query = text("""SELECT 코드, 종목명, 현재가, 등락률, 시가총액, 매출, 영업이익, 배당금, 외국인, PER, 
+                            concat(replace(replace(시장, '코스피', ''), '코스닥', 'Q'), 순위) as 순위, '' as 섹터,
+                            (SELECT ROUND(rsi14, 0) FROM tb_ilbong WHERE code = tb_kospi.코드 ORDER BY date DESC LIMIT 1) as rsi 
+                            FROM tb_kospi WHERE 코드 = :code""")
+            result = conn.execute(query, {"code": code})
+        else:
+            query = text("""SELECT 코드, 종목명, 현재가, 등락률, 시가총액, 매출, 영업이익, 배당금, 외국인, PER, 
+                            concat(replace(replace(시장, '코스피', ''), '코스닥', 'Q'), 순위) as 순위, '' as 섹터,
+                            (SELECT ROUND(rsi14, 0) FROM tb_ilbong WHERE code = tb_kospi.코드 ORDER BY date DESC LIMIT 1) as rsi 
+                            FROM tb_kospi""")
+            result = conn.execute(query)
+        return [tuple(row) for row in result.fetchall()]
+
+
+
+def select_tb_basic(code=None):
+    """MariaDB tb_basic 조회 (views.py 호출용)"""
+    with engine.connect() as conn:
+        query = text("SELECT * FROM tb_basic WHERE 코드 = :code") if code else text("SELECT * FROM tb_basic")
+        result = conn.execute(query, {"code": code} if code else {})
+        return [tuple(row) for row in result.fetchall()]
+
+
+def create_tb_basic8():
+    with engine.connect() as conn:
+        # 테이블 삭제
+        conn.execute(text("DROP TABLE IF EXISTS tb_basic"))
+
+        # 테이블 생성
+        sql_create = '''
+        CREATE TABLE IF NOT EXISTS tb_basic (
+            코드 VARCHAR(20) PRIMARY KEY,
+            종목명 VARCHAR(100),
+            corp_code VARCHAR(20),
+            섹터 VARCHAR(50),
+            매출202201 BIGINT, 영업이익202201 BIGINT, 매출202202 BIGINT, 영업이익202202 BIGINT, 매출202203 BIGINT, 영업이익202203 BIGINT, 매출202204 BIGINT, 영업이익202204 BIGINT,
+            매출202301 BIGINT, 영업이익202301 BIGINT, 매출202302 BIGINT, 영업이익202302 BIGINT, 매출202303 BIGINT, 영업이익202303 BIGINT, 매출202304 BIGINT, 영업이익202304 BIGINT,
+            매출202401 BIGINT, 영업이익202401 BIGINT, 매출202402 BIGINT, 영업이익202402 BIGINT, 매출202403 BIGINT, 영업이익202403 BIGINT, 매출202404 BIGINT, 영업이익202404 BIGINT,
+            매출202501 BIGINT, 영업이익202501 BIGINT, 매출202502 BIGINT, 영업이익202502 BIGINT, 매출202503 BIGINT, 영업이익202503 BIGINT, 매출202504 BIGINT, 영업이익202504 BIGINT,
+            매출202601 BIGINT, 영업이익202601 BIGINT, 매출202602 BIGINT, 영업이익202602 BIGINT, 매출202603 BIGINT, 영업이익202603 BIGINT, 매출202604 BIGINT, 영업이익202604 BIGINT
+        );
+        '''
+        conn.execute(text(sql_create))
+
+        # KOSPI 데이터 삽입 (이미 tb_kospi 테이블이 있다고 가정)
+        conn.execute(text('''
+        INSERT INTO tb_basic (코드, 종목명)
+        SELECT 코드, 종목명 FROM tb_kospi
+        '''))
+
+        # XML -> corp_code 매핑
+        xml_path = os.path.join(base_dir, "CORPCODE.xml")
+        tree = ET.parse(xml_path)
+        root = tree.getroot()
+        mapping = {item.find("stock_code").text.strip(): item.find("corp_code").text.strip()
+                   for item in root.findall("list") if item.find("stock_code") is not None}
+
+        for stock_code, corp_code in mapping.items():
+            conn.execute(
+                text("UPDATE tb_basic SET corp_code = :corp WHERE 코드 = :code"),
+                {"corp": corp_code, "code": stock_code}
+            )
+
+
+        # DART API 분기 실적 업데이트 (기존 로직 그대로)
+        API_KEY = "c2bc2e5748c3279f4b75fd9508b4e8e8145ada4b"
+        REPRT_MAP = {1: "11013", 2: "11012", 3: "11014", 4: "11011"}
+
+        def fetch_dart_quarter(corp_code, year, quarter):
+            url = "https://opendart.fss.or.kr/api/fnlttSinglAcnt.json"
+            params = {"crtfc_key": API_KEY, "corp_code": corp_code, "bsns_year": str(year), "reprt_code": REPRT_MAP[quarter]}
+            r = requests.get(url, params=params).json()
+            if r.get("status") != "000":
+                return None, None
+            sales, op = None, None
+            for item in r.get("list", []):
+                val = item.get("thstrm_amount", "0").replace(",", "")
+                v = int(val) if val and val != '-' else 0
+                if item.get("account_nm") == "매출액":
+                    sales = v
+                elif item.get("account_nm") == "영업이익":
+                    op = v
+            return sales, op
+
+        rows = conn.execute(text("SELECT 코드, corp_code FROM tb_basic")).fetchall()
+
+        cnt = 0
+        for stock_code, corp_code in rows:
+            cnt += 1
+            if cnt >= 1:
+                print(str(cnt) + '\t' + stock_code + '\t' + time.strftime("%H:%M", time.localtime()))
+                if not corp_code:
+                    continue
+                update_dict = {}
+                for year in range(2022, 2027):
+                    for q in range(1, 5):
+                        sales, op = fetch_dart_quarter(corp_code, year, q)
+                        update_dict[f"매출{year}{q:02d}"] = sales
+                        update_dict[f"영업이익{year}{q:02d}"] = op
+                set_clause = ", ".join([f"{k}=:{k}" for k in update_dict.keys()])
+                params = update_dict.copy()
+                params["code"] = stock_code
+                conn.execute(text(f"UPDATE tb_basic SET {set_clause} WHERE 코드 = :code"), params)
+
+                conn.commit()
+
+    print("[ALL DONE] tb_basic 생성 및 분기 실적 업데이트 완료")
+
+
+
+
+
+
+
+def create_tb_basic():
+    """
+    DuckDB를 사용하여 tb_basic 테이블 생성 및 실적 데이터를 업데이트합니다.
+    """
+    with duckdb.connect(db_path) as conn:
+        # 1. 테이블 초기화 (DuckDB는 DROP/CREATE 방식 사용)
+        conn.execute("DROP TABLE IF EXISTS tb_basic")
+        
+        # 2. 테이블 생성 (DuckDB 문법에 맞게 조정)
+        sql_create = '''
+        CREATE TABLE tb_basic (
+            코드 VARCHAR PRIMARY KEY,
+            종목명 VARCHAR,
+            corp_code VARCHAR,
+            섹터 VARCHAR,
+            매출202201 BIGINT, 영업이익202201 BIGINT, 매출202202 BIGINT, 영업이익202202 BIGINT, 매출202203 BIGINT, 영업이익202203 BIGINT, 매출202204 BIGINT, 영업이익202204 BIGINT,
+            매출202301 BIGINT, 영업이익202301 BIGINT, 매출202302 BIGINT, 영업이익202302 BIGINT, 매출202303 BIGINT, 영업이익202303 BIGINT, 매출202304 BIGINT, 영업이익202304 BIGINT,
+            매출202401 BIGINT, 영업이익202401 BIGINT, 매출202402 BIGINT, 영업이익202402 BIGINT, 매출202403 BIGINT, 영업이익202403 BIGINT, 매출202404 BIGINT, 영업이익202404 BIGINT,
+            매출202501 BIGINT, 영업이익202501 BIGINT, 매출202502 BIGINT, 영업이익202502 BIGINT, 매출202503 BIGINT, 영업이익202503 BIGINT, 매출202504 BIGINT, 영업이익202504 BIGINT,
+            매출202601 BIGINT, 영업이익202601 BIGINT, 매출202602 BIGINT, 영업이익202602 BIGINT, 매출202603 BIGINT, 영업이익202603 BIGINT, 매출202604 BIGINT, 영업이익202604 BIGINT
+        );
+        '''
+        conn.execute(sql_create)
+
+        # 3. KOSPI 데이터 복사 (tb_kospi가 같은 DuckDB 내에 있다고 가정)
+        # 만약 tb_kospi가 MariaDB에 있다면 DataFrame으로 읽어와서 insert 해야 합니다.
+        try:
+            conn.execute("INSERT INTO tb_basic (코드, 종목명) SELECT 코드, 종목명 FROM tb_kospi")
+        except Exception as e:
+            print("⚠️ tb_kospi 조회 실패: MariaDB에서 데이터를 가져와야 할 수도 있습니다.")
+
+        # 4. XML -> corp_code 매핑 및 업데이트
+        xml_path = os.path.join(base_dir, "CORPCODE.xml")
+        if os.path.exists(xml_path):
+            tree = ET.parse(xml_path)
+            root = tree.getroot()
+            # stock_code가 있는 것만 추출
+            mapping = []
+            for item in root.findall("list"):
+                s_code = item.findtext("stock_code").strip()
+                c_code = item.findtext("corp_code").strip()
+                if s_code:
+                    mapping.append({'code': s_code, 'corp': c_code})
+            
+            # DataFrame을 활용한 일괄 업데이트용 임시 테이블 활용
+            df_map = pd.DataFrame(mapping)
+            conn.execute("CREATE TEMPORARY TABLE temp_map AS SELECT * FROM df_map")
+            conn.execute("""
+                UPDATE tb_basic 
+                SET corp_code = temp_map.corp 
+                FROM temp_map 
+                WHERE tb_basic.코드 = temp_map.code
+            """)
+            conn.execute("DROP TABLE temp_map")
+
+        # 5. DART API 실적 업데이트 (기본 로직 유지하되 DuckDB 커넥션 사용)
+        API_KEY = "c2bc2e5748c3279f4b75fd9508b4e8e8145ada4b"
+        REPRT_MAP = {1: "11013", 2: "11012", 3: "11014", 4: "11011"}
+
+        def fetch_dart_quarter(corp_code, year, quarter):
+            url = "https://opendart.fss.or.kr/api/fnlttSinglAcnt.json"
+            params = {"crtfc_key": API_KEY, "corp_code": corp_code, "bsns_year": str(year), "reprt_code": REPRT_MAP[quarter]}
+            try:
+                r = requests.get(url, params=params, timeout=10).json()
+                if r.get("status") != "000": return None, None
+                sales, op = 0, 0
+                for item in r.get("list", []):
+                    val = item.get("thstrm_amount", "0").replace(",", "")
+                    v = int(val) if val and val not in ['-', ''] else 0
+                    if item.get("account_nm") == "매출액": sales = v
+                    elif item.get("account_nm") == "영업이익": op = v
+                return sales, op
+            except:
+                return None, None
+
+        # 실적 업데이트 대상 조회
+        rows = conn.execute("SELECT 코드, corp_code FROM tb_basic WHERE corp_code IS NOT NULL").fetchall()
+
+        for cnt, (stock_code, corp_code) in enumerate(rows, 1):
+            print(f"[{cnt}/{len(rows)}] {stock_code} 업데이트 중... {time.strftime('%H:%M')}")
+            
+            update_data = {}
+            # 예시로 2024년까지만 루프 (필요에 따라 범위 조절)
+            for year in range(2022, 2025): 
+                for q in range(1, 5):
+                    sales, op = fetch_dart_quarter(corp_code, year, q)
+                    if sales is not None:
+                        update_data[f"매출{year}{q:02d}"] = sales
+                        update_data[f"영업이익{year}{q:02d}"] = op
+            
+            if update_data:
+                set_clause = ", ".join([f"{k} = ?" for k in update_data.keys()])
+                values = list(update_data.values()) + [stock_code]
+                conn.execute(f"UPDATE tb_basic SET {set_clause} WHERE 코드 = ?", values)
+
+    print("[ALL DONE] tb_basic DuckDB 생성 및 업데이트 완료")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def create_db():
+    create_tb_basic()
+    create_tb_gwansim_group()
+    create_tb_ilbong()
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def create_tb_gwansim_group():
+    """
+    관심그룹 및 관심종목 관련 테이블/시퀀스/인덱스를 생성합니다.
+    """
+    # 1. 시퀀스 및 테이블 생성 SQL
+    setup_queries = [
+        # 그룹 ID 자동 생성을 위한 시퀀스
+        "CREATE SEQUENCE IF NOT EXISTS seq_group_id START 1;",
+        
+        # 관심 그룹 테이블
+        """
+        CREATE TABLE IF NOT EXISTS tb_gwansim_group (
+            group_id INTEGER PRIMARY KEY,
+            group_name VARCHAR NOT NULL,
+            order_no INTEGER DEFAULT 0,
+            reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """,
+        
+        # 관심 종목 테이블 (외래키 제외, 성능 중심)
+        """
+        CREATE TABLE IF NOT EXISTS tb_gwansim_stock (
+            group_id INTEGER,
+            shcode VARCHAR NOT NULL,
+            order_no INTEGER DEFAULT 0,
+            reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (group_id, shcode)
+        );
+        """,
+        
+        # 2. 인덱스 생성 (조회 성능 최적화)
+        # 특정 그룹의 종목을 불러올 때 검색 속도를 비약적으로 높여줍니다.
+        "CREATE INDEX IF NOT EXISTS idx_gwansim_stock_group ON tb_gwansim_stock (group_id);"
+    ]
+
+    try:
+        with duckdb.connect(db_path) as conn:
+            for sql in setup_queries:
+                conn.execute(sql)
+        print("✅ 관심 종목 시스템 테이블 및 인덱스 생성 완료!")
+        return True
+    except Exception as e:
+        print(f"❌ 테이블 생성 중 오류 발생: {e}")
+        return False
+
+
+
+
+
+def update_gwansim_group_order(group_id_list):
+    """
+    관심그룹의 순서를 1부터 차례대로 재부여합니다.
+    group_id_list: ['1', '3', '2']와 같이 정렬된 그룹 ID 리스트
+    """
+    try:
+        with duckdb.connect(db_path) as conn:
+            for index, g_id in enumerate(group_id_list):
+                new_order = index + 1
+                conn.execute("""
+                    UPDATE tb_gwansim_group 
+                    SET order_no = ? 
+                    WHERE group_id = ?
+                """, [new_order, int(g_id)])
+            return True
+    except Exception as e:
+        print(f"그룹 DB 순서 업데이트 중 오류 발생: {e}")
+        return False
+
+
+
+
+def delete_gwansim_group(group_id):
+
+    con = duckdb.connect(db_path)
+    try:
+        gid = int(group_id)
+        
+        # ? 쓰지 말고 f-string으로 값을 직접 넣어서 실행 (DuckDB 엔진 에러 회피)
+        con.execute(f"DELETE FROM tb_gwansim_stock WHERE group_id = {gid}")
+        con.execute(f"DELETE FROM tb_gwansim_group WHERE group_id = {gid}")
+        
+        con.close()
+        return True
+    except Exception as e:
+        print(f"그룹 삭제 중 DB 오류 발생: {e}")
+        if con:
+            con.close()
+        return False
+
+
+def update_gwansim_stock_order(group_id, shcode_list):
+    """
+    관심종목의 순서를 1부터 차례대로 재부여합니다.
+    shcode_list: ['005930', '068270', ...] 정렬된 리스트
+    """
+    try:
+        # db_path는 기존 db.py에 설정된 경로를 사용합니다.
+        with duckdb.connect(db_path) as conn:
+            for index, shcode in enumerate(shcode_list):
+                new_order = index + 1
+                conn.execute("""
+                    UPDATE tb_gwansim_stock 
+                    SET order_no = ? 
+                    WHERE group_id = ? AND shcode = ?
+                """, [new_order, int(group_id), shcode])
+            return True
+    except Exception as e:
+        print(f"DB 순서 업데이트 중 오류 발생: {e}")
+        return False
+
+
+def select_tb_gwansim_stock(group_id):
+    """
+    관심종목 리스트 조회 시 rsi 값을 유동적인 tb_ilbong 일봉 테이블 대신
+    1번째 탭과 100% 동일한 완성형 데이터 보관소인 tb_kospi 테이블의 "RSI" 컬럼에서 
+    직접 추출하여 데이터 왜곡을 원천 차단합니다.
+    """
+    con = duckdb.connect(db_path)
+    
+    # 💡 서브쿼리를 완전히 지워버리고 A.rsi (또는 A."RSI") 데이터를 1:1 매칭해 가져옵니다.
+    sql = """
+        SELECT 
+            B.shcode as "코드",
+            A."종목명",
+            A."현재가",
+            A."등락률",
+            A."시가총액",
+            A.rsi as rsi
+        FROM tb_gwansim_stock B
+        LEFT JOIN tb_kospi A ON B.shcode = A."코드"
+        WHERE B.group_id = ?
+        ORDER BY B.order_no ASC
+    """
+    try:
+        res = con.execute(sql, [int(group_id)]).fetchall()
+    except Exception as e:
+        print(f"관심종목 쿼리 에러: {e}")
+        # 혹시 모를 컬럼명 대소문자 예외 방어코드
+        try:
+            sql_fallback = """
+                SELECT B.shcode, A."종목명", A."현재가", A."등락률", A."시가총액", A."RSI" as rsi
+                FROM tb_gwansim_stock B
+                LEFT JOIN tb_kospi A ON B.shcode = A."코드"
+                WHERE B.group_id = ? ORDER BY B.order_no ASC
+            """
+            res = con.execute(sql_fallback, [int(group_id)]).fetchall()
+        except:
+            res = con.execute("""
+                SELECT shcode, '정보없음', '0', '0', '0', NULL 
+                FROM tb_gwansim_stock WHERE group_id = ?
+            """, [int(group_id)]).fetchall()
+    finally:
+        con.close()
+    return res
+
+
+
+def insert_tb_gwansim_stock(group_id, shcode):
+    # 테이블 생성 쿼리 (가급적 프로그램 시작 시점에 한 번 하는 게 좋지만, 유지함)
+    setup_sql = """
+        CREATE TABLE IF NOT EXISTS tb_gwansim_stock (
+            group_id INTEGER,
+            shcode VARCHAR,
+            order_no INTEGER,
+            reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (group_id, shcode)
+        );
+    """
+
+    try:
+        # group_id 타입을 인트로 강제 변환 (문자열 방지)
+        gid = int(group_id)
+        
+        with duckdb.connect(db_path) as conn:
+            # 1. 테이블 생성 확인
+            conn.execute(setup_sql)
+            
+            # 2. 순번(order_no) 계산을 밖으로 뺌 (서브쿼리 버그 방지)
+            # 데이터가 하나도 없을 때를 대비해 명시적 처리
+            res = conn.execute("SELECT MAX(order_no) FROM tb_gwansim_stock WHERE group_id = ?", [gid]).fetchone()
+            next_no = (res[0] if res and res[0] is not None else 0) + 1
+            
+            # 3. 데이터 삽입 (가장 단순한 형태로 실행)
+            conn.execute(
+                "INSERT INTO tb_gwansim_stock (group_id, shcode, order_no) VALUES (?, ?, ?)",
+                [gid, str(shcode), next_no]
+            )
+            
+            print(f"DEBUG: 그룹({gid})에 종목({shcode}) 추가 완료 (순번: {next_no})")
+            return True
+
+    except duckdb.ConstraintException:
+        print(f"DEBUG: 이미 등록된 종목입니다. (Group: {group_id}, Code: {shcode})")
+        return False
+    except Exception as e:
+        # 여기서 'vector of size 0' 에러가 나면 DB 파일이 잠겼거나 세션이 꼬인 것임
+        print(f"ERROR: insert_tb_gwansim_stock 오류: {e}")
+        return False
+
+
+def delete_tb_gwansim_stock(group_id, shcode):
+    """
+    특정 관심 그룹에서 특정 종목을 삭제합니다.
+    """
+    sql = "DELETE FROM tb_gwansim_stock WHERE group_id = ? AND shcode = ?"
+    try:
+        with duckdb.connect(db_path) as conn:
+            conn.execute(sql, [int(group_id), shcode])
+            return True
+    except Exception as e:
+        print(f"ERROR: delete_tb_gwansim_stock 오류: {e}")
+        return False
+
+
+
+
+
+
+
+
+def insert_tb_gwansim_group(group_name):
+
+    sql = """
+        INSERT INTO tb_gwansim_group (group_id, group_name, order_no, reg_date)
+        SELECT 
+            nextval('seq_group_id'), 
+            ?, 
+            COALESCE(MAX(order_no), 0) + 1,
+            CURRENT_TIMESTAMP 
+        FROM tb_gwansim_group
+    """
+
+    try:
+        with duckdb.connect(db_path) as conn:
+            conn.execute(sql, [group_name])
+
+    except duckdb.CatalogException:
+        with duckdb.connect(db_path) as conn:
+            conn.execute("""
+                CREATE SEQUENCE IF NOT EXISTS seq_group_id START 1;
+                CREATE TABLE IF NOT EXISTS tb_gwansim_group (
+                    group_id INTEGER PRIMARY KEY,
+                    group_name VARCHAR NOT NULL,
+                    order_no INTEGER DEFAULT 0,
+                    reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            conn.execute(sql, [group_name])
+
+            
+
+def select_tb_gwansim_group():
+    try:
+        with duckdb.connect(db_path) as conn:
+            # group_id, group_name을 리스트로 return
+            return conn.execute("""
+                SELECT group_id, group_name 
+                FROM tb_gwansim_group 
+                ORDER BY order_no ASC
+            """).fetchall()
+    except duckdb.CatalogException:
+        return []
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# db.py 내부 적절한 위치에 추가
+
+def update_check_setting(settings_json_str):
+    """
+    체크박스 설정값을 업데이트(덮어쓰기)합니다.
+    최초 실행 시 테이블이 없다면 자동으로 생성(CREATE)하고, 
+    평소에는 매번 들어오는 설정값으로 데이터를 갱신(UPDATE)합니다.
+    """
+    con = duckdb.connect(db_path)
+    try:
+        # 1. [최초 1회만 작동] 테이블이 없을 때만 테이블 생성
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS tb_check_setting (
+                setting_id TEXT PRIMARY KEY,
+                settings_json TEXT
+            )
+        """)
+        
+        # 2. [평소에 작동] 'default' 행에 JSON 설정값 문자열을 덮어쓰기 (Update/Insert 자동 처리)
+        con.execute("""
+            INSERT OR REPLACE INTO tb_check_setting (setting_id, settings_json)
+            VALUES ('default', $1)
+        """, [settings_json_str])
+        
+        print("[DuckDB] tb_check_setting 체크 설정 업데이트 완료")
+    except Exception as e:
+        print(f"[DuckDB] 설정 업데이트 중 오류 발생: {e}")
+    finally:
+        con.close()
+
+
+def select_check_setting():
+    """
+    DuckDB에 저장된 체크박스 설정값을 읽어옵니다. (SELECT)
+    테이블이 아직 없거나 데이터가 비어 있다면 빈 구조인 '{}' 문자열을 반환합니다.
+    """
+    con = duckdb.connect(db_path)
+    try:
+        res = con.execute("""
+            SELECT settings_json FROM tb_check_setting WHERE setting_id = 'default'
+        """).fetchone()
+        
+        return res[0] if res else "{}"
+    except Exception as e:
+        # 최초 로딩 시 테이블이 아예 없는 에러 상태를 안전하게 방어하기 위해 빈 값 반환
+        return "{}"
+    finally:
+        con.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def create_tb_ilbong():
+    
+    con = duckdb.connect(db_path)
+    con.execute("DROP TABLE IF EXISTS tb_ilbong")
+    
+    con.execute("""
+        CREATE TABLE tb_ilbong (
+            code VARCHAR,
+            date VARCHAR,
+            open INTEGER,
+            high INTEGER,
+            low INTEGER,
+            close INTEGER,
+            volume BIGINT,
+            ma5 DOUBLE,
+            ma20 DOUBLE,
+            ma60 DOUBLE,
+            ma120 DOUBLE,
+            rsi14 DOUBLE,
+            macd DOUBLE,
+            macd9 DOUBLE,
+            bol_u DOUBLE,
+            bol_l DOUBLE,
+            bol_size VARCHAR,
+            bol_dolpa VARCHAR,
+            ilmok_a DOUBLE,
+            ilmok_b DOUBLE,
+            ilmok_dolpa VARCHAR,
+            ilmok_yang VARCHAR,
+            개인 DOUBLE,
+            외국인 DOUBLE,
+            기관 DOUBLE,
+            연기금 DOUBLE,
+            사모펀드 DOUBLE,
+            프로그램 DOUBLE,
+            공매도수량 DOUBLE,
+            공매도대금 DOUBLE,
+            PRIMARY KEY (code, date)
+        )
+    """)
+    
+    # 4. 인덱스 생성 (조회 속도 최적화)
+    # 인덱스: 종목(code), 날짜(date)로 검색할 때 성능 향상
+    con.execute("CREATE INDEX idx_ilbong_code ON tb_ilbong (code)")
+    con.execute("CREATE INDEX idx_ilbong_date ON tb_ilbong (date)")
+    
+    # 5. 연결 종료
+    con.close()
+    
+    print("DuckDB: tb_ilbong 테이블 및 인덱스 생성 완료")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def insert_tb_ilbong(ilbong_list):
+    con = duckdb.connect(db_path)
+    
+    sql = """
+        INSERT OR REPLACE INTO tb_ilbong (
+            code, date, open, high, low, close, volume, 
+            ma5, ma20, ma60, ma120, 
+            rsi14, macd, macd9, bol_u, bol_l, bol_size, bol_dolpa, 
+            ilmok_a, ilmok_b, ilmok_dolpa, ilmok_yang,
+            개인, 외국인, 기관, 연기금, 사모펀드, 프로그램, 공매도수량, 공매도대금
+        ) VALUES (
+            $code, $date, $open, $high, $low, $close, $volume, 
+            $ma5, $ma20, $ma60, $ma120, 
+            $rsi14, $macd, $macd9, $bol_u, $bol_l, $bol_size, $bol_dolpa, 
+            $ilmok_a, $ilmok_b, $ilmok_dolpa, $ilmok_yang,
+            $개인, $외국인, $기관, $연기금, $사모펀드, $프로그램, $공매도수량, $공매도대금
+        )
+    """
+    
+    con.executemany(sql, ilbong_list)
+    con.close()
+
+
+
+
+
+
+
+
+# --- [복구] 삭제 및 유틸리티 함수 ---
+
+def delete_db_1day(code, date):
+    """SQLite 특정일 삭제"""
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(f"DELETE FROM '{code}' WHERE DATE = '{date}'")
+        conn.commit()
+
+def delete_db_days(code, date1, date2):
+    """SQLite 범위 삭제 (복구 완료)"""
+    with sqlite3.connect(db_path) as con:
+        con.execute(f"DELETE FROM '{code}' WHERE DATE BETWEEN '{date1}' AND '{date2}'")
+        con.commit()
+
+def drop_db(code):
+    """SQLite 테이블 삭제"""
+    with sqlite3.connect(db_path) as conn:
+        conn.execute(f"DROP TABLE IF EXISTS '{code}'")
+        conn.commit()

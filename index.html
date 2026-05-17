@@ -1,0 +1,182 @@
+<head>
+  <meta charset="UTF-8" />
+  <title>RSI 검색</title>
+  <style>
+    .rounded-box {
+      background-color: #fffef3;
+      border-radius: 12px;
+      padding: 10px;
+      margin-top: 10px;
+      width: 500px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+      height: 500px;
+      overflow-y: auto;
+      line-height: 18px;
+    }
+
+
+
+    .ilbong-container {
+      border-radius: 12px;
+      padding: 10px;
+      width: 670px;
+      height: 500px;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    .ilbong-box {
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 0;
+      width: 670px;
+      box-sizing: border-box;
+      background-color: transparent;
+    }
+
+    .ilbong-box table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      margin-top: 0;
+    }
+
+    .ilbong-box th,
+    .ilbong-box td {
+      padding: 6px 8px;
+      border: 1px solid #ccc;
+      font-size: 13px;
+      word-wrap: break-word;
+    }
+
+    .ilbong-box thead th {
+      position: sticky;
+      top: 0;
+      background-color: #d9ebff;
+      z-index: 5;
+      text-align: center;
+    }
+
+    .ilbong-box tbody td {
+      background-color: #f3fbff;
+      
+      text-align: center;
+    }
+
+    .ilbong-box th:nth-child(1),
+    .ilbong-box td:nth-child(1) {
+      width: 20%;
+    }
+
+    .ilbong-box td:nth-child(2),
+    .ilbong-box td:nth-child(3) {
+      text-align: right;
+    }
+
+    .ilbong-box th:nth-child(2),
+    .ilbong-box th:nth-child(3) {
+      text-align: center;
+    }
+
+  a.stock-link {
+    text-decoration: none;
+    color: black;
+    transition: color 0.3s, font-weight 0.3s;
+  }
+
+  a.stock-link:hover,
+  a.stock-link.active {
+    font-weight: bold !important;
+    color: #1E90FF !important;
+    text-decoration: none !important;
+  }
+
+  a.stock-link:visited {
+    color: black;
+  }
+
+
+
+  </style>
+
+
+<script src="/static/highcharts/htmx.js"></script>
+<script src="/static/highcharts/highstock.src.js"></script>
+<script src="./static/highcharts/indicators-all.src.js"></script>
+<script src="./static/highcharts/macd.src.js"></script>
+<script src="./static/highcharts/bollinger-bands.src.js"></script>
+<script src="./static/highcharts/accessibility.src.js"></script>
+  
+</head>
+
+
+
+
+
+
+
+<body>
+
+  <!-- flex로 나란히 정렬 -->
+  <div style="display: flex; gap: 20px; align-items: flex-start;">
+
+    <!-- KOSPI 조각 뷰 -->
+    <div id="box_kospi" style="width: 485px; float: left;">
+        {% include '_partial_kospi.html' %}
+    </div>
+
+    <!-- 일봉 데이터 영역 -->
+    <div id="box_detail">
+      {% include '_partial_detail.html' with code=code json_ilbong=json_ilbong %} 
+    </div>
+
+
+
+
+
+  </div>
+
+
+
+
+
+  <script>
+    // 링크 색
+    let activeCode = null;
+
+    // 링크 클릭 시 현재 선택된 코드 저장
+    function setActive(clicked, code) {
+      activeCode = code;
+
+
+      document.querySelectorAll('.stock-link').forEach(link => {
+        link.classList.remove('active'); // 전체 (이전 클릭된) 종목 코드의 active 삭제
+      });
+
+      clicked.classList.add('active'); // 방금 클릭된 종목 코드 active
+    }
+
+    // htmx로 kospi 뷰 다시 로딩된 후, active 클래스 복원
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+
+        
+      if (evt.detail.target.id === 'kospi-box') {
+        // 새로 로드된 .stock-link에 onclick 다시 등록
+        document.querySelectorAll('.stock-link').forEach(link => {
+          link.onclick = function() {
+            setActive(this, this.dataset.code);
+          };
+        });
+
+        // 이전에 클릭된 링크가 있으면 active 복원
+        if (activeCode) {
+          const activeLink = document.querySelector(`.stock-link[data-code='${activeCode}']`);
+          if (activeLink) activeLink.classList.add('active');
+        }
+      }
+    });
+  </script>
+
+
+</body>

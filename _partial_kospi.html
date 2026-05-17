@@ -1,0 +1,606 @@
+{% load humanize %}
+
+<div style="width: 485px; display: flex; flex-direction: column; overflow: hidden !important;">
+
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css');
+
+        #tab-container::-webkit-scrollbar { display: none; height: 0px; }
+        #tab-container > button:hover:not(.active) { color: #1a2a3a !important; cursor: pointer; }
+
+        .tab-btn {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif !important;
+            display: inline-flex; align-items: center; flex-shrink: 0; 
+            padding: 8px 12px 10px 12px;
+            cursor: pointer; border: none;
+            background-color: transparent; color: #888;
+            font-size: 14px; font-weight: 600;
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .tab-btn.active {
+            color: #000 !important;
+            font-weight: 800 !important;
+        }
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 2px;
+            right: 2px;
+            height: 3px;
+            background-color: #3b82f6;
+            border-radius: 2px;
+        }
+
+        /* 데이터 행 기본 스타일 */
+        .kospi-row {
+            font-family: 'Pretendard', sans-serif !important;
+            display: grid !important;
+            grid-template-columns: 15px 150px 70px 85px 45px 75px !important;
+            row-gap: 4px; column-gap: 4px !important; margin-bottom: 4px;
+            align-items: center; width: 100%; box-sizing: border-box;
+            padding: 6px 0px 6px 10px !important;
+            background: #ffffff !important; 
+            transition: background-color 0.15s ease;
+        }
+
+        /* 마우스 호버 시에만 파스텔 하늘색 효과 */
+        .kospi-row:not(.kospi-header):hover {
+            background-color: #f0f7ff !important;
+            cursor: pointer;
+        }
+
+        /* 검색창 팝업 레이어 내 종목 기본 스타일 및 호버 */
+        .stock-item {
+            background-color: #ffffff !important;
+            transition: background-color 0.15s ease;
+        }
+        .stock-item:hover {
+            background-color: #f0f7ff !important;
+        }
+
+        #kospi-body::-webkit-scrollbar { width: 6px; }
+        #kospi-body::-webkit-scrollbar-track { background: transparent; }
+        #kospi-body::-webkit-scrollbar-thumb { background: #ddd; border-radius: 10px; }
+
+        .kospi-row > div:first-child { text-align: left !important; }
+        .align-right-text { text-align: right !important; display: block !important; width: 100% !important; }
+        .align-left-text { text-align: left !important; }
+        .align-middle-right-title { text-align: center !important; padding-left: 20px !important; display: block !important; width: 100% !important; box-sizing: border-box; }
+        .align-stock-cap-title { text-align: center !important; padding-left: 24px !important; display: block !important; width: 100% !important; box-sizing: border-box; }
+        .align-stock-cap-data { text-align: right !important; display: block !important; width: 100% !important; padding-right: 0px !important; box-sizing: border-box; }
+        
+        /* 검색창 내부 클리어 버튼 */
+        .search-wrapper { position: relative; display: flex; align-items: center; }
+        .clear-btn { position: absolute; right: 8px; background: none; border: none; font-size: 14px; color: #aaa; cursor: pointer; display: none; padding: 4px; line-height: 1; font-weight: bold; user-select: none; }
+        .clear-btn:hover { color: #666; }
+
+        /* 하단 일반 버튼 공통 속성 및 조회 버튼 호버 */
+        .search-submit-btn {
+            height: 35px; cursor: pointer; background-color: #f0f0f0; border: 1px solid #999; border-radius: 4px; padding: 0 8px; font-size: 13px; font-weight: bold; color: #2c3e50; transition: background-color 0.15s ease; box-sizing: border-box;
+        }
+        .search-submit-btn:hover {
+            background-color: #e2e2e2 !important;
+        }
+
+        .ctrl-btn {
+            height: 35px; border-radius: 4px; padding: 0 10px; font-weight: bold; cursor: pointer; font-size: 12px; transition: all 0.15s ease; box-sizing: border-box;
+        }
+        
+        /* 관심종목 버튼 호버 */
+        .btn-gwansim-star { background-color: #ffffff; border: 1px solid #2c3e50; color: #2c3e50; }
+        .btn-gwansim-star:hover { background-color: #f0f2f5 !important; color: #2c3e50 !important; }
+        
+        /* 1일 일봉 버튼 호버 */
+        #btn-1day-update { background-color: #3498db; color: white; border: none; }
+        #btn-1day-update:hover { background-color: #2574c4 !important; }
+        
+        
+        /* 계좌 버튼 호버 */
+        .btn-account-pink { background-color: #F48FB1; color: white; border: none; }
+        .btn-account-pink:hover { background-color: #f06292 !important; }
+    </style>
+
+    <div style="display: flex; align-items: center; width: 100%; background: #fff; position: relative; padding: 4px 5px 0 5px; box-sizing: border-box; border-bottom: 1px solid #eee;">
+        
+        <button type="button" id="tab-nav-prev" onclick="scrollTabContainer('left')"
+                style="visibility: hidden; width: 24px; background: none; border: none; font-size: 14px; font-weight: bold; color: #333; cursor: pointer; padding: 8px 0; z-index: 10; text-align: center;">
+            &#10094;
+        </button>
+
+
+        <div id="tab-container" onscroll="updateTabArrows()"
+             style="display: flex; gap: 4px; margin-bottom: 0px; padding: 0 4px; align-items: flex-end; overflow-x: auto; white-space: nowrap; flex-grow: 1; width: calc(100% - 48px); -webkit-overflow-scrolling: touch; box-sizing: border-box;">
+
+            
+            <button type="button" 
+                    hx-get="{% url '_partial_kospi' %}"
+                    hx-target="closest div[style*='width: 485px']"
+                    hx-swap="outerHTML"
+                    class="tab-btn {% if not current_group_id %}active{% endif %}">전체 종목</button>
+
+            {% for group in groups %}
+            <button type="button" 
+                    data-group-id="{{ group.0 }}" 
+                    hx-get="{% url '_partial_kospi' %}?group_id={{ group.0 }}"
+                    hx-target="closest div[style*='width: 485px']"
+                    hx-swap="outerHTML"
+                    class="tab-btn {% if current_group_id|add:0 == group.0|add:0 %}active{% endif %}">
+                {{ group.1 }}
+            </button>
+            {% endfor %}
+        </div>
+
+        <button type="button" id="tab-nav-next" onclick="scrollTabContainer('right')"
+                style="visibility: hidden; width: 24px; background: none; border: none; font-size: 16px; font-weight: bold; color: #333; cursor: pointer; padding: 8px 0; z-index: 10; text-align: center;">
+            &#10095;
+        </button>
+    </div>
+
+    <div id="kospi-main-area" style="border-top: 2px solid #ccc; padding-top: 0px; margin-top: -1px;">
+        <div class="rounded-box" style="border: 1px solid #eee; padding: 0px; border-radius: 8px; background: #fff; display: flex; flex-direction: column; width: 100% !important; box-sizing: border-box; margin-top: 0px;">
+            
+            <div class="kospi-row kospi-header" style="font-weight: bold; border-bottom: 2px solid #ccc; padding-top: 8px; padding-bottom: 8px; margin-bottom: 0px; cursor: pointer; font-size: 15px; white-space: nowrap; background: #ffffff !important;">
+                <div class="align-left-text" style="color: #888; font-size: 11px;"></div>
+                <div onclick="sortTable(1, this)" class="align-left-text" style="position: relative; padding-left: 2px;">종목명</div>
+                <div onclick="sortTable(2, this)" class="align-right-text" style="position: relative; padding-right: 2px;">현재가</div>
+                <div onclick="sortTable(3, this)" class="align-middle-right-title" style="position: relative;">등락</div>
+                <div onclick="sortTable(4, this)" class="align-right-text" style="position: relative; padding-right: 2px;">RSI</div>        
+                <div onclick="sortTable(5, this)" class="align-stock-cap-title" style="position: relative;">시총</div>
+            </div>
+
+            <div id="kospi-body" style="height: 600px; overflow-y: auto; overflow-x: hidden; width: 100%; display: flex; flex-direction: column;">
+                {% if kospi %}
+                    {% for row in kospi %}
+                    <div class="kospi-row" id="row-{{ row.code }}" style="border-bottom: 1px solid #f0f0f0; font-size: 15px;"
+                         hx-get="{% url '_partial_detail' %}?code={{ row.code }}"
+                         hx-vals='js:{check_web: document.getElementById("check_web").checked}'
+                         hx-target="#box_detail" hx-swap="innerHTML">
+                        
+                        <div style="color: #888; text-align: left; font-size: 11px;">{{ forloop.counter }}</div>
+                        
+                        <div class="align-left-text" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: bold; padding-left: 2px;">
+                            {{ row.name|slice:":11" }}
+                        </div>
+                        
+                        <div class="align-right-text" style="padding-right: 2px;">{{ row.price|intcomma }}</div>
+                        
+                        <div class="align-right-text" style="padding-right: 2px;">
+                            <span style="color: {% if '+' in row.rate %}red{% elif '-' in row.rate %}blue{% else %}black{% endif %}; font-weight: bold;">
+                                {{ row.rate }}
+                            </span>
+                        </div>
+                        
+                        <div class="align-right-text" style="font-size: 13px; font-weight: bold; padding-right: 2px; 
+                             color: {% if row.rsi %}{% if row.rsi >= 70 %}#ff4500{% elif row.rsi <= 30 %}#1e90ff{% else %}#555{% endif %}{% else %}#ccc{% endif %};">
+                            {{ row.rsi|floatformat:0|default:"-" }}
+                        </div>
+                        
+                        <div class="align-stock-cap-data" style="font-size: 12px; color: #999;">{{ row.cap|intcomma }}</div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #bbb; font-size: 14px; font-weight: 500; font-family: 'Pretendard', sans-serif;">
+                        <span style="font-size: 26px; margin-bottom: 8px;">📁</span>
+                        등록된 종목이 없습니다.
+                    </div>
+                {% endif %}
+            </div>
+
+
+
+
+
+
+        </div>
+    </div>
+
+
+
+
+
+
+
+
+
+
+    <div style="margin-top: 20px; padding: 10px; border-top: 1px dashed #ccc; display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: nowrap !important; gap: 4px;">
+            
+            <form id="search-form" onsubmit="handleSearch(event)" onmouseleave="hideDropdown()" 
+                  style="display: flex; gap: 0px; align-items: center; margin: 0; position: relative; flex-shrink: 0; flex-wrap: nowrap; height: 32px;">
+                
+                <div class="search-wrapper" style="position: relative; display: inline-flex; align-items: center; height: 32px;">
+                    <input type="text" id="search-input" placeholder="종목명" autocomplete="off" 
+                           oninput="checkInputToggle(this); filterStocks(this.value);" 
+                           onfocus="showDropdown()" onmouseenter="showDropdown()"
+                           style="height: 32px; width: 110px; border: 1px solid #ced4da; border-right: none; border-top-left-radius: 20px; border-bottom-left-radius: 20px; padding: 0 24px 0 12px; font-size: 13px; font-weight: 600; color: #1a2a3a; box-sizing: border-box; outline: none;">
+                    
+                    <button type="button" id="clear-input-btn" class="clear-btn" onclick="clearSearchField()" 
+                            style="position: absolute; right: 8px; background: transparent; border: none; cursor: pointer; font-size: 14px; color: #ccc; padding: 0; line-height: 1;">×</button>
+                </div>
+
+                <button type="submit" class="search-submit-btn"
+                        style="height: 32px !important; border-top-left-radius: 0px !important; border-bottom-left-radius: 0px !important; border-top-right-radius: 20px !important; border-bottom-right-radius: 20px !important; margin-left: 0px !important; padding-top: 0px !important; padding-bottom: 0px !important; padding-left: 10px !important; padding-right: 12px !important; font-size: 13px !important; font-weight: 600 !important; cursor: pointer; box-sizing: border-box !important;">
+                    조회
+                </button>
+                
+                <ul id="custom-stock-list" style="display: none; position: absolute; bottom: 32px; left: 0; width: 200px; max-height: 250px; overflow-y: auto; background: white; border: 1px solid #ccc; border-radius: 4px; padding: 0; margin: 0; list-style: none; z-index: 9999; box-shadow: 0 -4px 6px rgba(0,0,0,0.1);">
+                    {% for row in kospi %}
+                    <li class="stock-item" data-code="{{ row.code }}" data-name="{{ row.name }}" onclick="selectStock('{{ row.name }}', '{{ row.code }}')"
+                        style="display: flex; justify-content: space-between; align-items: center; padding: 7px 12px; cursor: pointer; border-bottom: 1px solid #f9f9f9; font-size: 13px; background-color: #ffffff;">
+                        <span style="font-weight: 500; color: #222 !important;">{{ row.name }}</span>
+                        <span style="font-size: 11px; color: #b0b0b0 !important;">{{ row.code }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </form>
+
+
+
+        <div style="display: flex; gap: 4px; flex-shrink: 0; flex-wrap: nowrap !important; align-items: center; margin-left: auto; margin-right: -4px !important;">
+            
+            <div style="display: inline-flex; align-items: center; gap: 0px; margin-right: 2px; height: 32px;">
+                <button type="button" 
+                        onclick="location.href='{% url 'gwansim' %}'" 
+                        class="ctrl-btn btn-gwansim-star"
+                        style="border-top-left-radius: 20px !important; border-bottom-left-radius: 20px !important; border-top-right-radius: 0px !important; border-bottom-right-radius: 0px !important; border: 1px solid #ced4da !important; border-right: none !important; height: 32px !important; display: inline-flex !important; align-items: center !important; font-size: 13.5px !important; font-weight: 700 !important; padding-top: 0px !important; padding-bottom: 0px !important; padding-left: 12px; padding-right: 10px;">
+                    ⭐ 관심종목
+                </button>
+                <a href="{% url 'account' %}" style="text-decoration: none; display: inline-block; flex-shrink: 0; margin-left: 0px; height: 32px;">
+                    <button type="button" 
+                            class="ctrl-btn btn-account-pink"
+                            style="border-top-right-radius: 20px !important; border-bottom-right-radius: 20px !important; border-top-left-radius: 0px !important; border-bottom-left-radius: 0px !important; height: 32px !important; padding-top: 0px !important; padding-bottom: 0px !important; padding-left: 12px; padding-right: 14px;">
+                        계좌
+                    </button>
+                </a>
+            </div>
+            
+            <div class="ilbong-input-wrapper" style="position: relative; display: inline-flex; align-items: center; gap: 0px; margin-right: 0px; overflow: visible !important;">
+                <div class="custom-arrows" style="position: absolute; left: 6px; display: flex; flex-direction: column; gap: 0px; z-index: 3; opacity: 0; transition: opacity 0.15s ease;">
+                    <button type="button" onclick="const idx=document.getElementById('ilbong-qrycnt'); idx.value=Math.min(9999, parseInt(idx.value||0)+1);" style="width: 11px; height: 13px; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 900; line-height: 1; border: none; background: transparent; color: #888; cursor: pointer; padding: 0;">▲</button>
+                    <button type="button" onclick="const idx=document.getElementById('ilbong-qrycnt'); idx.value=Math.max(1, parseInt(idx.value||0)-1);" style="width: 11px; height: 13px; display: flex; align-items: center; justify-content: center; font-size: 7px; font-weight: 900; line-height: 1; border: none; background: transparent; color: #888; cursor: pointer; padding: 0;">▼</button>
+                </div>
+
+                <input type="number" 
+                       id="ilbong-qrycnt" 
+                       value="500" 
+                       min="1" 
+                       max="9999"
+                       onkeydown="if(event.key === 'Enter') { event.preventDefault(); document.getElementById('btn-1day-update').click(); }"
+                       style="width: 42px; height: 32px; box-sizing: border-box !important; text-align: right; padding-top: 3px !important; padding-right: 4px; padding-left: 11px; border: 1px solid #ced4da; border-right: none; border-top-left-radius: 20px; border-bottom-left-radius: 20px; font-size: 13px; font-weight: 600; color: #1a2a3a; outline: none; margin-right: -5px; position: relative; z-index: 2; appearance: textfield; -moz-appearance: textfield;">
+            </div>
+            
+            <style>
+                #ilbong-qrycnt::-webkit-outer-spin-button,
+                #ilbong-qrycnt::-webkit-inner-spin-button {
+                    -webkit-appearance: none;
+                    margin: 0;
+                }
+                .ilbong-input-wrapper:hover .custom-arrows {
+                    opacity: 1 !important;
+                }
+            </style>
+
+            <button type="button" 
+                    id="btn-1day-update" 
+                    class="ctrl-btn" 
+                    data-url="{% url 'get_ilbong_1day' %}" 
+                    onclick="startLogStreaming(this)"
+                    style="border-top-left-radius: 0px; border-bottom-left-radius: 0px; border-top-right-radius: 20px; border-bottom-right-radius: 20px; margin-left: 0px !important; text-align: left !important; padding-left: 2px !important; padding-right: 14px; height: 32px; position: relative; z-index: 1;">
+                일 일봉받기
+            </button>
+        </div>
+
+
+                                  
+
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 0 2px; box-sizing: border-box;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <input type="checkbox" id="check_web" name="check_web" style="width: 17px; height: 17px; cursor: pointer;">
+                <label for="check_web" style="font-size: 13px; cursor: pointer; color: #333; font-weight: 500; user-select: none;">웹연결</label>
+            </div>
+            <div style="font-size: 12px; color: #666; font-weight: 600; font-family: 'Pretendard', sans-serif;">
+                최종 갱신일: {{ last_update }}
+            </div>
+        </div>
+    </div>
+
+    <div id="log-container" style="margin: 10px; padding: 8px; padding: 5px 0px; background-color: #f8f9fa; color: #333; border-radius: 6px; font-family: 'Consolas', monospace; font-size: 11px; height: 80px; overflow-y: auto; border: 1px solid #ddd; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);"> 
+        <div id="log-content"><span style="color: #28a745; font-weight: bold;">[LS증권 API]</span> 일봉전송 준비완료.</div>
+    </div>
+</div>
+
+<script>
+    // 형의 기존 스크립트 그대로 유지 (HTMX가 동작하도록 보장)
+    if (typeof htmx !== 'undefined') {
+        htmx.process(document.body);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+function startLogStreaming(buttonElement) {
+    // 1. 기존 data-url 가져오기 (예: /get_ilbong_1day/)
+    let url = buttonElement.getAttribute('data-url');
+    
+    // 2. [추가] input창에서 사용자가 입력한 일수(qrycnt) 가져오기
+    const qrycntInput = document.getElementById('ilbong-qrycnt');
+    if (qrycntInput) {
+        const qrycntValue = qrycntInput.value || "500"; // 값 없으면 기본값 500
+        // URL에 쿼리 스트링(?qrycnt=500) 형태로 결합
+        url = url + "?qrycnt=" + qrycntValue;
+    }
+
+    const logContent = document.getElementById('log-content');
+    const logContainer = document.getElementById('log-container');
+    if(!logContent || !logContainer) return;
+    
+    logContent.innerHTML = "<span style='color: #007bff; font-weight: bold;'>[LS증권 API]</span> 일봉 전송 중...      (시가, 고가, 저가, 종가)";
+    
+    buttonElement.disabled = true;
+    buttonElement.style.cursor = 'not-allowed';
+    
+    buttonElement.style.whiteSpace = 'nowrap';
+    buttonElement.style.paddingLeft = '8px';
+    buttonElement.style.paddingRight = '8px';
+    buttonElement.innerHTML = `⏳ 받는 중 <span id="spinner-box" style="display: inline-block; width: 20px; text-align: center;">📈</span>`;
+
+    const spinnerFrames = ["📈", "🚀", "💰", "✨"];
+    let frameIndex = 1;
+
+    const dotInterval = setInterval(() => {
+        const spinnerBox = document.getElementById('spinner-box');
+        if (spinnerBox) { spinnerBox.innerText = spinnerFrames[frameIndex]; }
+        frameIndex = (frameIndex + 1) % spinnerFrames.length;
+    }, 300);
+
+    const xhr = new XMLHttpRequest();
+    // 3. [수정] qrycnt 파라미터가 포함된 최종 url로 요청을 보냄
+    xhr.open('GET', url, true); 
+    
+    let lastIndex = 0;
+    xhr.onprogress = function() {
+        const rawText = xhr.responseText;
+        const newChunk = rawText.substring(lastIndex);
+        lastIndex = rawText.length;
+
+        const lines = newChunk.split('\n');
+        lines.forEach(line => {
+            if(line.trim()) {
+                let processedLine = line.replace('[시스템]', "<span style='color: #28a745; font-weight: bold;'>[시스템]</span>")
+                                        .replace('[에러]', "<span style='color: #dc3545; font-weight: bold;'>[에러]</span>")
+                                        .replace('[완료]', "<span style='color: #007bff; font-weight: bold;'>[완료]</span>");
+                logContent.innerHTML += "<div>" + processedLine + "</div>";
+            }
+        });
+        logContainer.scrollTop = logContainer.scrollHeight;
+    };
+
+    xhr.onload = function() {
+        clearInterval(dotInterval);
+        buttonElement.disabled = false;
+        buttonElement.innerHTML = "일 일봉받기"; 
+        buttonElement.style.cursor = 'pointer';
+        buttonElement.style.whiteSpace = '';
+        buttonElement.style.paddingLeft = '2px';
+        buttonElement.style.paddingRight = '14px';
+    };
+
+    xhr.onerror = function() {
+        clearInterval(dotInterval);
+        logContent.innerHTML += "<div style='color: #dc3545; font-weight: bold;'>[에러] 서버와 연결이 끊어졌습니다.</div>";
+        buttonElement.disabled = false;
+        buttonElement.innerHTML = "일 일봉받기";
+        buttonElement.style.cursor = 'pointer';
+        buttonElement.style.whiteSpace = '';
+        buttonElement.style.paddingLeft = '2px';
+        buttonElement.style.paddingRight = '14px';
+    };
+
+    xhr.send();
+}
+
+
+
+
+
+
+
+
+    function scrollTabContainer(direction) {
+        const container = document.getElementById('tab-container');
+        if (!container) return;
+        const scrollAmount = 150;
+        if (direction === 'left') {
+            container.scrollBy({ left: -scrollAmount, behavior: 'smooth' });
+        } else {
+            container.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+        }
+    }
+
+    function updateTabArrows() {
+        const container = document.getElementById('tab-container');
+        const prevBtn = document.getElementById('tab-nav-prev');
+        const nextBtn = document.getElementById('tab-nav-next');
+        if (!container || !prevBtn || !nextBtn) return;
+
+        const scrollWidth = container.scrollWidth;
+        const clientWidth = container.clientWidth;
+
+        if (scrollWidth <= clientWidth) {
+            prevBtn.style.visibility = 'hidden';
+            nextBtn.style.visibility = 'hidden';
+            return;
+        }
+        
+        prevBtn.style.visibility = (container.scrollLeft <= 4) ? 'hidden' : 'visible';
+        nextBtn.style.visibility = (container.scrollLeft + clientWidth >= scrollWidth - 4) ? 'hidden' : 'visible';
+    }
+
+
+
+
+
+// 스크롤 저장
+function saveTabScroll() {
+    const container = document.getElementById('tab-container');
+
+    if (container) {
+        sessionStorage.setItem(
+            'tabScrollLeft',
+            container.scrollLeft
+        );
+    }
+}
+
+// 스크롤 복원
+function restoreTabScroll() {
+    const container = document.getElementById('tab-container');
+
+    if (!container) return;
+
+    const saved = sessionStorage.getItem('tabScrollLeft');
+
+    requestAnimationFrame(() => {
+
+        if (saved !== null) {
+            container.scrollLeft = parseInt(saved, 10);
+        }
+
+        // 브라우저 레이아웃 계산 강제
+        container.offsetWidth;
+
+        setTimeout(() => {
+            updateTabArrows();
+        }, 50);
+
+    });
+}
+
+
+window.addEventListener('resize', () => {
+    setTimeout(updateTabArrows, 30);
+});
+
+
+
+
+
+
+
+
+
+
+if (typeof window.initTabPosition === 'undefined') {
+    window.initTabPosition = function() {
+        // 에러 방지를 위한 빈 함수 정의 (필요시 탭 정렬 로직 추가 가능)
+        const container = document.getElementById('tab-container');
+        const activeTab = container ? container.querySelector('.tab-btn.active') : null;
+        if (container && activeTab) {
+            container.scrollLeft = activeTab.offsetLeft - (container.clientWidth / 2) + (activeTab.clientWidth / 2);
+        }
+    };
+}
+
+
+
+
+                            
+// 탭 클릭 직전에 저장
+document.body.addEventListener('mousedown', function(e) {
+    const btn = e.target.closest('.tab-btn');
+
+    if (btn) {
+        saveTabScroll();
+    }
+});
+
+// HTMX 교체 직후 즉시 복원
+document.body.addEventListener('htmx:afterSwap', function() {
+    restoreTabScroll();
+});
+
+// 최초 로드시도 복원
+window.addEventListener('load', restoreTabScroll);
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // 처음 켜졌을 때도 실행
+    setTimeout(initTabPosition, 50);
+
+
+
+
+
+
+
+                            
+    window.addEventListener('resize', updateTabArrows);
+
+    function checkInputToggle(inputEl) {
+        const clearBtn = document.getElementById('clear-input-btn');
+        clearBtn.style.display = (inputEl.value.trim().length > 0) ? 'block' : 'none';
+    }
+
+    function clearSearchField() {
+        const input = document.getElementById('search-input');
+        input.value = ''; document.getElementById('clear-input-btn').style.display = 'none';
+        input.focus(); filterStocks(''); showDropdown();
+    }
+
+    function handleSearch(event) {
+        event.preventDefault();
+        const input = document.getElementById('search-input');
+        input.blur(); hideDropdown();
+        const inputValue = input.value.trim(); if (!inputValue) return;
+        const items = document.querySelectorAll('.stock-item');
+        let stockCode = '';
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].getAttribute('data-name') === inputValue) { stockCode = items[i].getAttribute('data-code'); break; }
+        }
+        if (!stockCode) stockCode = inputValue;
+        htmx.ajax('GET', '{% url "_partial_detail" %}', { target: '#box_detail', values: { code: stockCode, check_web: document.getElementById("check_web").checked } });
+    }
+
+    function filterStocks(keyword) {
+        const dropdown = document.getElementById('custom-stock-list');
+        const items = document.querySelectorAll('.stock-item');
+        const cleanKeyword = keyword.trim().toLowerCase();
+        if (!cleanKeyword) { dropdown.style.display = 'block'; items.forEach(item => item.style.display = 'flex'); return; }
+        let hasVisibleItem = false;
+        items.forEach(item => {
+            const name = item.getAttribute('data-name').toLowerCase();
+            const code = item.getAttribute('data-code');
+            if (name.includes(cleanKeyword) || code.includes(cleanKeyword)) { item.style.display = 'flex'; hasVisibleItem = true; } else { item.style.display = 'none'; }
+        });
+        dropdown.style.display = hasVisibleItem ? 'block' : 'none';
+    }
+
+    document.addEventListener('click', function(e) { if (!document.getElementById('search-form').contains(e.target)) hideDropdown(); });
+    function selectStock(name, code) { document.getElementById('search-input').value = name; checkInputToggle(document.getElementById('search-input')); hideDropdown(); }
+    function showDropdown() { document.getElementById('custom-stock-list').style.display = 'block'; filterStocks(document.getElementById('search-input').value); }
+    function hideDropdown() { document.getElementById('custom-stock-list').style.display = 'none'; }
+</script>

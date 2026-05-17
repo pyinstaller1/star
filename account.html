@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Account Dashboard</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: Arial, sans-serif;
+            background-color: #f7f9fc;
+        }
+
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        .left, .center, .right {
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        .left {
+            width: 31%;
+            background-color: #e3f2fd; /* 밝은 하늘색 */
+            border-right: 1px solid #ccc;
+        }
+
+        .center {
+            width: 38%;
+            background-color: #ffffff;
+            border-right: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .right {
+            width: 31%;
+            background-color: #fff3e0; /* 밝은 오렌지색 */
+        }
+
+        /* 중앙 제어판 */
+        .control-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        select, button {
+            padding: 8px;
+            font-size: 14px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+        }
+
+
+        .stock-item {
+            padding: 4px;
+            cursor: pointer;
+            border-bottom: 1px solid #d0d0d0;
+        }
+
+        .stock-item:hover {
+            background-color: #d0ebff;
+        }
+
+        /* 그림용 영역 */
+        .chart-box, .hoga-box {
+            width: 100%;
+            height: 100%;
+            background-color: #fff;
+            border: 1px solid #ccc;
+        }
+
+
+
+
+
+
+
+
+
+/* ===== 잔고 테이블 ===== */
+/* stock-list 전체 grid */
+#stock-list {
+    display: grid;
+    grid-template-columns: 115px 50px 75px 75px 1fr 70px 1fr 1fr;
+    background: #fff;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+
+/* 헤더 */
+#stock-list .header {
+    background: #3388ff;
+    color: #ffffff;        
+    padding: 3px;
+    text-align: center;
+    border-bottom: 1px solid #ccc;
+    border-right: 1px solid #e0e0e0;
+}
+
+
+
+
+
+
+/* 행 전체를 하나의 block으로 인식 */
+.stock-row {
+    display: contents; /* 자식 div가 grid cell로 들어가도록 */
+}
+
+/* 셀 스타일 */
+.stock-row div {
+    padding: 3px 3px;
+    text-align: right;
+    border-bottom: 1px solid #e0e0e0;
+    border-right: 1px solid #e0e0e0;
+}
+
+.stock-row div, #stock-list .header {
+    height: 17px;
+    line-height: 17px; /* 글자 세로 중앙 맞춤 */
+}
+
+
+
+
+.stock-row div:first-child {
+    text-align: left;          /* 맨 앞 컬럼 왼쪽 정렬 */
+    padding-left: 6px;
+
+    white-space: nowrap;       /* 줄바꿈 금지 */
+    overflow: hidden;          /* 넘친 부분 숨기기 */
+    text-overflow: ellipsis;   /* ... 표시 */
+}
+
+
+/* 마지막 column border 제거 */
+.stock-row div:nth-child(8) {
+    border-right: none;
+}
+
+/* 행 전체 hover */
+.stock-row:hover > div {
+    background-color: #e0f7ff; /* hover 색상 */
+}
+
+
+
+/* 빨강 파랑 */
+.red { color: #d60000; }
+.blue { color: #0055ff; }
+
+
+
+
+
+/* ===== tfoot (총계) ===== */
+#summary-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    margin-bottom: 10px;
+}
+
+#summary-table th {
+    width: 68px;
+    height: 17px;
+    line-height: 17px; /* 글자 세로 중앙 */
+       
+    background: #3388ff;  /* 파란색 */
+    color: #ffffff;       /* 하얀 글씨 */       
+    padding: 0px 5px;
+    font-size: 14px;
+    font-weight: normal;
+    border: 1px solid #ccc;
+    text-align: center;
+    white-space: nowrap;
+}
+
+#summary-table td {
+    padding: 3px 10px;
+    width: 120px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    text-align: right;
+    background: #fff;
+}
+
+#summary-table select {
+    height: 16px;
+    line-height: 16px;
+    width: 120px;
+    padding: 0 3px;
+    font-size: 12px;
+}
+
+#summary-table button {
+    height: 15px;
+    line-height: 15px;   /* 글자 세로 중앙 + 밖으로 안나옴 */
+    padding: 0 6px;      /* 좌우 패딩만 유지 */
+    font-size: 14px;     /* 필요하면 조정 */
+}
+
+.profit-red { color: red; }
+.profit-blue { color: blue; }
+ 
+    </style>
+</head>
+
+
+
+
+
+<body>
+
+
+
+
+
+
+
+<div class="container">
+    <!-- 좌측: 호가틱 -->
+    <div class="left">
+        <h3>호가틱</h3>
+        <div class="hoga-box" id="hoga-box">
+            <!-- === 호가표 영역 추가 === -->
+            <table id="hoga-table">
+                <tbody>
+                888
+                    <!-- 자바스크립트에서 20줄 자동 채움 -->
+                </tbody>
+            </table>
+        </div>
+        <input type="text" id="order-price" placeholder="가격 입력" style="margin:5px 0; width:100px;">
+    </div>
+
+
+
+
+
+
+
+
+
+
+
+    <!-- 중앙: 제어판 -->
+    <div class="center">
+        <div class="control-panel">
+        
+
+            <table id="summary-table">
+                <tr>
+                    <th>총매입금액</th><td id="total-buy">0</td>
+                    <th>총평가금액</th><td id="total-valuation">0</td>
+                    <th>총평가손익</th><td id="total-profit" class="profit-color">0</td>
+                </tr>
+
+                <tr>
+                    <th>예수금</th><td id="deposit">0</td>
+                    <th>추정자산</th><td id="asset">0</td>
+                    <th>총수익률</th><td id="total-rate" class="profit-color">0%</td>
+                </tr>
+
+
+                <tr>
+                    <th>대주금액</th><td id="deju">0</td>
+                    <th>계좌번호</th><td style="text-align:center;"><select id="account-select"></select></td>
+                    <th></th><td style="text-align:center;"><button id="btn-balance">조회</button></td>
+                </tr>
+                
+            </table>
+
+
+
+            <!-- === 잔고 테이블 === -->
+            <div id="stock-list"></div>
+
+
+
+        </div>
+        
+    </div>
+
+    <!-- 우측: 차트 -->
+    <div class="right">
+        <h3>차트</h3>
+        <div class="chart-box" id="chart-box">
+            <!-- 차트 그림 영역 -->
+        </div>
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+<script>
+
+// 종목 클릭 시 좌우 그림 갱신
+document.querySelectorAll('.stock-item').forEach(item => {
+    item.addEventListener('click', () => {
+        const code = item.dataset.code;
+        console.log("선택 종목:", code);
+
+        // 여기에 AJAX 호출 or WebSocket으로 좌측 호가, 우측 차트 갱신
+        document.getElementById("hoga-box").innerText = `호가틱: ${code}`;
+        document.getElementById("chart-box").innerText = `차트: ${code}`;
+
+        // 키움 TR 요청
+        fetch(`/account/get_tick/${code}`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                console.log('키움 호가 데이터:', data);
+                // 여기서 실제 호가 div 갱신 가능
+                document.getElementById("hoga-box").innerText = JSON.stringify(data, null, 2);
+            })
+            .catch(err => console.error(err));
+
+
+
+
+
+
+
+
+
+        
+    });
+});
+
+
+
+
+    async function getBalance() {        
+
+        try {
+
+            const response = await fetch("/account/get_balance/");
+
+            const data = await response.json();
+
+
+            const stockListDiv = document.getElementById("stock-list");  // 잔고 개별 종목
+
+
+
+            // 기존 row 제거 (헤더 제외)
+            stockListDiv.querySelectorAll(".stock-row").forEach(el => el.remove());
+
+            let total_purchase = 0;
+            let total_valuation = 0;
+            let total_profit = 0;
+            let total_return = 0;
+            let asset = 0;
+            let deju = 0;
+            let deposit = 0;
+
+            // 종목별 row 생성
+            if (data.balance) {
+                for (const code in data.balance) {
+                    const s = data.balance[code];
+
+                    const 수익률 = Number(s["수익률"]) || 0;
+                    const 평가손익 = Number(s["평가손익"]) || 0;
+                    const colorClass = 평가손익 > 0 ? "red" : 평가손익 < 0 ? "blue" : "";
+
+                    const row = document.createElement("div");
+                    row.className = "stock-row stock-item";  // stock-item 클래스 추가
+                    row.dataset.code = code;                 // 데이터 속성 추가
+
+                    row.innerHTML = `
+                        <div>${s['종목명']}</div>
+                        <div>${Number(s['보유수량'])}</div>
+                        <div>${Number(s['매입가']).toLocaleString()}</div>
+                        <div>${Number(s['현재가']).toLocaleString()}</div>
+                        <div class="${colorClass}">${평가손익.toLocaleString()}</div>
+                        <div class="${colorClass}">${수익률.toFixed(2)}%</div>
+                        <div>${Number(s['매입금액']).toLocaleString()}</div>
+                        <div>${Number(s['평가금액']).toLocaleString()}</div>
+                    `;
+
+
+                    row.addEventListener("click", () => openHogaWindow(code));
+
+                    stockListDiv.appendChild(row);
+                }
+            }
+
+            // 싱글 summary 데이터 반영
+            if (data.summary) {
+                total_purchase = Number(data.summary["총매입금액"]);
+                total_valuation = Number(data.summary["총평가금액"]);
+                total_profit = Number(data.summary["총평가손익금액"]);
+                total_return = Number(data.summary["총수익률"]);
+                asset = Number(data.summary["추정자산"]);
+                deju = Number(data.summary["총대주금액"]);
+                deposit = data.deposit
+            }
+
+            // summary 테이블 업데이트
+            document.getElementById("total-buy").innerText = total_purchase.toLocaleString();
+            document.getElementById("total-valuation").innerText = total_valuation.toLocaleString();
+            document.getElementById("asset").innerText = asset.toLocaleString();
+            document.getElementById("total-profit").innerHTML =
+                `<span class="${total_profit > 0 ? 'red' : 'blue'}">${total_profit.toLocaleString()}</span>`;
+            document.getElementById("total-rate").innerHTML =
+                `<span class="${total_return > 0 ? 'red' : 'blue'}">${total_return.toFixed(2)}%</span>`;
+            document.getElementById("deju").innerText = deju.toLocaleString();
+            document.getElementById("deposit").innerText = deposit.toLocaleString();
+
+            // document.getElementById("account-select").innerText = deju.toLocaleString();
+
+
+
+        } catch (err) {
+            console.error("잔고 요청 실패:", err);
+        }
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+/*****************************************
+
+[tr]
+js: getBalance fetch()
+뷰: zmq.socket 보내기 ('get_balance')
+zmq: process_requests (kiwoom.get_balance => tr00018 => kiwoom.response_dict)
+뷰: zmq.socket 받기 (kiwoom.response_dict)
+js: getBalance resonse.json()
+
+
+
+
+[real]
+js: ws.onopen
+웹소켓 방송: client.send(kiwoom.real_cache)  <= _on_real_slot()이 변경
+js: ws.onmessage = (ev.data)
+
+*******************************************/
+
+
+
+
+
+// HTML 페이지 시작
+document.addEventListener("DOMContentLoaded", () => {
+
+    const stockListDiv = document.getElementById("stock-list");  // 잔고 개별 종목
+
+
+    console.log('DOMContentLoaded');
+
+    getAccountList();   // 계좌번호 출력
+    getBalance();   // 잔고 조회
+    get_hoga("005930");
+
+
+    document.getElementById("btn-balance").addEventListener("click", getBalance);   // 잔고 조회 버튼 클릭
+
+
+    const ws = new WebSocket("ws://127.0.0.1:8765");
+    ws.onopen = () => console.log("[WS] open");
+    ws.onclose = () => console.log("[WS] closed");
+    ws.onerror = (e) => console.log("[WS] error", e);
+
+
+
+
+    ws.onmessage = (ev) => {
+        // console.log(ev.data);
+        try {
+            const data = JSON.parse(ev.data);
+            // console.log(JSON.parse(ev.data).total);
+
+
+
+
+
+
+
+            if (data.items || data.total || data.예수금 !== undefined) {
+
+                // total 정보는 항상 덮어쓰기
+                const total = data.total || {};
+                // WS key → HTML id 매핑
+                const totalMap = {
+                    "총매입금액": "total-buy",
+                    "총평가금액": "total-valuation",
+                    "총평가손익": "total-profit",
+                    "총수익률": "total-rate",
+                    "예수금": "deposit",
+                    "대주금액": "deju",
+                    "추정자산": "asset"
+                };
+
+                for (const key in total) {
+                    const elId = totalMap[key]; // 매핑된 id 가져오기
+                    if (!elId) continue; // 매핑이 없으면 스킵
+                    const el = document.getElementById(elId);
+                    if (!el) continue; // HTML에 요소가 없으면 스킵
+                    if (total[key] === "a") continue; // "a" 무시
+
+                    // total-profit, total-rate 같은 특수 값 처리
+                    if (elId === "total-profit") {
+                        el.innerHTML = `<span class="${Number(total[key]) > 0 ? 'red' : 'blue'}">${Number(total[key]).toLocaleString()}</span>`;
+                    } else if (elId === "total-rate") {
+                        el.innerHTML = `<span class="${Number(total[key]) > 0 ? 'red' : 'blue'}">${Number(total[key]).toFixed(2)}%</span>`;
+                    } else {
+                        el.innerText = Number(total[key]).toLocaleString();
+                    }
+                }
+
+
+
+
+                // 종목별 업데이트
+                let flag_newCode = false;
+                const items = data.items || {};
+                for (const code in items) {
+                    const s = items[code];
+
+                    // 전량 매도: 보유수량 0 → row 삭제
+                    if (s['보유수량'] === 0) {
+                        const row = document.querySelector(`.stock-row[data-code='${code}']`);
+                        if (row) row.remove();
+                        continue;
+                    }
+
+                    let row = document.querySelector(`.stock-row[data-code='${code}']`);
+                    if (!row) {
+                        // 새로운 종목 추가
+                        flag_newCode = true;
+                        row = document.createElement("div");
+                        row.className = "stock-row stock-item";
+                        row.dataset.code = code;
+
+                        // 종목명은 기본으로, 나머지는 없으면 0으로 초기화
+                        const name = s['종목명'] || code;
+                        const qty = s['보유수량'] || 0;
+                        const price = s['매입가'] !== undefined ? Number(s['매입가']) : 0;
+                        const now = s['현재가'] !== undefined ? Number(s['현재가']) : 0;
+                        const profit = s['평가손익'] !== undefined ? Number(s['평가손익']) : 0;
+                        const rate = s['수익률'] !== undefined ? Number(s['수익률']) : 0;
+                        const purchase = s['매입금액'] !== undefined ? Number(s['매입금액']) : 0;
+                        const valuation = s['평가금액'] !== undefined ? Number(s['평가금액']) : 0;
+
+                        row.innerHTML = `
+                            <div>${name}</div>
+                            <div>${qty}</div>
+                            <div>${price.toLocaleString()}</div>
+                            <div>${now.toLocaleString()}</div>
+                            <div>${profit.toLocaleString()}</div>
+                            <div>${rate.toFixed(2)}%</div>
+                            <div>${purchase.toLocaleString()}</div>
+                            <div>${valuation.toLocaleString()}</div>
+                        `;
+                        stockListDiv.appendChild(row);
+
+                        // 클릭 시 호가/차트 열기
+                        row.addEventListener("click", () => openHogaWindow(code));
+                    } else {
+                        // 기존 row 업데이트: undefined는 무시하고 기존 값 유지
+                        const cells = row.children;
+
+                        if (s['보유수량'] !== undefined) cells[1].innerText = s['보유수량'];
+                        if (s['매입가'] !== undefined) cells[2].innerText = Number(s['매입가']).toLocaleString();
+                        if (s['현재가'] !== undefined) cells[3].innerText = Number(s['현재가']).toLocaleString();
+                        if (s['평가손익'] !== undefined) cells[4].innerText = Number(s['평가손익']).toLocaleString();
+                        if (s['수익률'] !== undefined) cells[5].innerText = Number(s['수익률']).toFixed(2) + "%";
+                        if (s['매입금액'] !== undefined) cells[6].innerText = Number(s['매입금액']).toLocaleString();
+                        if (s['평가금액'] !== undefined) cells[7].innerText = Number(s['평가금액']).toLocaleString();
+                    }
+                }
+
+               // if (flag_newCode) { getBalanceTR(); }
+            }
+
+
+
+
+
+
+
+
+
+        } catch (err) {
+            console.error("[WS] parse error", err);
+        }
+    };
+
+
+
+
+
+    // 테이블 헤더 생성
+    stockListDiv.innerHTML = `
+        <div class="header">종목명</div>
+        <div class="header">수량</div>
+        <div class="header">매입가</div>
+        <div class="header">현재가</div>
+        <div class="header">평가손익</div>
+        <div class="header">수익률</div>
+        <div class="header">매입금액</div>
+        <div class="header">평가금액</div>
+    `;
+
+
+
+
+});
+
+
+
+
+
+
+
+
+// 계좌번호 리스트 불러오기
+async function getAccountList() {
+    console.log('getAccountList')
+
+    
+    try {
+        const response = await fetch("/account/get_account_list/");
+
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();   // ['7031338631', '8112023511', '8115783211']
+        console.log('[TR] getAccountList의 response.json(): ', data)
+
+        const select = document.getElementById("account-select");
+        select.innerHTML = "";  // 기존 옵션 제거
+
+        if (data && Array.isArray(data) && data.length > 0) {
+            data.forEach((acc, idx) => {
+                const option = document.createElement("option");
+                option.value = acc;
+                option.textContent = acc;
+                if (idx === 2) option.selected = true;  // 첫 계좌 자동 선택
+                select.appendChild(option);
+            });
+        } else {
+            const option = document.createElement("option");
+            option.textContent = "계좌 없음";
+            option.disabled = true;
+            select.appendChild(option);
+        }
+
+    } catch (err) {
+        console.error("[getAccounList] 계좌번호 리스트 불러오기 실패:", err);
+    }
+}
+
+
+
+
+
+
+
+
+
+// 계좌번호 선택
+async function setAccountNumber(account) {
+    try {
+        const response = await fetch("/account/set_account/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ account })
+            
+        });
+        const data = await response.json();   // ['7031338631']
+        console.log("setAccountNumber의 response.json(): ", data[0]);        
+    } catch(e) {
+        console.error("계좌 변경 오류:", e);
+    }
+}
+
+     
+
+
+
+// 계좌번호 콤보 변경
+document.querySelector("#account-select").addEventListener("change", async (event) => {
+    const account = event.target.value;  // 실제 계좌번호 문자열
+    await setAccountNumber(account);
+    await getBalance();   // 이제 scope 안에 존재    
+});
+
+
+
+
+
+
+
+
+function get_hoga(code) {
+    fetch(`/account/get_hoga/${code}/`, {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+        },
+    })
+    .then(res => res.json())
+    .then(data => {
+        console.log("[프론트 get_hoga] 결과:", data);
+
+        if (data.error) {
+            console.error("호가 조회 오류:", data.error);
+            return;
+        }
+
+        // === 원하는 DOM 처리 추가 ===
+        // 예: 화면에 출력
+        // document.getElementById("hoga-box").innerText = JSON.stringify(data, null, 2);
+
+    })
+    .catch(err => {
+        console.error("get_hoga fetch 실패:", err);
+    });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</script>
+
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
