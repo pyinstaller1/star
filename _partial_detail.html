@@ -111,68 +111,116 @@
     <div style="flex-grow: 1; order: 1;">
         <div id="container_{{ code }}" style="height: 627px; min-width:673px; background-color: #eef8ff; border-radius: 12px; padding: 10px;" ></div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; width: 670px; margin-bottom: 10px;">
-            
+
+
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 670px; margin-bottom: 10px; box-sizing: border-box; width: 100%;">
+
+
             <div style="display: flex; gap: 10px;">
-                <label><input type="radio" name="chart-type-{{ code }}" value="day" checked onclick="renderChart('day')"> 일봉</label>
-                <label><input type="radio" name="chart-type-{{ code }}" value="week" onclick="renderChart('week')"> 주봉</label>
-                <label><input type="radio" name="chart-type-{{ code }}" value="month" onclick="renderChart('month')"> 월봉</label>
+                <label><input type="radio" name="chart-type-{{ code }}" class="chart-type-radio" value="day" checked> 일봉</label>
+                <label><input type="radio" name="chart-type-{{ code }}" class="chart-type-radio" value="week"> 주봉</label>
+                <label><input type="radio" name="chart-type-{{ code }}" class="chart-type-radio" value="month"> 월봉</label>
             </div>
+
+
 
             <button id="btn-save-check-setting" style="padding: 4px 10px; background-color: #1E90FF; color: white; border: none; border-radius: 4px; font-weight: bold; font-size: 13px; cursor: pointer;">
                 💾 체크 저장
             </button>
 
         </div>
-        
+
+
+
+
+
+
+
+
+
+
+
+
         <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
             <div>
-                <input type="checkbox" id="toggle-volume-{{ code }}" checked>
+                <input type="checkbox" id="toggle-volume-{{ code }}" {% if db_config %}{% if db_config.volume %}checked{% endif %}{% else %}checked{% endif %}>
                 <label for="toggle-volume-{{ code }}">거래량</label>
             </div>
             <div>
-                <input type="checkbox" id="toggle-rsi-{{ code }}" checked>
+                <input type="checkbox" id="toggle-rsi-{{ code }}" {% if db_config %}{% if db_config.rsi %}checked{% endif %}{% else %}checked{% endif %}>
                 <label for="toggle-rsi-{{ code }}">RSI</label>
             </div>
             <div>
-                <input type="checkbox" id="toggle-macd-{{ code }}" checked>
+                <input type="checkbox" id="toggle-macd-{{ code }}" {% if db_config %}{% if db_config.macd %}checked{% endif %}{% else %}checked{% endif %}>
                 <label for="toggle-macd-{{ code }}">MACD</label>
             </div>
             <div>
-                <input type="checkbox" id="toggle-supply-{{ code }}" checked>
+                <input type="checkbox" id="toggle-supply-{{ code }}" {% if db_config %}{% if db_config.supply %}checked{% endif %}{% else %}checked{% endif %}>
                 <label for="toggle-supply-{{ code }}">외국인</label>
             </div>            
             <div>
-                <input type="checkbox" id="toggle-navigator-{{ code }}">
+                <input type="checkbox" id="toggle-navigator-{{ code }}" {% if db_config.navigator %}checked{% endif %}>
                 <label for="toggle-navigator-{{ code }}">네비게이터</label>
             </div>
             <div>
-                <input type="checkbox" id="toggle-ma-{{ code }}" checked>
+                <input type="checkbox" id="toggle-ma-{{ code }}" {% if db_config %}{% if db_config.ma %}checked{% endif %}{% else %}checked{% endif %}>
                 <label for="toggle-ma-{{ code }}">이평선</label>
             </div>
             <div>
-                <input type="checkbox" id="toggle-ema26-{{ code }}" checked>
+                <input type="checkbox" id="toggle-ema26-{{ code }}" {% if db_config %}{% if db_config.ema26 %}checked{% endif %}{% else %}checked{% endif %}>
                 <label for="toggle-ema26-{{ code }}">EMA26</label>
             </div>
             <div>
-                <input type="checkbox" id="toggle-bb-{{ code }}">
+                <input type="checkbox" id="toggle-bb-{{ code }}" {% if db_config.bb %}checked{% endif %}>
                 <label for="toggle-bb-{{ code }}">볼린저</label>
             </div>
             <div>
-                <input type="checkbox" id="toggle-ikh-{{ code }}">
+                <input type="checkbox" id="toggle-ikh-{{ code }}" {% if db_config.ikh %}checked{% endif %}>
                 <label for="toggle-ikh-{{ code }}">일목</label>
             </div>
         </div>
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         <div id="supply-legend-{{ code }}" style="position: absolute; top: z-index: 999; top: supplyTop; font-size: 11px; display: none;">        
             <span style="color:#004C99; font-weight: bold;">개인</span> <span style="color:#CC0000; font-weight: bold;">기관</span> <span style="color:#55BF3B; font-weight: bold;">외국인</span>
         </div>
+        <div id="ilbongTable_{{ code }}" class="ilbong-box" style="height: 140px; overflow-y: auto;"></div>
+
     </div>
 
     <div id="tableContainer_{{ code }}" class="ilbong-box" style="order: 2; display: flex; flex-direction: column; gap: 20px;">
         <div id="basicTable_{{ code }}"></div>
-        <div id="ilbongTable_{{ code }}" style="height: 300px; overflow-y: auto;"></div>
     </div>    
 </div>
 
@@ -642,13 +690,45 @@ function getJsonIlbong(code) {
 
 
 
+    xAxis: { // 일자 표시
+        offset: -187, // 높이
+        labels: { style: { fontSize: '10px' } },
+        
+        events: {
+            afterSetExtremes: function(e) {
+                const xAxis = this;
+                
+                // ⭐️ 차트(chart) 전체가 아니라 해당 주기 xAxis 고유의 플래그를 체크하도록 수정
+                if (!xAxis.hasInitialRangeSet) {
+                    xAxis.hasInitialRangeSet = true; 
+                    
+                    const dataMax = xAxis.dataMax; // 데이터의 가장 최신 날짜
+                    const hundredDaysAgo = dataMax - (100 * 24 * 60 * 60 * 1000); // 100일 전
+                    
+                    // 비동기로 안전하게 100일 구역 강제 줌인 처리
+                    setTimeout(() => {
+                        xAxis.setExtremes(hundredDaysAgo, dataMax, true, false);
+                    }, 1);
+                }
+            }
+        }
+    }, //  👈 xAxis 닫기
+
+        navigator: {
+            height: 20, // navigator 높이 (기본 40)
+            margin: -180 // plot 영역과 navigator 사이 간격
+        },
+
+        accessibility: {
+            enabled: false
+        },
+
+        // ⭐️ min 작동을 방해하던 속성을 지우고 비활성화하거나 버튼 규격을 맞춥니다.
+        rangeSelector: {
+            enabled: false // xAxis의 강제 줌 기능을 쓰기 때문에 이 기능은 완전히 꺼두시는 게 안전합니다.
+        },
 
 
-            
-            xAxis: {                 // 일자 표시
-                offset:-187,         // 높이
-                labels: { style: { fontSize: '10px' } }
-            },
 
 
 
@@ -658,22 +738,12 @@ function getJsonIlbong(code) {
 
 
 
-            navigator: {
-                height: 20,       // navigator 높이 (기본 40)
-                margin: -180      // plot 영역과 navigator 사이 간격
-            },
 
 
-            accessibility: { enabled: false },
-            <!-- rangeSelector: { selected: 1 }, -->
 
 
-            rangeSelector: {
-                enabled: true,       // 켜야 범위를 컨트롤하기 쉽습니다
-                buttons: [],
-                selected: null,
-                inputEnabled: false  // 날짜 입력창은 지저분하니까 끕니다
-            },
+
+
 
             
 
@@ -1067,15 +1137,14 @@ tooltip: {
         }); // chart = Highcharts.stockChart()
 
 
-chart.xAxis[0].setExtremes( ohlc[ohlc.length - 500][0],
-                            ohlc[ohlc.length - 1][0] );
-                                     
-
-        
-chart.xAxis[0].update({
-    offset: - chart.yAxis[0].height - 3
-});
-
+// ⭐️ 데이터 크기에 상관없이 안전하게 마지막 날짜 기준 최근 100일 영역만 돋보기 줌인합니다.
+if (ohlc && ohlc.length > 0) {
+    const dataMax = ohlc[ohlc.length - 1][0]; // 최신 데이터 날짜
+    // 만약 데이터 전체가 100일치보다 적다면 맨 처음 데이터 시점을 시작점으로 지정하여 에러 방지
+    const hundredDaysAgo = Math.max(ohlc[0][0], dataMax - (100 * 24 * 60 * 60 * 1000)); 
+    
+    chart.xAxis[0].setExtremes(hundredDaysAgo, dataMax);
+}
     } // renderChart(ohlc, volume)
 
     
@@ -1085,6 +1154,49 @@ chart.xAxis[0].update({
     const daily = processDaily(rawData);
     // 초기 렌더링 (일봉)
     renderChart(daily.ohlc, daily.volume, daily.individual, daily.institute, daily.foreign);
+
+
+
+
+
+
+
+
+
+    document.querySelectorAll('.chart-type-radio').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const selectedPeriod = this.value; // 'day', 'week', 'month'
+                let chartData;
+
+                if (selectedPeriod === 'day') {
+                    chartData = processDaily(rawData);
+                } else if (selectedPeriod === 'week') {
+                    chartData = aggregateData(rawData, 'week');
+                } else if (selectedPeriod === 'month') {
+                    chartData = aggregateData(rawData, 'month');
+                }
+
+                if (chartData) {
+                    renderChart(
+                        chartData.ohlc, 
+                        chartData.volume, 
+                        chartData.individual, 
+                        chartData.institute, 
+                        chartData.foreign
+                    );
+                }
+            });
+        });
+
+
+
+
+
+
+
+
+
+
 
 
     // ⭐⭐ 수정된 부분: 라디오 버튼 그룹 이벤트 처리 ⭐⭐
@@ -1623,85 +1735,118 @@ chart.xAxis[0].update({
 
 
 
-// ================================================================
-    // 💡 [체크박스 설정 관리 시스템] DuckDB 연동 스크립트
-    // ================================================================
 
-    // 1. [SELECT] 장고 뷰(partial_detail_view)가 넘겨준 저장된 설정값 읽기
-    // 데이터가 없거나 에러일 경우를 대비해 '{}' 문자열을 안전하게 파싱합니다.
-    let savedCheckConfig = {};
-    try {
-        savedCheckConfig = JSON.parse('{{ saved_settings|safe }}' || '{}');
-    } catch (e) {
-        console.error("저장된 체크 설정을 파싱하는 중 오류 발생:", e);
-    }
 
-    // 2. [초기 복원] 저장된 상태에 맞게 체크박스 체크 세팅 및 차트 반영
-    if (savedCheckConfig && Object.keys(savedCheckConfig).length > 0) {
-        // 복원할 체크박스 ID 목록 (실제 HTML에 정의된 id 이름과 정확히 매칭해야 합니다)
-        const checkIds = ['volume', 'rsi', 'macd', 'supply', 'navigator', 'ma5', 'ma20', 'ma60', 'ma120', 'bb', 'ikh'];
-        
-        checkIds.forEach(key => {
-            if (savedCheckConfig[key] !== undefined) {
-                // 예: toggle-volume-005930 또는 toggle-bb-005930 형태의 ID를 찾습니다.
-                const targetCheckbox = document.getElementById(`toggle-${key}-{{ code }}`) || document.getElementById(`toggle-${key}-` + code);
-                
-                if (targetCheckbox) {
-                    // 저장되어 있던 true/false 값을 체크박스에 강제 주입
-                    targetCheckbox.checked = savedCheckConfig[key];
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(function() {
+    const code = "{{ code }}";
+    const dbSettingsRaw = {{ db_settings|safe|default:"null" }};
+    
+    function applySavedCheckSettings() {
+        if (!dbSettingsRaw) return;
+
+        let config = dbSettingsRaw;
+        if (typeof config === 'string') {
+            try { config = JSON.parse(config); } catch(e) {}
+        }
+        if (config && config.settings && typeof config.settings === 'string') {
+            try { config = JSON.parse(config.settings); } catch(e) {}
+        }
+
+        if (config) {
+            const restoreCheck = (targetId, isChecked) => {
+                const el = document.getElementById(targetId + '-' + code);
+                if (el && isChecked !== undefined) {
+                    const targetState = (isChecked === true || isChecked === 'true');
                     
-                    // 💡 중요: 체크박스 값만 바꾸면 차트가 안 변하므로, 
-                    // 강제로 'change' 이벤트를 발생시켜 하이차트 보이기/숨기기 함수를 실행시킵니다.
-                    targetCheckbox.dispatchEvent(new Event('change'));
+                    // 1) 물리적 체크박스 상태 강제 고정
+                    el.checked = targetState;
+                    
+                    // 2) 🚨 다른 스크립트가 이벤트를 가로채서 역으로 바꾸는 것을 막기 위해 
+                    // change 이벤트를 발생시키되, 아주 살짝 시차(0ms)를 두거나 안전하게 실행
+                    setTimeout(function() {
+                        el.checked = targetState; // 다시 한번 강제 주입 (덮어쓰기 방어)
+                        el.dispatchEvent(new Event('change'));
+                    }, 0);
                 }
-            }
-        });
+            };
+
+            restoreCheck('toggle-volume', config.volume);
+            restoreCheck('toggle-rsi', config.rsi);
+            restoreCheck('toggle-macd', config.macd);
+            restoreCheck('toggle-supply', config.supply);
+            restoreCheck('toggle-navigator', config.navigator);
+            restoreCheck('toggle-ma', config.ma);
+            restoreCheck('toggle-ema26', config.ema26);
+            restoreCheck('toggle-bb', config.bb);
+            restoreCheck('toggle-ikh', config.ikh);
+        }
     }
 
-    // 3. [UPDATE] "지표 설정 저장" 버튼 클릭 이벤트 연결
+    // 💡 [핵심 조치] 기존 50ms는 하이차트가 다 그려지기 전이라 덮어씌워졌을 확률이 높습니다.
+    // 타이밍을 250ms로 늘려 하이차트의 초기화 스크립트가 완전히 "끝난 뒤" 디비 값을 덮어버립니다.
+    setTimeout(function() {
+        applySavedCheckSettings();
+    }, 250); 
+
+    // [💾 체크 저장] 버튼 클릭 이벤트
     const saveSettingBtn = document.getElementById('btn-save-check-setting');
     if (saveSettingBtn) {
         saveSettingBtn.addEventListener('click', function() {
-            // 현재 화면에 있는 체크박스들의 상태를 하나의 딕셔너리 객체로 취합
             const currentConfig = {
                 volume: (document.getElementById('toggle-volume-{{ code }}') || document.getElementById('toggle-volume-' + code))?.checked,
                 rsi: (document.getElementById('toggle-rsi-{{ code }}') || document.getElementById('toggle-rsi-' + code))?.checked,
                 macd: (document.getElementById('toggle-macd-{{ code }}') || document.getElementById('toggle-macd-' + code))?.checked,
                 supply: (document.getElementById('toggle-supply-{{ code }}') || document.getElementById('toggle-supply-' + code))?.checked,
                 navigator: (document.getElementById('toggle-navigator-{{ code }}') || document.getElementById('toggle-navigator-' + code))?.checked,
-                ma5: (document.getElementById('toggle-ma5-{{ code }}'))?.checked,
-                ma20: (document.getElementById('toggle-ma20-{{ code }}'))?.checked,
-                ma60: (document.getElementById('toggle-ma60-{{ code }}'))?.checked,
-                ma120: (document.getElementById('toggle-ma120-{{ code }}'))?.checked,
+                ma: (document.getElementById('toggle-ma-{{ code }}') || document.getElementById('toggle-ma-' + code))?.checked,
+                ema26: (document.getElementById('toggle-ema26-{{ code }}') || document.getElementById('toggle-ema26-' + code))?.checked,
                 bb: (document.getElementById('toggle-bb-{{ code }}') || document.getElementById('toggle-bb-' + code))?.checked,
                 ikh: (document.getElementById('toggle-ikh-{{ code }}') || document.getElementById('toggle-ikh-' + code))?.checked
             };
 
-            // 장고 백엔드로 POST 비동기 요청 전송
             fetch('/save_check_setting/', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    // views.py에 @csrf_exempt를 붙여두었기 때문에 토큰 처리가 생략되어 안전하게 통신됩니다.
-                },
-                body: JSON.stringify({
-                    settings: JSON.stringify(currentConfig) // 전체 설정을 문자열 한 덩어리로 변환
-                })
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ settings: JSON.stringify(currentConfig) })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'success') {
-                    alert('🔔 현재 체크박스 설정이 DuckDB에 업데이트되었습니다!\n(이제 다른 PC로 복사해도 유지됩니다.)');
+                    alert('🔔 체크 설정이 DuckDB에 안전하게 동기화되었습니다!');
                 } else {
-                    alert('❌ 설정 저장 실패: ' + data.message);
+                    alert('❌ 저장 실패: ' + data.message);
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('❌ 서버 통신 오류가 발생했습니다.');
+                console.error('Fetch Error:', error);
+                alert('❌ 서버 통신 중 오류가 발생했습니다.');
             });
         });
     }
+})();
+
+
+
+
 
 
 
