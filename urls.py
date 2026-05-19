@@ -27,7 +27,8 @@ urlpatterns = [
     path('save_check_setting/', views.save_check_setting_view, name='save_check_setting'),
     path('get_check_setting/', views.get_check_setting_view, name='get_check_setting'),
 
-
+    path('strategy/', views.strategy_view, name='strategy'),
+    path('st_macd/', views.st_macd_view, name='st_macd'),
 
 
 

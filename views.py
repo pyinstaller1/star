@@ -1,4 +1,4 @@
-from django.shortcuts import render, redirect
+﻿from django.shortcuts import render, redirect
 from django.http import StreamingHttpResponse
 from django.http import JsonResponse
 from django.views.decorators.http import require_POST
@@ -55,6 +55,8 @@ def start_kospi_1day(request):
 # views.py (참고용 예시)
 def get_ilbong_1day_view(request):
     qrycnt_param = request.GET.get('qrycnt', '500') # 프론트에서 보낸 값 받기
+    set_kospi()
+    
     final_qrycnt = int(qrycnt_param)
     
     return StreamingHttpResponse(get_ilbong_1day(final_qrycnt), content_type='text/event-stream')
@@ -426,11 +428,6 @@ def get_check_setting_view(request):
 
 
 
-
-
-
-
-
 def index(request):
     """메인 페이지 로드 시 NaN 값을 완벽 세척하여 프론트 자바스크립트 파싱 에러를 원천 차단"""
     list_kospi = select_tb_kospi()
@@ -487,7 +484,7 @@ def index(request):
     json_ilbong = json.dumps(clean_ilbong)
     json_basic = json.dumps(basic_raw)
     
-    # ⭐️ 첫 화면 진입 시에도 상단 메뉴 탭 리스트를 무조건 렌더링하도록 DB에서 조회
+    # 첫 화면 진입 시에도 상단 메뉴 탭 리스트를 무조건 렌더링하도록 DB에서 조회
     groups_data = select_tb_gwansim_group()
     
     # 💡 [날짜 완벽 복원 + 요일 생성]
@@ -499,12 +496,10 @@ def index(request):
             raw_date = str(last_day.get('date', '')).strip()
             
             dt_obj = None
-            # 1. 20260517 형태 파싱
             if len(raw_date) == 8 and raw_date.isdigit():
                 last_update_str = f"{int(raw_date[4:6])}/{int(raw_date[6:8])}"
                 try: dt_obj = datetime.strptime(raw_date, '%Y%m%d')
                 except: pass
-            # 2. 2026-05-17 형태 파싱
             elif "-" in raw_date and len(raw_date.split("-")) == 3:
                 parts = raw_date.split("-")
                 last_update_str = f"{int(parts[1])}/{int(parts[2])}"
@@ -513,22 +508,51 @@ def index(request):
             else:
                 last_update_str = raw_date
 
-            # 3. 요일 추출 후 결합
             if dt_obj:
                 weeks = ['월', '화', '수', '목', '금', '토', '일']
                 weekday_str = weeks[dt_obj.weekday()]
                 last_update_str = f"{last_update_str} ({weekday_str})"
     except Exception as e:
         last_update_str = "확인불가"
-    
+
+    # ⭐️ [자로 잰 듯한 바인딩] 아까 고쳤던 detail 함수처럼 db.py의 전용 조회 함수를 호출합니다.
+    # db.py 규격에 맞춰 인자값 없이 깔끔하게 호출합니다.
+    db_settings = select_check_setting()
+
+    # 파이썬 None 상태로 넘어가 자바스크립트 'None is not defined' 에러가 터지는 현상을 원천 방어합니다.
+    if db_settings is None:
+        db_settings = 'null'
+
     return render(request, 'index.html', {
         'kospi': list_kospi_formatted,
         'code': initial_code,
         'json_ilbong': json_ilbong,
         'json_basic': json_basic,
         'groups': groups_data, 
-        'last_update': last_update_str  
+        'last_update': last_update_str,
+        'db_settings': db_settings  # ⭐️ 새로고침 시에도 자바스크립트에 안전하게 전달 완료
     })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 def partial_kospi_view(request):
@@ -672,6 +696,12 @@ def partial_kospi_view(request):
 
 
 
+
+
+
+
+
+
 def partial_detail_view(request):
     """비동기 클릭 시 호출되는 상세 뷰에서도 NaN 유입 차단"""
     code = request.GET.get('code')
@@ -702,20 +732,29 @@ def partial_detail_view(request):
     
     basic_data = select_tb_kospi(code)
     
+    # ⭐️ [자로 잰 듯한 수정] db.py 규격에 맞춰 인자 없이 호출하여 바인딩 오류를 해결합니다.
+    db_settings = select_check_setting()
+
     return render(request, '_partial_detail.html', {
         'code': code,
         'json_basic': json.dumps(basic_data),
-        'json_ilbong': json.dumps(clean_ilbong)
+        'json_ilbong': json.dumps(clean_ilbong),
+        'db_settings': db_settings  # ⭐️ 프론트엔드 자바스크립트로 세팅값 주입
     })
 
 
 
 
-
-
-
-
-
+def strategy_view(request):
+    strategies = [
+        {'id': 'st_macd', 'name': 'MACD 전략', 'desc': 'MACD 골든크로스 및 데드크로스를 이용한 추세 매매전략'},
+        {'id': 'st_hoga', 'name': '호가창 전략', 'desc': '실시간 잔량 및 체결 강도를 분석하는 단타 전략'},
+    ]
+    return render(request, 'strategy/strategy.html', {
+        'strategies': strategies
+    })
+def st_macd_view(request):
+    return render(request, 'strategy/st_macd.html')
 
 
 
