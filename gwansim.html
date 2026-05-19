@@ -1,26 +1,32 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>관심 종목 관리</title>
-    <!-- <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script> -->
+    <title>관심종목 편집</title>
     <script src="/static/Sortable.min.js"></script>
     <style>
         :root { --header-navy: #1a2a3a; --group-bg: #4a90e2; }
         body { font-family: 'Pretendard', sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; }
         .container { max-width: 800px; margin: 0 auto; }
-        header { border-bottom: 2px solid var(--header-navy); margin-bottom: 20px; padding-bottom: 10px; }
-        h1 { font-size: 24px; color: var(--header-navy); }
+        
+        /* 제목과 메인 메뉴 버튼을 같은 줄 좌우 끝으로 정렬 */
+        header { 
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--header-navy); 
+            margin-bottom: 20px; 
+            padding-bottom: 10px; 
+        }
+        h1 { font-size: 24px; color: var(--header-navy); margin: 0; }
         
         /* 그룹 아이템 스타일 수정 */
         .group-item { background-color: var(--group-bg); border-radius: 6px; margin-bottom: 5px; overflow: visible; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: grab; }
         .group-item:active { cursor: grabbing; }
 
-        
         .group-header { padding: 10px 15px; display: flex; justify-content: space-between; align-items: center; color: white; transition: background-color 0.2s ease; }
         .group-header:hover, .group-item:active .group-header { background-color: #3a82d6; border-radius: 6px 6px 0 0; }
         #group-container details:not([open]) .group-header:hover { border-radius: 6px; }
-
 
         /* 종목 리스트와 입력창은 드래그에서 제외하기 위한 설정 */
         .stock-list, .add-stock-area { cursor: default; }
@@ -34,14 +40,9 @@
         .btn-add-stock { padding: 6px 14px; background-color: var(--header-navy); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; transition: background-color 0.15s ease; }
         .btn-add-stock:hover { background-color: #2a3e54; }
 
-
         .btn-stock-del { background: #f8f9fa; color: #ff4d4f; border: 1px solid #ff4d4f; border-radius: 3px; padding: 3px 8px; cursor: pointer; font-size: 11px; margin-left: 10px; }
         .search-layer { position: absolute; top: 100%; left: 15px; width: 500px; background: white; border: 1px solid #ccc; border-radius: 0 0 4px 4px; max-height: 300px; overflow-y: auto; display: none; z-index: 9999; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
                 
-
-
-
-
         .search-item { border-bottom: 1px solid #eee; background: #fff; font-size: 13px; transition: background-color 0.1s ease; }
         .search-item:hover { background-color: #f1f7fe; }
                
@@ -52,18 +53,20 @@
 
         /* 요약 영역 내부 레이아웃 */
         .group-header-content { display: flex; align-items: center; justify-content: space-between; width: 100%; }
-
-
-
-
-
-                       
     </style>
 </head>
 <body>
 
 <div class="container">
-    <header><h1>⭐ 관심 종목 편집</h1></header>
+    <header>
+        <h1>⭐ 관심종목 편집</h1>
+        <button type="button" onclick="location.href='{% url 'index' %}'"
+                style="background: #ffffff; border: 1px solid #b0c4de; color: #555555; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; text-align: center; transition: 0.2s; margin-bottom: 0;"
+                onmouseover="this.style.backgroundColor='#fcfcff'; this.style.borderColor='#4a90e2';"
+                onmouseout="this.style.backgroundColor='#ffffff'; this.style.borderColor='#b0c4de';">
+            ← 메인 메뉴
+        </button>
+    </header>
                                
     <div id="group-container">
         {% for group in groups %}
@@ -95,7 +98,6 @@
                 </ul>
 
                 <div class="add-stock-area">
-
                     <input type="search" class="stock-input-sm" placeholder="종목명/코드" 
                            id="input-{{ group.id }}" data-selected-code=""
                            onfocus="showSearch(this, '{{ group.id }}')" 
@@ -127,26 +129,7 @@
                     확인
                 </button>
             </div>
-
-
-            <div style="margin-top: 10px; display: flex; justify-content: flex-start;">
-                <button type="button" onclick="location.href='{% url 'index' %}'"
-                        style="background: #ffffff; border: 1px solid #b0c4de; color: #555555; padding: 8px 0; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; width: calc(100% / 7); min-width: 85px; text-align: center; transition: 0.2s;"
-                        onmouseover="this.style.borderColor='#4a90e2'; this.style.color='#4a90e2';"
-                        onmouseout="this.style.borderColor='#b0c4de'; this.style.color='#555555';">
-                    ← 메인 메뉴
-                </button>
-            </div>
-
-
-
-
-
-
-
-                               
         </div>
-
                        
     </div>
 </div>
@@ -158,63 +141,28 @@
         {% endfor %}
     ];
 
-
-
-
-
     new Sortable(document.getElementById('group-container'), {
         animation: 150,
-        // 입력창이나 종목 리스트 영역을 잡고 드래그하면 그룹 이동이 안 되게 방지
         filter: '.stock-list, .add-stock-area', 
         preventOnFilter: false,
         
         onEnd: async function() {
-            // 현재 화면에 보이는 순서대로 group-item들을 가져옵니다.
             const items = document.querySelectorAll('#group-container .group-item');
-            
-            // 각 아이템의 data-id 값을 배열로 추출합니다.
             const groupIds = Array.from(items).map(item => item.dataset.id);
-            
-            console.log("전송할 그룹 순서:", groupIds); // 디버깅용
-
             const formData = new FormData();
             formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-            // views.py에서 json.loads()를 사용하므로 문자열화하여 전달합니다.
             formData.append('group_ids', JSON.stringify(groupIds));
 
             try {
                 const response = await fetch("{% url 'update_gwansim_group_order' %}", {
                     method: 'POST',
                     body: formData,
-                    headers: { 
-                        'X-Requested-With': 'XMLHttpRequest' 
-                    }
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 });
-                
-                const result = await response.json();
-                if (response.ok && result.status === 'success') {
-                    console.log("그룹 순서가 DB에 성공적으로 저장되었습니다.");
-                } else {
-                    console.error("저장 실패:", result.message);
-                }
-            } catch (e) {
-                console.error("네트워크 오류 발생:", e);
-            }
+            } catch (e) { console.error("네트워크 오류 발생:", e); }
         }
     });
 
-
-
-
-
-
-
-
-
-
-
-
-    // 2. 종목 드래그 설정 (기존과 동일)
     document.querySelectorAll('.stock-list').forEach(el => {
         new Sortable(el, {
             animation: 150,
@@ -238,11 +186,7 @@
         });
     });
 
-    function saveState(gid, isOpen) {
-        // 기능 유지
-    }
-
-
+    function saveState(gid, isOpen) {}
 
     window.onload = function() {
         const lastGid = localStorage.getItem('last_opened_group');
@@ -254,20 +198,6 @@
             }
         }
     };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     async function sendDataAsync(url, params) {
         const formData = new FormData();
@@ -288,41 +218,17 @@
         sendDataAsync("{% url 'delete_gwansim_stock' %}", { 'group_id': gid, 'shcode': shcode });
     }
 
-
-
-
-
     function addGroup() {
         const name = document.getElementById('newGroupName').value.trim();
-        
-        if (!name) {
-            alert('그룹 이름을 입력해주세요.');
-            return;
-        }
-
-        fetch('/add_gwansim_group/', { // 서버의 그룹 추가 URL (본인의 설정에 맞게 확인)
+        if (!name) { alert('그룹 이름을 입력해주세요.'); return; }
+        fetch('/add_gwansim_group/', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': '{{ csrf_token }}' // 장고라면 CSRF 토큰이 필요할 수 있습니다
-            },
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
             body: JSON.stringify({ name: name })
         })
         .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload(); // 성공 시 새로고침하여 반영
-            } else {
-                alert('그룹 추가 실패: ' + data.message);
-            }
-        })
-        .catch(err => {
-            console.error('Error:', err);
-            alert('서버 통신 중 오류가 발생했습니다.');
-        });
+        .then(data => { if (data.success) location.reload(); });
     }
-
-
 
     function toggleAddGroup(show) {
         document.getElementById('btn-show-add-group').style.display = show ? 'none' : 'block';
@@ -330,55 +236,21 @@
         if(show) document.getElementById('newGroupName').focus();
     }
 
-
-
-
-
     function addStock(gid) {
         const input = document.getElementById('input-' + gid);
         const code = input.dataset.selectedCode;
         const name = input.value;
-
-        if (!code || !name) {
-            alert('종목을 선택해주세요.');
-            return;
-        }
-
-        // ★ 새로고침 되어도 열려있도록 현재 그룹 ID를 저장
+        if (!code || !name) { alert('종목을 선택해주세요.'); return; }
         localStorage.setItem('last_opened_group', gid);
-
         fetch('/add_gwansim_stock/', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                code: code,
-                name: name,
-                group_id: gid
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: code, name: name, group_id: gid })
         })
         .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload(); // 성공 시 새로고침
-            } else {
-                alert('추가 실패: ' + data.message);
-                localStorage.removeItem('last_opened_group'); // 실패 시에는 지워줌
-            }
-        })
-        .catch(err => {
-            console.error('Error:', err);
-            localStorage.removeItem('last_opened_group');
-        });
+        .then(data => { if (data.success) location.reload(); });
     }
 
-
-
-
-
-
-    // 검색 관련 로직 유지...
     function showSearch(input, gid) {
         input.focus();
         if (input.value === "") renderItems(allStocks.slice(0, 15), gid);
@@ -390,72 +262,40 @@
         renderItems(filtered, gid);
     }
 
-
     function renderItems(data, gid) {
         const layer = document.getElementById('layer-' + gid);
         if (data.length === 0) { layer.style.display = 'none'; return; }
-        
         layer.innerHTML = data.map(s => {
-            // 등락률 색상 분기 (+ 빨강, - 파랑)
             const rate = s.rate || '0.00%';
             const isUp = rate.includes('+') || parseFloat(rate) > 0;
             const isDown = rate.includes('-') || parseFloat(rate) < 0;
-            
             let rateColor = '#888';
             if (isUp) rateColor = '#d60000';  
             if (isDown) rateColor = '#0056b3';
-
             return `
-                <div class="search-item" onclick="selectItem('${s.hname}', '${s.shcode}', '${gid}')"
-                     style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; cursor: pointer;">
-                    
+                <div class="search-item" onclick="selectItem('${s.hname}', '${s.shcode}', '${gid}')" style="display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; cursor: pointer;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <strong style="color: #1a2a3a; width: 105px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${s.hname}</strong>
                         <small style="color: #888; width: 50px; display: inline-block;">${s.shcode}</small>
                     </div>
-                    
                     <div style="display: flex; align-items: center; gap: 15px; text-align: right;">
                         <span style="color: #1a2a3a; font-weight: 500;">${s.price}원</span>
                         <span style="color: ${rateColor}; font-weight: bold; width: 60px; display: inline-block;">${rate}</span>
                     </div>
-
                 </div>
             `;
         }).join('');
         layer.style.display = 'block';
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     function clearInput(input, gid) {
         if (input.value === "") {
-            input.dataset.selectedCode = ""; // 저장되어 있던 종목코드 초기화
-            
-            // 검색어를 지웠으므로, 닫지 않고 다시 처음 15개 예시 리스트를 즉시 그려줍니다.
+            input.dataset.selectedCode = "";
             renderItems(allStocks.slice(0, 15), gid);
-            
-            // 혹시 모를 포커스 풀림 방지 및 레이어 노출 보장
             input.focus();
             document.getElementById('layer-' + gid).style.display = 'block';
         }
     }
-
                                
     function selectItem(name, code, gid) {
         const input = document.getElementById('input-' + gid);
@@ -464,28 +304,16 @@
         document.getElementById('layer-' + gid).style.display = 'none';
     }
 
-
     function deleteGroup(groupId, groupName) {
-        if (!confirm(`'${groupName}' 그룹을 삭제하시겠습니까?\n그룹 내 모든 종목도 함께 삭제됩니다.`)) {
-            return;
-        }
-
-        fetch('/delete_gwansim_group/', { // URL 경로 확인 (/api/ 인지 아닌지)
+        if (!confirm(`'${groupName}' 그룹을 삭제하시겠습니까?\n그룹 내 모든 종목도 함께 삭제됩니다.`)) return;
+        fetch('/delete_gwansim_group/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ group_id: groupId })
         })
         .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                location.reload(); 
-            } else {
-                alert('삭제 실패: ' + data.message);
-            }
-        });
+        .then(data => { if (data.success) location.reload(); });
     }   
-
-                       
                        
     document.addEventListener('click', e => {
         if (!e.target.classList.contains('stock-input-sm')) {

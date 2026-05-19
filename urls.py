@@ -19,7 +19,7 @@ urlpatterns = [
     path('delete_gwansim_stock/', views.delete_gwansim_stock_view, name='delete_gwansim_stock'),
     path('delete_gwansim_group/', views.delete_gwansim_group_view, name='delete_gwansim_group'),
     
-    path('update_stock_order/', views.update_gwansim_stock_order_view, name='update_gwansim_stock_order'),
+    path('update_gwansim_stock_order/', views.update_gwansim_stock_order_view, name='update_gwansim_stock_order'),
     path('update_gwansim_group_order/', views.update_gwansim_group_order_view, name='update_gwansim_group_order'),
     
 
