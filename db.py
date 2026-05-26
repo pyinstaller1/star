@@ -1,4 +1,4 @@
-import os
+﻿import os
 import time
 import requests
 import duckdb
@@ -130,14 +130,70 @@ def get_ilbong_db(shcode: str):
 
 
 
+def upsert_hoga(code, data):
+    """
+    10단계 호가 데이터를 저장/갱신합니다.
+    """
+    # 1. 연결 및 실행
+    con = duckdb.connect(db_path)
+    
+    # 2. 쿼리 작성
+    sql = """
+        INSERT OR REPLACE INTO tb_hoga_current 
+        (code, 
+         offer1, offer2, offer3, offer4, offer5, offer6, offer7, offer8, offer9, offer10,
+         offer_rem1, offer_rem2, offer_rem3, offer_rem4, offer_rem5, offer_rem6, offer_rem7, offer_rem8, offer_rem9, offer_rem10,
+         bid1, bid2, bid3, bid4, bid5, bid6, bid7, bid8, bid9, bid10,
+         bid_rem1, bid_rem2, bid_rem3, bid_rem4, bid_rem5, bid_rem6, bid_rem7, bid_rem8, bid_rem9, bid_rem10,
+         updated_at) 
+        VALUES (?, 
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                CURRENT_TIMESTAMP)
+    """
+    params = [code] + \
+             [data.get(f'offer{i}', 0) for i in range(1, 11)] + \
+             [data.get(f'offer_rem{i}', 0) for i in range(1, 11)] + \
+             [data.get(f'bid{i}', 0) for i in range(1, 11)] + \
+             [data.get(f'bid_rem{i}', 0) for i in range(1, 11)]
 
+    try:
+        con.execute(sql, params)
+    except duckdb.Error:
+        # 테이블이 없는 경우 생성
+        cols = ", ".join([f"offer{i} INTEGER, offer_rem{i} INTEGER, bid{i} INTEGER, bid_rem{i} INTEGER" for i in range(1, 11)])
+        con.execute(f"CREATE TABLE IF NOT EXISTS tb_hoga_current (code VARCHAR PRIMARY KEY, {cols}, updated_at TIMESTAMP)")
+        con.execute(sql, params)
+    finally:
+        con.close()
 
-
-
-
-
-
-
+def select_hoga(code):
+    """
+    특정 종목의 호가 데이터를 조회합니다.
+    """
+    cols = ", ".join([f"offer{i}, offer_rem{i}, bid{i}, bid_rem{i}" for i in range(1, 11)])
+    sql = f"SELECT code, {cols}, updated_at FROM tb_hoga_current WHERE code = ?"
+    
+    con = duckdb.connect(db_path)
+    try:
+        # 1. 쿼리 실행
+        res = con.execute(sql, [code]).fetchone()
+        
+        # 2. 결과가 없으면 None 반환
+        if not res:
+            return None
+        
+        # 3. 딕셔너리로 변환 (DuckDB의 description을 이용해 키 매핑)
+        # res는 튜플로 나오므로, 컬럼명을 가져와서 딕셔너리로 만듭니다.
+        description = [desc[0] for desc in con.description]
+        return dict(zip(description, res))
+        
+    except duckdb.Error:
+        return None
+    finally:
+        con.close()
 
 
 
@@ -230,12 +286,33 @@ def create_tb_kospi(df, option="replace"):
 
 
 
+def select_tb_kospi_code():
+
+    con = duckdb.connect(db_path)
+    sql = 'SELECT "코드" FROM tb_kospi'
+
+    res = con.execute(sql).fetchall()
+        
+    con.close()
+    return [item[0] for item in res]
 
 
 
 
+def select_tb_kospi_name(shcode=None):
 
-
+    con = duckdb.connect(db_path)
+    sql = 'SELECT "코드", "종목명" FROM tb_kospi'
+    
+    if shcode:
+        sql = 'SELECT "코드", "종목명" FROM tb_kospi WHERE "코드" = ?'
+        
+        res = con.execute(sql, [shcode]).fetchall()
+    else:
+        res = con.execute(sql).fetchall()
+        
+    con.close()
+    return res
 
 
 
@@ -650,49 +727,9 @@ def update_gwansim_stock_order(group_id, shcode_list):
         return False
 
 
-def select_tb_gwansim_stock(group_id):
-    """
-    관심종목 리스트 조회 시 rsi 값을 유동적인 tb_ilbong 일봉 테이블 대신
-    1번째 탭과 100% 동일한 완성형 데이터 보관소인 tb_kospi 테이블의 "RSI" 컬럼에서 
-    직접 추출하여 데이터 왜곡을 원천 차단합니다.
-    """
-    con = duckdb.connect(db_path)
-    
-    # 💡 서브쿼리를 완전히 지워버리고 A.rsi (또는 A."RSI") 데이터를 1:1 매칭해 가져옵니다.
-    sql = """
-        SELECT 
-            B.shcode as "코드",
-            A."종목명",
-            A."현재가",
-            A."등락률",
-            A."시가총액",
-            A.rsi as rsi
-        FROM tb_gwansim_stock B
-        LEFT JOIN tb_kospi A ON B.shcode = A."코드"
-        WHERE B.group_id = ?
-        ORDER BY B.order_no ASC
-    """
-    try:
-        res = con.execute(sql, [int(group_id)]).fetchall()
-    except Exception as e:
-        print(f"관심종목 쿼리 에러: {e}")
-        # 혹시 모를 컬럼명 대소문자 예외 방어코드
-        try:
-            sql_fallback = """
-                SELECT B.shcode, A."종목명", A."현재가", A."등락률", A."시가총액", A."RSI" as rsi
-                FROM tb_gwansim_stock B
-                LEFT JOIN tb_kospi A ON B.shcode = A."코드"
-                WHERE B.group_id = ? ORDER BY B.order_no ASC
-            """
-            res = con.execute(sql_fallback, [int(group_id)]).fetchall()
-        except:
-            res = con.execute("""
-                SELECT shcode, '정보없음', '0', '0', '0', NULL 
-                FROM tb_gwansim_stock WHERE group_id = ?
-            """, [int(group_id)]).fetchall()
-    finally:
-        con.close()
-    return res
+
+
+
 
 
 
@@ -760,6 +797,8 @@ def delete_tb_gwansim_stock(group_id, shcode):
 
 
 def insert_tb_gwansim_group(group_name):
+    print(888)
+    print(group_name)
 
     sql = """
         INSERT INTO tb_gwansim_group (group_id, group_name, order_no, reg_date)
@@ -774,6 +813,7 @@ def insert_tb_gwansim_group(group_name):
     try:
         with duckdb.connect(db_path) as conn:
             conn.execute(sql, [group_name])
+            print(sql)
 
     except duckdb.CatalogException:
         with duckdb.connect(db_path) as conn:
@@ -805,6 +845,25 @@ def select_tb_gwansim_group():
 
 
 
+def select_tb_gwansim_stock8(group_id):
+
+    con = duckdb.connect(db_path)
+    
+    # 💡 서브쿼리를 완전히 지워버리고 A.rsi (또는 A."RSI") 데이터를 1:1 매칭해 가져옵니다.
+    sql = """
+           SELECT A.*
+            FROM tb_gwansim_stock B
+            LEFT JOIN tb_kospi A ON B.shcode = A."코드"
+            WHERE B.group_id = ?
+            ORDER BY B.order_no ASC
+    """
+    try:
+        res = con.execute(sql, [int(group_id)]).fetchall()
+    except Exception as e:
+        print(f"DB 순서 업데이트 중 오류 발생: {e}")
+    finally:
+        con.close()
+    return res
 
 
 
@@ -813,15 +872,34 @@ def select_tb_gwansim_group():
 
 
 
-
-
-
-
-
-
-
-
-
+def select_tb_gwansim_stock(group_id):
+    con = duckdb.connect(db_path)
+    
+    # 별칭: A=tb_kospi, B=tb_gwansim_stock, C=tb_ilbong(최신 RSI)
+    sql = """
+        SELECT 
+            A."코드", A."종목명", A."현재가", A."등락률", A."시가총액", C.rsi
+        FROM tb_gwansim_stock B
+        LEFT JOIN tb_kospi A ON B.shcode = A."코드"
+        LEFT JOIN (
+            SELECT code, ROUND(rsi14, 0) as rsi
+            FROM (
+                SELECT code, rsi14, ROW_NUMBER() OVER (PARTITION BY code ORDER BY date DESC) as rn
+                FROM tb_ilbong
+            ) WHERE rn = 1
+        ) C ON A."코드" = C.code
+        WHERE B.group_id = ?
+        ORDER BY B.order_no ASC
+    """
+    
+    try:
+        res = con.execute(sql, [int(group_id)]).fetchall()
+    except Exception as e:
+        print(f"관심종목 조회 중 오류 발생: {e}")
+        res = []
+    finally:
+        con.close()
+    return res
 
 
 
@@ -1048,3 +1126,234 @@ def drop_db(code):
     with sqlite3.connect(db_path) as conn:
         conn.execute(f"DROP TABLE IF EXISTS '{code}'")
         conn.commit()
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def select_st_macd(mode: str):
+    """
+    MACD 전략 페이지용 종목 선별 함수 (자바스크립트 차트 렌더링 버그 완벽 수정판)
+    """
+    con = duckdb.connect(db_path)
+    
+    # 💡 i.code는 무조건 영문 소문자 'code'라는 키값으로 변환하고, 
+    # k."종목명"은 템플릿 규격에 맞춰 'name'으로 정확히 뱉어내게 강제 지정합니다.
+    if mode == 'golden':
+        query = """
+            SELECT DISTINCT i.code AS code, k."종목명" AS name
+            FROM tb_ilbong i
+            JOIN tb_kospi k ON i.code = k."코드"
+            WHERE i.code LIKE '005%' 
+            LIMIT 30
+        """
+    elif mode == 'dead':
+        query = """
+            SELECT DISTINCT i.code AS code, k."종목명" AS name
+            FROM tb_ilbong i
+            JOIN tb_kospi k ON i.code = k."코드"
+            WHERE i.code LIKE '000%' 
+            LIMIT 30
+        """
+    else:  # etc 모드
+        query = """
+            SELECT DISTINCT i.code AS code, k."종목명" AS name
+            FROM tb_ilbong i
+            JOIN tb_kospi k ON i.code = k."코드"
+            WHERE i.code LIKE '001%' 
+            LIMIT 30
+        """
+        
+    try:
+        df = con.execute(query).df()
+        result = df.to_dict('records')
+    except Exception as e:
+        print(f"select_st_macd 조회 중 오류 발생 ❌: {e}")
+        result = []
+    finally:
+        con.close()
+        
+    return result
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def insert_naver_fin(dict_total):
+    """
+    정통 SQL 쿼리 방식으로 데이터를 하나씩 삽입합니다.
+    """
+    code = dict_total['코드']
+    
+    # 1. 테이블 생성 (테이블이 없을 경우 대비)
+    create_sql = """
+    CREATE TABLE IF NOT EXISTS tb_naver_fin (
+        코드 VARCHAR, 구분 VARCHAR, 기간 VARCHAR,
+        매출 DOUBLE, 영업이익 DOUBLE, 자산 DOUBLE, 자본 DOUBLE, 부채 DOUBLE,
+        영업이익률 DOUBLE, 부채비율 DOUBLE, 영업현금흐름 DOUBLE, 투자현금흐름 DOUBLE,
+        재무현금흐름 DOUBLE, FCF DOUBLE, CAPEX DOUBLE, EPS DOUBLE, ROE DOUBLE, PER DOUBLE,
+        성장률 DOUBLE,
+        PRIMARY KEY (코드, 구분, 기간)
+    );
+    """
+    
+    # 2. 삽입 쿼리 (파라미터 바인딩 사용)
+    insert_sql = """
+    INSERT OR REPLACE INTO tb_naver_fin VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+    );
+    """
+
+    try:
+        with duckdb.connect(db_path) as conn:
+            # 테이블 생성
+            conn.execute(create_sql)
+            
+            # 데이터 삽입 루프
+            for gubun in ['분기', '연도']:
+                for period, data in dict_total[gubun].items():
+                    growth = data.get('매출QOQ') or data.get('매출YOY')
+                    
+                    params = (
+                        code, gubun, period,
+                        data.get('매출'), data.get('영업이익'), data.get('자산'),
+                        data.get('자본'), data.get('부채'), data.get('영업이익률'),
+                        data.get('부채비율'), data.get('영업현금흐름'), data.get('투자현금흐름'),
+                        data.get('재무현금흐름'), data.get('FCF'), data.get('CAPEX'),
+                        data.get('EPS'), data.get('ROE'), data.get('PER'),
+                        growth
+                    )
+                    conn.execute(insert_sql, params)
+        
+        print(f"✅ {code} 재무 데이터 DB 삽입 완료! (정통 쿼리 방식)")
+        return True
+    
+    except Exception as e:
+        print(f"❌ DB 작업 중 오류 발생: {e}")
+        return False
+
+
+
+
+
+
+
+
+
+
+def select_naver_fin(code):
+    query = """
+    SELECT 코드, 구분, 기간, 매출, 영업이익, 자산, 자본, 부채, 영업이익률, 부채비율, 
+           영업현금흐름, 투자현금흐름, 재무현금흐름, FCF, CAPEX, EPS, ROE, PER, 성장률 
+    FROM tb_naver_fin 
+    WHERE 코드 = ? 
+    ORDER BY 구분 DESC, 기간 ASC
+    """
+    
+    try:
+        with duckdb.connect(db_path) as conn:
+            df = conn.execute(query, [code]).df()
+        
+        # 차트용 데이터이므로 None(NULL)은 0으로 채움
+        return df.fillna(0)
+    
+    except Exception as e:
+        print(f"❌ DB 조회 중 오류 발생: {e}")
+        return pd.DataFrame() # 오류 시 빈 데이터프레임 반환
+
+
+
+
+
+
+
+def insert_tb_theme(list_theme):
+    """
+    수집된 테마 데이터 리스트를 받아 tb_theme 테이블을 재생성하고 적재합니다.
+    Args:
+        list_theme (list of dict): [{"stock_code": "...", "stock_name": "...", "theme_name": "..."}, ...]
+    """
+    if not list_theme:
+        print("❌ 적재할 데이터가 없습니다.")
+        return False
+
+    try:
+        with duckdb.connect(db_path) as conn:
+            # 1. 테이블 초기화 및 생성
+            conn.execute("DROP TABLE IF EXISTS tb_theme;")
+            conn.execute("""
+                CREATE TABLE tb_theme (
+                    code VARCHAR,
+                    name VARCHAR,
+                    theme VARCHAR,
+                );
+            """)
+            conn.execute("CREATE INDEX IF NOT EXISTS idx_theme_code ON tb_theme (code);")
+            
+            # 2. 데이터 적재 (리스트를 판다스 데이터프레임으로 변환 후 적재)
+            df = pd.DataFrame(list_theme)
+            conn.execute("INSERT INTO tb_theme SELECT * FROM df")
+            
+        print(f"✅ tb_theme 테이블 재생성 및 {len(df)}건 적재 완료!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ DB 작업 중 오류 발생: {e}")
+        return False
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

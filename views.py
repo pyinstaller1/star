@@ -6,6 +6,8 @@ from django.views.decorators.csrf import csrf_exempt
 from api.start_kospi import set_kospi, set_kospi_1day
 from api.ilbong import *
 from api.db import *
+from api.hoga import *
+from api.naver_fin import *
 
 from django.db import connection, transaction
 from django.http import HttpResponse
@@ -92,9 +94,206 @@ def render_to_group_list(request):
 
 
 
+def fin_gwansim_view(request):
+    raw_groups = select_tb_gwansim_group()
+    groups_data = []
+
+    def add_comma(val):
+        try: return format(int(str(val).replace(',', '')), ',')
+        except: return val
+    
+    for g in raw_groups:
+        gid, gname = g[0], g[1]
+        # raw_stocks에 [0:코드, 1:종목명, 2:현재가, 3:등락률, 4:시총, 5:RSI] 포함
+        raw_stocks = select_tb_gwansim_stock(gid)
+        
+        stocks_list = []
+
+        for s in raw_stocks:
+            stocks_list.append({
+                'shcode': s[0],
+                'hname': s[1],
+                'price': add_comma(s[2]),
+                'rate': s[3],
+                'cap': add_comma(s[4]),       # 시가총액 추가
+                'rsi': s[5],       # RSI 추가
+            })
+            
+        groups_data.append({
+            'id': gid, 
+            'name': gname, 
+            'stocks': stocks_list
+        })
+
+    list_kospi = select_tb_kospi()
+    list_kospi_formatted = []
+    for row in list_kospi:
+        try:
+            # RSI 처리 로직
+            rsi_raw = row[5] if len(row) > 5 else None
+            rsi_val = float(rsi_raw) if rsi_raw and str(rsi_raw).strip().lower() != 'nan' else None
+            
+            list_kospi_formatted.append({
+                'code': row[0],
+                'name': row[1],
+                'price': row[2],
+                'rate': row[3],
+                'cap': row[4],
+                'rsi': rsi_val
+            })
+        except (ValueError, TypeError, IndexError):
+            continue
+
+    return render(request, 'fin.html', {
+        'groups': groups_data,
+        'list_kospi': list_kospi_formatted
+    })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def index7_view(request):
+    raw_groups = select_tb_gwansim_group()
+    groups_data = []
+    
+    for g in raw_groups:
+        gid = g[0]
+        gname = g[1]
+        raw_stocks = select_tb_gwansim_stock(gid)
+        
+        stocks_list = []
+        for s in raw_stocks:
+            # --- 금액에 쉼표 추가 로직 ---
+            try:
+                price_val = str(s[2]).replace(',', '') if s[2] else "0"
+                formatted_price = format(int(price_val), ',')
+            except:
+                formatted_price = s[2]
+            
+            stocks_list.append({
+                'shcode': s[0],
+                'hname': s[1],
+                'price': formatted_price, # 쉼표 포함
+                'rate': s[3],
+            })
+            
+        groups_data.append({
+            'id': gid,
+            'name': gname,
+            'stocks': stocks_list,
+            'count': len(stocks_list)
+        })
+
+    # 검색용 리스트에도 금액/등락률 데이터 포함
+    raw_kospi = select_tb_kospi()
+    kospi_list = []
+    for s in raw_kospi:
+        try:
+            p_val = format(int(str(s[2]).replace(',', '')), ',')
+        except:
+            p_val = s[2]
+            
+        kospi_list.append({
+            'shcode': s[0], 
+            'hname': s[1],
+            'price': p_val,
+            'rate': s[3]
+        })
+
+
+
+
+
+
+    list_ilbong = get_ilbong_db('005930')
+    if list_ilbong:
+        list_ilbong = list_ilbong[::-1]
+
+    # print(list_ilbong)
+
+    return render(request, 'index7.html', {
+        'list_ilbong': json.dumps(list_ilbong),
+        'groups': groups_data,
+        'kospi': kospi_list,
+    })
+
+
+
 
 
 def gwansim_view(request):
+    raw_groups = select_tb_gwansim_group()
+    groups_data = []
+
+    def add_comma(val):
+        try: return format(int(str(val).replace(',', '')), ',')
+        except: return val
+    
+    for g in raw_groups:
+        gid, gname = g[0], g[1]
+        # raw_stocks에 [0:코드, 1:종목명, 2:현재가, 3:등락률, 4:시총, 5:RSI] 포함
+        raw_stocks = select_tb_gwansim_stock(gid)
+        
+        stocks_list = []
+
+        for s in raw_stocks:
+            stocks_list.append({
+                'shcode': s[0],
+                'hname': s[1],
+                'price': add_comma(s[2]),
+                'rate': s[3],
+                'cap': add_comma(s[4]),       # 시가총액 추가
+                'rsi': s[5],       # RSI 추가
+            })
+            
+        groups_data.append({
+            'id': gid, 
+            'name': gname, 
+            'stocks': stocks_list,
+            'count': len(stocks_list)
+        })
+
+    list_kospi = select_tb_kospi()
+    list_kospi_formatted = []
+    for row in list_kospi:
+        try:
+            # RSI 처리 로직
+            rsi_raw = row[5] if len(row) > 5 else None
+            rsi_val = float(rsi_raw) if rsi_raw and str(rsi_raw).strip().lower() != 'nan' else None
+            
+            list_kospi_formatted.append({
+                'code': row[0],
+                'name': row[1],
+                'price': row[2],
+                'rate': row[3],
+                'cap': row[4],
+                'rsi': rsi_val
+            })
+        except (ValueError, TypeError, IndexError):
+            continue
+
+    return render(request, 'gwansim.html', {
+        'groups': groups_data,
+        'list_kospi': list_kospi_formatted
+    })
+
+
+
+
+
+
+
+def gwansim_index_view(request):
     raw_groups = select_tb_gwansim_group()
     groups_data = []
     
@@ -142,7 +341,7 @@ def gwansim_view(request):
             'rate': s[3]
         })
     
-    return render(request, 'gwansim.html', {
+    return render(request, 'index.html', {
         'groups': groups_data,
         'kospi': kospi_list,
     })
@@ -242,16 +441,22 @@ def add_gwansim_stock_view(request):
 
 @csrf_exempt
 def add_gwansim_group_view(request):
+    print(777)
     if request.method == 'POST':
         try:
             import json
             data = json.loads(request.body)
-            group_name = data.get('name')
+            group_name = data.get('group_name')
+            print(data)
+            print(group_name)
 
             if not group_name:
+                print(7777777)
                 return JsonResponse({'success': False, 'message': '그룹명을 입력하세요.'})
 
             insert_tb_gwansim_group(group_name)
+
+            print(77777)
             
             return JsonResponse({'success': True})
         except Exception as e:
@@ -259,7 +464,7 @@ def add_gwansim_group_view(request):
 
 
 
-def select_tb_gwansim_group():
+def select_tb_gwansim_group8():
     """데이터베이스에서 관심그룹 목록을 순서대로 조회"""
     try:
         with duckdb.connect(db_path) as conn:
@@ -272,7 +477,7 @@ def select_tb_gwansim_group():
         print(f"그룹 조회 중 오류 발생: {e}")
         return []
 
-def select_tb_gwansim_stock(group_id):
+def select_tb_gwansim_stock8(group_id):
     """특정 그룹에 속한 종목들을 tb_kospi와 조인하여 기존 코스피 행 구조와 100% 일치하게 반환"""
     con = duckdb.connect(db_path)
     
@@ -427,7 +632,6 @@ def get_check_setting_view(request):
 
 
 
-
 def index(request):
     """메인 페이지 로드 시 NaN 값을 완벽 세척하여 프론트 자바스크립트 파싱 에러를 원천 차단"""
     list_kospi = select_tb_kospi()
@@ -456,9 +660,6 @@ def index(request):
             else:
                 clean_ilbong.append(day)
 
-    # 기본 요약 정보 추출
-    basic_raw = select_tb_kospi(initial_code)
-    
     # 리스트 데이터를 안전한 kospi_list 구조로 변환하여 템플릿 전달
     list_kospi_formatted = []
     for row in list_kospi:
@@ -480,9 +681,15 @@ def index(request):
         except:
             continue
 
+    # ⭐️ [자로 잰 듯한 바인딩] 중복 DB 조회 없이 이미 정제된 list_kospi_formatted에서 초기 종목명(name) 추출
+    initial_name = "삼성전자"  # 매칭 실패를 대비한 기본 방어선
+    for stock in list_kospi_formatted:
+        if stock['code'] == initial_code:
+            initial_name = stock['name']
+            break
+
     # JSON 호환용 null 변환 스트링 마감
     json_ilbong = json.dumps(clean_ilbong)
-    json_basic = json.dumps(basic_raw)
     
     # 첫 화면 진입 시에도 상단 메뉴 탭 리스트를 무조건 렌더링하도록 DB에서 조회
     groups_data = select_tb_gwansim_group()
@@ -515,8 +722,6 @@ def index(request):
     except Exception as e:
         last_update_str = "확인불가"
 
-    # ⭐️ [자로 잰 듯한 바인딩] 아까 고쳤던 detail 함수처럼 db.py의 전용 조회 함수를 호출합니다.
-    # db.py 규격에 맞춰 인자값 없이 깔끔하게 호출합니다.
     db_settings = select_check_setting()
 
     # 파이썬 None 상태로 넘어가 자바스크립트 'None is not defined' 에러가 터지는 현상을 원천 방어합니다.
@@ -526,15 +731,12 @@ def index(request):
     return render(request, 'index.html', {
         'kospi': list_kospi_formatted,
         'code': initial_code,
+        'name': initial_name,
         'json_ilbong': json_ilbong,
-        'json_basic': json_basic,
         'groups': groups_data, 
         'last_update': last_update_str,
-        'db_settings': db_settings  # ⭐️ 새로고침 시에도 자바스크립트에 안전하게 전달 완료
+        'db_settings': db_settings  
     })
-
-
-
 
 
 
@@ -693,15 +895,6 @@ def partial_kospi_view(request):
 
 
 
-
-
-
-
-
-
-
-
-
 def partial_detail_view(request):
     """비동기 클릭 시 호출되는 상세 뷰에서도 NaN 유입 차단"""
     code = request.GET.get('code')
@@ -745,6 +938,99 @@ def partial_detail_view(request):
 
 
 
+
+
+
+
+
+def partial_chart_view(request):
+    code = request.GET.get('code')
+    check_web = request.GET.get('check_web')
+
+    if check_web == 'true':
+        ilbong_data = get_ilbong(access_token=get_token(), shcode=code)
+    else:
+        ilbong_data = get_ilbong_db(shcode=code)
+
+    if ilbong_data:
+        ilbong_data = ilbong_data[::-1]
+
+    # ⭐️ 비동기 상세 페이지 갱신 시에도 NaN 안심 세척 가동
+    clean_ilbong = []
+    if ilbong_data:
+        for day in ilbong_data:
+            if isinstance(day, dict):
+                cleaned_day = {}
+                for k, v in day.items():
+                    if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):
+                        cleaned_day[k] = None
+                    else:
+                        cleaned_day[k] = v
+                clean_ilbong.append(cleaned_day)
+            else:
+                clean_ilbong.append(day)
+    
+    kospi_info = select_tb_kospi(code)
+    stock_name = ''
+    if kospi_info and len(kospi_info) > 0:
+        if len(kospi_info[0]) > 1:
+            stock_name = kospi_info[0][1]  # 예: "삼성전자"
+    
+    db_settings = select_check_setting()
+
+    return render(request, '_partial_chart.html', {
+        'code': code,
+        'name': stock_name,          # ⭐️ 프론트엔드로는 name이라는 이름으로 깔끔하게 주입!
+        'json_ilbong': json.dumps(clean_ilbong),
+        'db_settings': db_settings  # ⭐️ 프론트엔드 자바스크립트로 세팅값 주입
+    })
+
+
+
+
+
+
+
+
+
+def partial_hoga_view(request, shcode):
+    try:
+        api_data = fetch_hoga_api(shcode)
+        if api_data:
+            upsert_hoga(shcode, api_data)
+    except Exception as e:
+        print(f"⚠️ API 호출 실패: {e}")
+    
+    hoga_data = select_hoga(shcode) or {}
+    
+    # 1. 시각화를 위한 최대 잔량(max_rem) 계산
+    all_rems = []
+    for i in range(1, 11):
+        all_rems.append(int(hoga_data.get(f'offer_rem{i}', 0)))
+        all_rems.append(int(hoga_data.get(f'bid_rem{i}', 0)))
+    
+    max_rem = max(all_rems) if all_rems else 1
+    
+    return render(request, '_partial_hoga.html', {
+        'hoga': hoga_data,
+        'max_rem': max_rem  # 막대그래프 비율 계산용
+    })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def strategy_view(request):
     strategies = [
         {'id': 'st_macd', 'name': 'MACD 전략', 'desc': 'MACD 골든크로스 및 데드크로스를 이용한 추세 매매전략'},
@@ -753,8 +1039,160 @@ def strategy_view(request):
     return render(request, 'strategy/strategy.html', {
         'strategies': strategies
     })
+
+
+
 def st_macd_view(request):
-    return render(request, 'strategy/st_macd.html')
+    mode = request.GET.get('mode', 'golden')
+    
+    # 1. DB에서 한글명과 영문 코드가 깔끔히 정돈된 결과를 들고옵니다.
+    cross_stocks = select_st_macd(mode)
+    json_stocks_data = {}
+
+    # 2. 각 종목의 순수 MACD 보조지표 선 데이터만 패킹합니다.
+    for stock in cross_stocks:
+        shcode = stock['code']  # 🎯 진짜 주식 코드(예: '005930')가 정확히 딕셔너리의 key가 됩니다.
+        json_stocks_data[shcode] = get_ilbong_data(shcode) 
+
+    return render(request, 'strategy/st_macd.html', {
+        'mode': mode,
+        'cross_stocks': cross_stocks,
+        'json_stocks_data': json.dumps(json_stocks_data)
+    })
+
+
+
+
+
+
+
+
+
+@csrf_exempt
+def add_st_gwansim_group_view(request):
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            group_name = data.get('group_name', '').strip()
+            codes = data.get('codes', [])
+            
+            if not group_name or not codes:
+                return JsonResponse({'status': 'fail', 'message': '누락'}, status=400)
+            
+            # 1. db.py에 있는 형님 순정 그룹 생성 함수 호출
+            insert_tb_gwansim_group(group_name)
+            
+            # 2. 고유 ID 재조회
+            with duckdb.connect(db_path) as conn:
+                res = conn.execute("SELECT group_id FROM tb_gwansim_group WHERE group_name = ?", [group_name]).fetchone()
+                if not res:
+                    return JsonResponse({'status': 'fail', 'message': 'ID조회실패'}, status=500)
+                group_id = res[0]
+            
+            # 3. 형님 종목 삽입 함수 호출 (🎯 오타 완벽 수정 완료)
+            success_count = 0
+            for shcode in codes:
+                # insert_tb_gwansim_stock으로 오차 없이 명확하게 직통 매핑 호출!
+                inserted = insert_tb_gwansim_stock(group_id, shcode)
+                if inserted:
+                    success_count += 1
+            
+            return JsonResponse({'status': 'success', 'message': f'{success_count}개 성공'})
+        except Exception as e:
+            print(f"❌ [최종 에러 로그]: {e}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+            
+    return JsonResponse({'status': 'fail'}, status=405)
+
+
+
+
+
+
+
+
+
+@csrf_exempt
+def add_naver_fin_view(request):
+    """
+    POST로 요청이 오면 전 종목 수집/저장 프로세스를 시작하고,
+    그 과정을 실시간 로그로 스트리밍합니다.
+    """
+    def event_stream():
+        # 1. 전 종목 리스트 가져오기
+        stock_list = select_tb_kospi_name() # [ (코드, 종목명), ... ]
+        total = len(stock_list)
+        
+        yield f"🚀 총 {total}개 종목 수집 및 DB 저장 시작...\n"
+        
+        for idx, (code, name) in enumerate(stock_list):
+            try:
+                # 2. 수집 및 DB 저장 실행 (이미 만들어둔 로직 재사용)
+                set_naver_fin(code)
+                
+                # 3. 실시간 로그 전송
+                yield f"[{idx+1}/{total}] ✅ [{code}] {name} 저장 완료\n"
+                
+                # 4. 부하 방지용 딜레이
+                time.sleep(0.5)
+            except Exception as e:
+                yield f"[{idx+1}/{total}] ❌ [{code}] {name} 에러: {str(e)}\n"
+        
+        yield "🏁 전체 작업 완료!"
+
+    # 스트리밍 응답 반환
+    return StreamingHttpResponse(event_stream(), content_type='text/plain')
+
+def get_naver_fin_view(request):
+    code = request.GET.get('code')
+    if not code:
+        return JsonResponse({'error': '종목 코드가 없습니다.'}, status=400)
+    
+    # 아까 작성하신 재무 조회 함수 호출
+    df = select_naver_fin(code)
+    
+    # DataFrame을 JSON 리스트 형태로 변환
+    data = df.to_dict(orient='records')
+
+    print(data)
+    return JsonResponse({'data': data}, safe=False)
+
+
+def fin_page_view(request):
+    # fin.html 페이지를 띄워주는 함수
+    return render(request, 'fin.html')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -773,5 +1211,25 @@ def account_view(request):
     print(balance)
     print(type(balance))
     return render(request, 'account.html', {'balance': balance})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
