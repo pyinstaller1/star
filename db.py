@@ -199,6 +199,32 @@ def select_hoga(code):
 
 
 
+def select_hoga_st():
+    con = duckdb.connect(db_path)
+
+
+
+
+
+
+
+
+
+    codes = ['005930', '003380']
+
+    cols = ", ".join([f"offer{i}, offer_rem{i}, bid{i}, bid_rem{i}" for i in range(1, 11)])
+    sql = f"SELECT code, {cols}, updated_at FROM tb_hoga_current WHERE code = ?"
+
+
+    list_hoga = []
+    for code in codes:
+        print(7)
+        res = con.execute(sql, [code]).fetchone()
+
+        # res는 튜플로 나오므로, DuckDB의 description의 컬럼명을 가져와서 딕셔너리로 만듭니다.
+        description = [desc[0] for desc in con.description]
+        list_hoga.append(dict(zip(description, res)))
+    return list_hoga
 
 
 
@@ -795,10 +821,70 @@ def delete_tb_gwansim_stock(group_id, shcode):
 
 
 
+def insert_tb_gwansim_group_st(group_name, codes):
+    print(888)
+
+    # 1. DB 연결 및 테이블/시퀀스 준비 (존재하면 건너뜀)
+    conn = duckdb.connect(db_path)
+    
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS tb_gwansim_group (
+            group_id INTEGER PRIMARY KEY,
+            group_name VARCHAR NOT NULL,
+            order_no INTEGER DEFAULT 0,
+            reg_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+    # 2. 값 계산: 쿼리 결과를 바로 꺼내서 정수 변환 (None 처리)
+    result = conn.execute("SELECT MAX(group_id), MAX(order_no) FROM tb_gwansim_group").fetchone()
+    print(result)
+    max_id = result[0] if result[0] is not None else 0
+    max_order = result[1] if result[1] is not None else 0
+    
+    new_id = max_id + 1
+    new_order = max_order + 1
+    
+    # 3. 데이터 삽입
+    conn.execute("""
+        INSERT INTO tb_gwansim_group (group_id, group_name, order_no, reg_date)
+        VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    """, [new_id, group_name, new_order])
+    
+
+    
+    print(f"생성된 group_id: {new_id}")
+    
+    for code in codes:
+        print(code)
+        result = conn.execute("SELECT MAX(order_no) FROM tb_gwansim_stock WHERE group_id = ?", [new_id]).fetchone()
+        next_no = (result[0] if result and result[0] is not None else 0) + 1
+            
+        conn.execute("INSERT INTO tb_gwansim_stock (group_id, shcode, order_no) VALUES (?, ?, ?)",  [new_id, code, next_no])
+
+    conn.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 def insert_tb_gwansim_group(group_name):
-    print(888)
-    print(group_name)
 
     sql = """
         INSERT INTO tb_gwansim_group (group_id, group_name, order_no, reg_date)
@@ -813,7 +899,6 @@ def insert_tb_gwansim_group(group_name):
     try:
         with duckdb.connect(db_path) as conn:
             conn.execute(sql, [group_name])
-            print(sql)
 
     except duckdb.CatalogException:
         with duckdb.connect(db_path) as conn:

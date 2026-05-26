@@ -1,0 +1,378 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>📊 MACD 전략 대시보드</title>
+  
+  <script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+  
+  <style>
+    @import url("{% static 'pretendard/pretendard.css' %}");
+    
+    body {
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: #f8fafc;
+      margin: 0;
+      padding-top: 75px;
+      color: #0f172a;
+    }
+    
+    /* 최상단 고정 제어 바 */
+    .top-control-bar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 70px;
+      background-color: #ffffff;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 24px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      z-index: 1000;
+    }
+    
+    .title-area h1 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+    }
+    .title-area span {
+      font-size: 12px;
+      color: #64748b;
+    }
+    
+    .control-panel {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .mode-select {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      font-weight: 600;
+      font-size: 14px;
+      background-color: white;
+      cursor: pointer;
+    }
+    
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+    }
+    .btn-primary {
+      background-color: #2563eb;
+      color: white;
+      box-shadow: 0 2px 4px rgba(37,99,235,0.15);
+    }
+    .btn-secondary {
+      background-color: #64748b;
+      color: white;
+    }
+
+    /* 차트 그리드 영역 */
+    .main-container {
+      padding: 20px;
+    }
+    
+    /* 🎯 [형님 긴급 지시 반영] repeat(5, 1fr)로 고정하여 화면 크기와 관계없이 무조건 1줄에 5개씩만 나오도록 강제 제어합니다. */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+    
+    .chart-card {
+      background-color: #ffffff;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+      border: 1px solid #e2e8f0;
+      min-width: 0; /* 그리드 내부 박스 찌그러짐 방지 안전장치 */
+    }
+    
+    /* 카드 타이틀 레이아웃 */
+    .chart-card-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .stock-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .stock-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    
+    .chart-box {
+      width: 100%;
+      height: 200px;
+    }
+    
+    .empty-message {
+      text-align: center;
+      padding: 100px 0;
+      color: #64748b;
+      font-size: 15px;
+    }
+
+    /* 관심종목 수확용 미니 모달 */
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(15, 23, 42, 0.6);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 2000;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.2s, visibility 0.2s;
+    }
+    .modal-overlay.active {
+      visibility: visible;
+      opacity: 1;
+    }
+    .modal-window {
+      background-color: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      width: 320px;
+    }
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .modal-input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      font-size: 14px;
+      font-weight: 700;
+      box-sizing: border-box;
+      margin-bottom: 16px;
+      color: #0f172a;
+    }
+    .modal-buttons {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="top-control-bar">
+    <div class="title-area">
+      <h1>📊 MACD 전략 탐색기</h1>
+      <span>포착 종목: <strong>{{ cross_stocks|length }}</strong>개</span>
+    </div>
+    
+    <div class="control-panel">
+      <label style="display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; user-select: none;">
+        <input type="checkbox" id="check-all-stocks" style="width: 16px; height: 16px; cursor: pointer;"> 전체 선택
+      </label>
+
+      <select id="strategy-mode-select" class="mode-select" onchange="location.href='?mode=' + this.value;">
+        <option value="golden" {% if mode == 'golden' %}selected{% endif %}>📈 골든크로스</option>
+        <option value="dead" {% if mode == 'dead' %}selected{% endif %}>📉 데드크로스</option>
+        <option value="etc" {% if mode == 'etc' %}selected{% endif %}>🔍 etc (나머지)</option>
+      </select>
+
+      <button id="btn-open-modal" class="btn btn-primary">🌟 관심종목 전송</button>
+      <a href="{% url 'index' %}" class="btn btn-secondary">➔ 메인으로</a>
+    </div>
+  </div>
+
+  <div class="main-container">
+    {% if cross_stocks %}
+      <div class="chart-grid">
+        {% for stock in cross_stocks %}
+          <div class="chart-card">
+            <div class="chart-card-title">
+              <label class="stock-label">
+                <input type="checkbox" class="stock-item-checkbox" data-code="{{ stock.code }}" data-name="{{ stock.name }}" class="stock-checkbox">
+                <span>{{ forloop.counter }}. {{ stock.name }}</span>
+              </label>
+            </div>
+            <div id="chart-{{ stock.code }}" class="chart-box"></div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="empty-message">
+        🔔 포착된 종목이 존재하지 않습니다.
+      </div>
+    {% endif %}
+  </div>
+
+  <div id="gwansim-modal" class="modal-overlay">
+    <div class="modal-window">
+      <div class="modal-title">🌟 관심종목 그룹명 입력</div>
+      <input type="text" id="modal-group-name" class="modal-input" value="MACD_0520">
+      <div class="modal-buttons">
+        <button id="btn-modal-close" class="btn btn-secondary" style="padding: 6px 12px; font-size:13px;">취소</button>
+        <button id="btn-modal-submit" class="btn btn-primary" style="padding: 6px 12px; font-size:13px;">저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // [1] 전체 선택 토글
+        const checkAllBox = document.getElementById('check-all-stocks');
+        const itemCheckboxes = document.querySelectorAll('.stock-item-checkbox');
+
+        if (checkAllBox) {
+            checkAllBox.addEventListener('change', function() {
+                itemCheckboxes.forEach(cb => cb.checked = this.checked);
+            });
+        }
+
+        // [2] 미니 수확 모달 제어
+        const modal = document.getElementById('gwansim-modal');
+        const openModalBtn = document.getElementById('btn-open-modal');
+        const closeModalBtn = document.getElementById('btn-modal-close');
+        const submitModalBtn = document.getElementById('btn-modal-submit');
+        const groupInput = document.getElementById('modal-group-name');
+
+        if (openModalBtn) {
+            openModalBtn.addEventListener('click', function() {
+                const checkedCount = document.querySelectorAll('.stock-item-checkbox:checked').length;
+                if (checkedCount === 0) {
+                    alert('❌ 관심종목으로 보낼 종목을 최소 하나 이상 체크해 주세요.');
+                    return;
+                }
+                modal.classList.add('active');
+                setTimeout(() => {
+                    groupInput.focus();
+                    groupInput.select();
+                }, 100);
+            });
+        }
+
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', function() {
+                modal.classList.remove('active');
+            });
+        }
+
+        if (groupInput) {
+            groupInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') submitModalBtn.click();
+            });
+        }
+
+        if (submitModalBtn) {
+            submitModalBtn.addEventListener('click', function() {
+                const groupName = groupInput.value.trim();
+                if (!groupName) {
+                    alert('그룹명을 입력해 주세요.');
+                    groupInput.focus();
+                    return;
+                }
+
+                const selectedCodes = [];
+                document.querySelectorAll('.stock-item-checkbox:checked').forEach(cb => {
+                    selectedCodes.push(cb.getAttribute('data-code'));
+                });
+
+                fetch('{% url "add_gwansim_group_st" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({ group_name: groupName, codes: selectedCodes })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    modal.classList.remove('active');
+                })
+                .catch(err => {
+                    console.error(err);
+                    alert('전송 중 에러가 발생했습니다.');
+                });
+            });
+        }
+
+        // [3] MACD 2가지 선만 그리는 미니멀 엔진 가동
+        const allChartData = {{ json_stocks_data|safe|default:"{}" }};
+        
+        Object.keys(allChartData).forEach(code => {
+            const container = document.getElementById('chart-' + code);
+            if (!container) return;
+
+            const rawData = allChartData[code];
+            if (!rawData || rawData.length === 0) return;
+
+            const chart = LightweightCharts.createChart(container, {
+                layout: { backgroundColor: '#ffffff', textColor: '#334155' },
+                grid: { vertLines: { color: '#f1f5f9' }, horzLines: { color: '#f1f5f9' } },
+                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+                rightPriceScale: { borderVisible: false },
+                timeScale: { borderVisible: false },
+            });
+
+            const macdSeries = chart.addLineSeries({ color: '#ea580c', lineWidth: 1.8 });
+            const signalSeries = chart.addLineSeries({ color: '#0284c7', lineWidth: 1.8 });
+
+            chart.priceScale('right').applyOptions({
+                scaleMargins: { top: 0.1, bottom: 0.1 },
+            });
+
+            const macdLineData = [];
+            const signalLineData = [];
+
+            rawData.forEach(d => {
+                if (d.date) {
+                    let dateStr = String(d.date).replace(/,/g, '').trim();
+                    if (dateStr.length === 8 && !dateStr.includes('-')) {
+                        dateStr = dateStr.substring(0, 4) + '-' + dateStr.substring(4, 6) + '-' + dateStr.substring(6, 8);
+                    }
+
+                    macdLineData.push({ time: dateStr, value: Number(d.macd) || 0 });
+                    signalLineData.push({ time: dateStr, value: Number(d.macd9) || 0 });
+                }
+            });
+
+            macdSeries.setData(macdLineData);
+            signalSeries.setData(signalLineData);
+
+            // 강제 5열 종대 정렬 대응 리사이저
+            window.addEventListener('resize', () => {
+                chart.resize(container.clientWidth, 200);
+            });
+        });
+    });
+  </script>
+</body>
+</html>

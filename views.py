@@ -441,26 +441,67 @@ def add_gwansim_stock_view(request):
 
 @csrf_exempt
 def add_gwansim_group_view(request):
-    print(777)
     if request.method == 'POST':
         try:
             import json
             data = json.loads(request.body)
             group_name = data.get('group_name')
+
+            if not group_name:
+                return JsonResponse({'success': False, 'message': '그룹명을 입력하세요.'})
+
+            insert_tb_gwansim_group(group_name)
+            
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': str(e)})
+
+
+
+
+
+
+@csrf_exempt
+def add_gwansim_group_st_view(request):
+    print(8)
+    if request.method == 'POST':
+        try:
+            import json
+            data = json.loads(request.body)
+            group_name = data.get('group_name')
+            codes = data.get('codes')
+
             print(data)
             print(group_name)
+            print(codes)
 
             if not group_name:
                 print(7777777)
                 return JsonResponse({'success': False, 'message': '그룹명을 입력하세요.'})
-
-            insert_tb_gwansim_group(group_name)
+            print(7)
+            insert_tb_gwansim_group_st(group_name, codes)
 
             print(77777)
             
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1018,6 +1059,30 @@ def partial_hoga_view(request, shcode):
 
 
 
+def st_hoga_view(request):
+    hoga = select_hoga('005930')
+    print(hoga)
+
+
+    # mode = request.GET.get('mode', 'golden')
+    
+    list_hoga = select_hoga_st()
+    print(list_hoga)
+
+
+
+    # 각 종목의 순수 MACD 보조지표 선 데이터만 패킹합니다.
+    for stock in cross_stocks:
+        shcode = stock['code']  # 🎯 진짜 주식 코드(예: '005930')가 정확히 딕셔너리의 key가 됩니다.
+        json_stocks_data[shcode] = get_ilbong_data(shcode) 
+
+
+
+    return render(request, 'strategy/st_hoga.html', {
+        'mode': mode,
+        'cross_stocks': cross_stocks,
+        'json_stocks_data': json.dumps(json_stocks_data)
+    })
 
 
 
@@ -1080,7 +1145,7 @@ def add_st_gwansim_group_view(request):
             if not group_name or not codes:
                 return JsonResponse({'status': 'fail', 'message': '누락'}, status=400)
             
-            # 1. db.py에 있는 형님 순정 그룹 생성 함수 호출
+            # 1. db.py에 있는 그룹 생성 함수 호출
             insert_tb_gwansim_group(group_name)
             
             # 2. 고유 ID 재조회
@@ -1090,7 +1155,7 @@ def add_st_gwansim_group_view(request):
                     return JsonResponse({'status': 'fail', 'message': 'ID조회실패'}, status=500)
                 group_id = res[0]
             
-            # 3. 형님 종목 삽입 함수 호출 (🎯 오타 완벽 수정 완료)
+            # 3. 종목 삽입 함수 호출 (🎯 오타 완벽 수정 완료)
             success_count = 0
             for shcode in codes:
                 # insert_tb_gwansim_stock으로 오차 없이 명확하게 직통 매핑 호출!
