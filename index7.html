@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>증권 통합 시스템</title>
+    {% load static %}
+
+    <script src="{% static 'lightweight-charts.standalone.production.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'pretendard/pretendard-subset.css' %}">
+
+
+
+    <style>
+        body { margin: 0; height: 100vh; overflow: hidden; font-family: 'Pretendard', sans-serif;}
+        
+        .main-layout {
+            display: grid;
+            grid-template-columns: 400px 880px 1fr;
+            height: 100vh;
+        }
+
+        .left-panel { border-right: 1px solid #ccc; display: flex; flex-direction: column; overflow: hidden; }
+        .center-panel { border-right: 1px solid #ccc; padding: 15px; overflow-y: auto; background: #fff; }
+        .right-panel { padding: 15px; overflow-y: auto; background: #fff; }
+
+        .tab-wrapper { position: relative; display: flex; align-items: center; background: #eee; border-bottom: 1px solid #ccc; }
+        .tab-menu { display: flex; overflow-x: auto; flex: 1; scrollbar-width: none; white-space: nowrap; }
+        .tab-menu::-webkit-scrollbar { display: none; }
+        
+        .nav-btn { background: #ddd; border: none; cursor: pointer; padding: 8px 4px; z-index: 10; transition: opacity 0.3s; }
+        .tab-btn { padding: 6px 12px; border: none; cursor: pointer; background: #eee; font-size: 12px; border-right: 1px solid #ccc; }
+        .tab-btn.active { background: #4a90e2; color: white; font-weight: bold; }
+        .tab-btn:hover { background: #4a90e2; color: white; font-weight: bold; }
+
+
+
+
+        .stock-list { flex: 1; overflow-y: auto; max-height: 300px; min-height: 300px; }
+                  
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8f8f8; position: sticky; top: 0; padding: 8px; font-size: 12px; border-bottom: 1px solid #ccc;  table-layout: fixed; }
+        thead th {
+            padding: 4px 8px; /* 위아래 간격을 4px로 줄임 */
+            font-size: 15px;
+            height: 23px; /* 고정 높이 지정 */
+        }
+        td { padding: 6px 4px; border-bottom: 1px solid #eee; font-size: 10px; }
+        .col-no { color: #999; font-size: 11px; text-align: center; } 
+        .col-name { text-align: left; width: 178px; }
+        .col-price { text-align: right; width: 60px; } 
+        .col-num { text-align: right;  width: 53px; } 
+        .col-rsi-style { font-size: 11px; text-align: right;  width: 38px; }
+        .col-cap-style { font-size: 10px; color: #888; text-align: right; width: 65px; }
+
+        .rate-pos { color: #d9534f; font-weight: bold; }
+        .rate-neg { color: #337ab7; font-weight: bold; }
+
+        /* RSI 색상 클래스 */
+        .rsi-high { color: #d9534f; font-weight: bold; }
+        .rsi-low { color: #337ab7; font-weight: bold; }
+
+        tbody tr:hover { background-color: #e3f2fd; }
+        tbody tr { cursor: pointer; }
+
+
+
+
+
+
+
+
+        #kospi-layer {
+            display: none;
+            position: absolute;
+            font-size: 14px;
+            top: 100%;       /* 인풋 바로 아래 */
+            left: 0;
+            width: 230px; /* 기존보다 조금 더 넓게 조정 */
+            max-height: 300px;
+            overflow-y: auto;
+            background: #fff;
+            border: 1px solid #ccc;
+            z-index:9999;   /* 다른 요소보다 항상 위에 뜨게 */
+            box-sizing: border-box; /* 너비가 안 깨지게 */
+        }
+
+        .search-wrapper {
+            background: #f8f9fa; /* 아주 연한 회색 배경으로 영역 구분 */
+            border-bottom: 1px solid #e1e4e8;
+        }
+
+        #search-input {
+            border-radius: 5px 0 0 5px; /* 왼쪽 모서리 둥글게 */
+            transition: border-color 0.2s;
+        }
+
+        #search-input:focus {
+            border-color: #4a90e2; /* 포커스 시 파란색 */
+            outline: none;
+        }
+
+        button {
+            border-radius: 5px;
+            font-weight: 550;
+            transition: opacity 0.2s;
+        }
+
+        /* 조회 버튼 (브랜드 컬러 강조) */
+        .search-wrapper button[onclick="searchFromLeft()"] {
+            border-radius: 0 5px 5px 0 !important; /* 오른쪽 모서리 둥글게 */
+            background: #2563eb !important; /* 조금 더 선명한 파란색 */
+        }
+
+        /* 관심/전략 버튼 (Ghost 스타일: 평소엔 흰색, 호버 시 연한 파랑) */
+        .search-wrapper a button {
+            background: #ffffff !important;
+            color: #374151 !important;
+            border-radius: 5px !important;
+        }
+
+        .search-wrapper a button:hover {
+            background: #f0f7ff !important;
+
+        }
+
+
+                    
+
+
+
+
+    </style>
+</head>
+<body>
+
+<div class="main-layout">
+    <div class="left-panel">
+
+
+
+
+        <div class="search-wrapper" style="display: flex; align-items: center; gap: 0; height: 35px; padding: 5px;">
+
+            <div class="search-input-wrapper" style="position: relative; display: flex; height: 100%; align-items: center;">
+                <input type="text" id="search-input" placeholder="종목 검색" autocomplete="off" 
+                       style="height: 33px; width: 150px; border: 1px solid #555; padding: 0px 20px 1px 8px; box-sizing: border-box; font-size:14px; border-right: none;">
+                <span id="clear-btn" style="position: absolute; right: 5px; cursor: pointer; color: #999; display: none; font-weight: bold; ">×</span>
+                <div id="kospi-layer"  style="margin-top: -1px;"></div>
+            </div>
+
+
+
+                    
+            <button onclick="searchFromLeft()" 
+                    style="height: 33px; cursor: pointer; background: #4a90e2; color: #fff; border: 1px solid #4a90e2; border: 1px solid #333; margin-top: -1px; padding: 0 8px;">
+                검색
+            </button>
+            
+            <div style="display: flex; gap: 5px; margin-left: auto; height: 100%;">
+                <a href="{% url 'gwansim' %}" style="text-decoration: none; height: 100%;">
+                    <button type="button" style="height: 34px; background: #ffffff; border: 1px solid #555; color: #111111; padding: 0 5px; cursor: pointer;">⭐ 관심종목</button>
+                </a>
+                <a href="{% url 'strategy' %}" style="text-decoration: none; height: 100%;">
+                    <button type="button" style="height: 34px; background: #ffffff; border: 1px solid #555; color: #111111; padding: 0 5px; cursor: pointer;">📈 매매전략</button>
+                </a>
+            </div>
+        </div>
+
+
+
+
+
+
+
+
+
+
+                           
+        <div class="tab-wrapper">
+            <button id="btn-left" class="nav-btn" onclick="scrollTabs(-150)">◀</button>
+            <div id="tab-container" class="tab-menu" onscroll="updateArrows()">
+                {% for group in groups %}
+                <button class="tab-btn {% if forloop.first %}active{% endif %}" onclick="openGroup(event, '{{ group.id }}')">
+                    {{ group.name }}
+                </button>
+                {% endfor %}
+            </div>
+            <button id="btn-right" class="nav-btn" onclick="scrollTabs(150)">▶</button>
+        </div>
+
+        {% for group in groups %}
+        <div id="group-{{ group.id }}" class="stock-list" style="display: {% if forloop.first %}block{% else %}none{% endif %};">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-no"></th>
+                        <th onclick="sortTable(this, 1)">종목명</th>
+                        <th onclick="sortTable(this, 2)" style="text-align: right;">현재가</th>
+                        <th onclick="sortTable(this, 3)" style="text-align: right;">등락</th>
+                        <th onclick="sortTable(this, 4)" style="text-align: right;">RSI</th>
+                        <th onclick="sortTable(this, 5)">시총</th>
+                    </tr>
+                </thead>
+                <tbody id="stock-table-body">
+                    {% for stock in group.stocks %}
+                    <tr onclick="updateDashboard('{{ stock.hname }}')">
+                        <td class="col-no">{{ forloop.counter }}</td>
+                        <td class="col-name" style="font-size:15px;">{{ stock.hname }}</td>
+                        <td class="col-price" style="font-size:14px;">{{ stock.price }}</td>
+                        <td class="col-num {% if '+' in stock.rate %}rate-pos{% else %}rate-neg{% endif %}">
+                            {{ stock.rate }}
+                        </td>
+                         <td class="col-rsi-style {% if stock.rsi >= 70 %}rsi-high{% elif stock.rsi <= 30 %}rsi-low{% endif %}" style="font-size:11px;">
+                            {{ stock.rsi|default:"-" }}
+                         </td>
+                        <td class="col-cap-style">{{ stock.cap|default:"0" }}억</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endfor %}
+
+
+
+
+
+
+
+
+        <div class="analysis-dashboard" style="padding: 18px; border-top: 2px solid #eee; background: #fafafa;">
+            
+            <!-- 1. 종목명 -->
+            <div id="analysis-title" style="font-size: 27px; font-weight: 800; margin-top: 20px; margin-bottom: 8px; color: #111;">종목을 선택하세요</div>
+                            
+
+            
+            <!-- 2. 차트 종합 점수 -->
+            <div style="margin-bottom: 12px; padding: 6px 10px; background: #fff; border: 1px solid #ddd; border-radius: 6px;">
+                <div style="font-size: 15px; color: #333; margin-bottom: 1px;">일봉 차트 점수</div>
+                <div style="display: flex; align-items: baseline; gap: 4px;">
+                    <span style="font-size: 26px; font-weight: 900; color: #d32f2f;">9.2</span>
+                    <span style="font-size: 13px; color: #999;">/ 10</span>
+                </div>
+            </div>
+
+            <!-- 3. 4대 재무 분석 지표 -->
+            <div style="display: grid; grid-template-columns: 1fr; gap: 2px;">
+                
+                <!-- 개별 카드 (margin-top으로 간격 확보) -->
+                <div style="background: #fff; padding: 4px 8px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; flex-direction: column; justify-content: center;">
+                        <span style="font-weight: bold; font-size: 16px;">성장성</span>
+                        <span style="font-size: 12px; color: #888; margin-top: 3px;">매출/영업이익 우상향</span>
+                    </div>
+                    <span style="font-weight: 800; color: #1e40af; font-size: 17px;">8.5 <span style="font-size: 12px; color: #aaa; font-weight: 500; ">/ 10</span></span>
+                </div>
+
+                <div style="background: #fff; padding: 4px 8px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; flex-direction: column; justify-content: center;">
+                        <span style="font-weight: bold; font-size: 16px;">안정성</span>
+                        <span style="font-size: 11px; color: #888; margin-top: 3px;">부채/유동비율</span>
+                    </div>
+                    <span style="font-weight: 800; color: #1e40af; font-size: 17px;">9.2 <span style="font-size: 12px; color: #aaa; font-weight: 500; ">/ 10</span></span>
+                </div>
+
+                <div style="background: #fff; padding: 4px 8px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; flex-direction: column; justify-content: center;">
+                        <span style="font-weight: bold; font-size: 16px;">수익성</span>
+                        <span style="font-size: 11px; color: #888; margin-top: 3px;">영업이익률/ROE</span>
+                    </div>
+                    <span style="font-weight: 800; color: #1e40af; font-size: 17px;">7.8 <span style="font-size: 12px; color: #aaa; font-weight: 500; ">/ 10</span></span>
+                </div>
+
+                <div style="background: #fff; padding: 4px 8px; border: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; flex-direction: column; justify-content: center;">
+                        <span style="font-weight: bold; font-size: 16px;">효율성</span>
+                        <span style="font-size: 11px; color: #888; margin-top: 3px;">자산회전율</span>
+                    </div>
+                    <span style="font-weight: 800; color: #1e40af; font-size: 17px;">7.5 <span style="font-size: 12px; color: #aaa; font-weight: 500; ">/ 10</span></span>
+                </div>
+            </div>
+        </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+                           
+    </div>
+
+
+
+
+
+
+
+
+
+
+    <div class="center-panel">
+        <div style="height: 300px; margin-bottom: 20px;">
+            <canvas id="ilbongChart"></canvas>
+        </div>
+        <div id="ilbongTableContainer"></div>
+    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                           
+    <div class="right-panel"></div>
+
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+// 서버에서 받아온 ilbongData는 이미 JSON.parse된 상태라고 가정
+const ilbongData = JSON.parse('{{ list_ilbong|safe }}');
+
+// 라이브러리가 로드되었는지 체크하는 함수
+function initIlbongChart() {
+    // 라이브러리 존재 확인
+    if (typeof LightweightCharts === 'undefined') {
+        setTimeout(initIlbongChart, 100);
+        return;
+    }
+
+    const ilbongData = JSON.parse('{{ list_ilbong|safe }}');
+    const centerPanel = document.querySelector('.center-panel');
+    
+    // 기존 컨테이너 비우기
+    centerPanel.innerHTML = '<div id="chart-container" style="width: 100%; height: 500px;"></div>';
+    const chartContainer = document.getElementById('chart-container');
+
+    // 차트 생성
+    const chart = LightweightCharts.createChart(chartContainer, {
+        width: chartContainer.clientWidth,
+        height: 500,
+        layout: { background: { type: 'solid', color: '#ffffff' }, textColor: '#333' },
+        grid: { vertLines: { color: '#f0f0f0' }, horzLines: { color: '#f0f0f0' } },
+    });
+
+    // 캔들스틱 시리즈 추가 (가장 에러가 많이 나는 부분)
+    // 최신 v4.x 버전에서는 이 방식을 사용합니다
+    const candleSeries = chart.addCandlestickSeries({
+        upColor: '#ef4444', downColor: '#3b82f6', borderVisible: false, wickUpColor: '#ef4444', wickDownColor: '#3b82f6'
+    });
+    
+    // 데이터 포맷팅
+    const formattedData = ilbongData.map(d => ({
+        time: d.date.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'),
+        open: parseFloat(d.open),
+        high: parseFloat(d.high),
+        low: parseFloat(d.low),
+        close: parseFloat(d.close)
+    })).sort((a, b) => a.time.localeCompare(b.time)); // 시간순 정렬 보장
+
+    candleSeries.setData(formattedData);
+    chart.timeScale().fitContent();
+}
+
+initIlbongChart();
+window.addEventListener('DOMContentLoaded', initIlbongChart);
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                           
+
+
+
+
+
+<script>
+
+
+    // 검색 버튼(검색창 옆 파란 버튼) 클릭 시 호출되는 함수
+    function searchFromLeft() {
+        const searchInput = document.getElementById('search-input'); // id 수정: left-search -> search-input
+        if (!searchInput) return;
+        
+        const name = searchInput.value;
+        if (name) {
+            updateDashboard(name); // 제목 업데이트
+            if (typeof showCentral === 'function') showCentral(name); // 기존 기능 유지
+        }
+    }               
+                    
+                   
+    function sortTable(th, colIdx) {
+        const table = th.closest('table');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        const isAscending = (th.getAttribute('data-sort') === 'asc');
+
+        rows.sort((a, b) => {
+            let valA = a.children[colIdx].innerText.replace(/,/g, '');
+            let valB = b.children[colIdx].innerText.replace(/,/g, '');
+            
+            let comparison = valA.localeCompare(valB, undefined, {numeric: true});
+            return isAscending ? comparison : -comparison;
+        });
+
+        // 1. 정렬된 행을 다시 붙임
+        rows.forEach((row, index) => {
+            tbody.appendChild(row);
+            // 2. 순번 열(첫 번째 td)만 현재 인덱스로 갱신
+            row.querySelector('.col-no').innerText = index + 1;
+        });
+
+        // 화살표 업데이트 및 상태 토글
+        const headers = th.parentElement.children;
+        for (let header of headers) {
+            header.innerText = header.innerText.replace(/[▲▼]/g, '');
+        }
+        th.innerText += isAscending ? " ▲" : " ▼";
+        th.setAttribute('data-sort', isAscending ? 'desc' : 'asc');
+    }
+             
+    function openGroup(evt, groupId) {
+        // 1. 모든 리스트 숨기기 및 탭 활성화 해제
+        document.querySelectorAll('.stock-list').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        
+        // 2. 현재 선택한 그룹 찾기
+        const groupElement = document.getElementById('group-' + groupId);
+        const tableBody = groupElement.querySelector('tbody');
+        
+        // 3. 종목 개수 확인
+        const rowCount = tableBody.querySelectorAll('tr').length;
+        
+        // 4. 종목이 0건일 때 텍스트 표시
+        let messageDiv = groupElement.querySelector('.no-stock-msg');
+        
+        if (rowCount === 0) {
+            if (!messageDiv) {
+                messageDiv = document.createElement('div');
+                messageDiv.className = 'no-stock-msg';
+                // 버튼 스타일 대신 텍스트 전용 스타일 적용
+                messageDiv.style.textAlign = 'center';
+                messageDiv.style.padding = '30px';
+                messageDiv.style.color = '#777777'; // 짙은 회색 텍스트
+                messageDiv.style.fontSize = '15px';
+                messageDiv.innerText = '📂 등록된 종목이 없습니다.';
+                groupElement.appendChild(messageDiv);
+            }
+            groupElement.querySelector('table').style.display = 'none'; // 테이블 숨김
+            messageDiv.style.display = 'block'; // 텍스트 보임
+        } else {
+            // 종목이 있을 경우 테이블을 다시 보임
+            groupElement.querySelector('table').style.display = 'table';
+            if (messageDiv) messageDiv.style.display = 'none'; // 텍스트 숨김
+        }
+
+        // 5. 화면 표시 및 탭 활성화
+        groupElement.style.display = 'block';
+        evt.currentTarget.classList.add('active');
+    }
+                               
+    
+    function scrollTabs(direction) { document.getElementById('tab-container').scrollBy({ left: direction, behavior: 'smooth' }); }
+    
+    function updateArrows() {
+        const container = document.getElementById('tab-container');
+        document.getElementById('btn-left').style.opacity = container.scrollLeft <= 0 ? "0" : "1";
+        document.getElementById('btn-right').style.opacity = container.scrollLeft + container.clientWidth >= container.scrollWidth ? "0" : "1";
+    }
+
+    window.onload = updateArrows;
+    window.onresize = updateArrows;
+</script>
+
+                         
+
+
+
+
+
+
+
+
+
+
+{{ kospi|json_script:"kospi-data" }}
+
+
+<script>
+let selectedIndex = -1; 
+
+document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('search-input');
+    const kospiLayer = document.getElementById('kospi-layer');
+    const kospiDataElement = document.getElementById('kospi-data');
+    const clearBtn = document.getElementById('clear-btn');
+    
+    const kospiData = kospiDataElement ? JSON.parse(kospiDataElement.textContent) : [];
+
+    // 레이어 그리기
+    const showLayer = (data) => {
+        if (data.length > 0) {
+            kospiLayer.innerHTML = data.map(stock => 
+                `<div style="cursor:pointer; padding:8px 10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;" 
+                      onmouseover="this.style.backgroundColor='#f0f7ff'" 
+                      onmouseout="this.style.backgroundColor='transparent'"
+                      onclick="selectAndCentral('${stock.name}')">
+                    <span style="font-weight:500;">${stock.name}</span>
+                    <span style="color:#888; font-size:11px;">${stock.cap}억</span>
+                </div>`
+            ).join('');
+            kospiLayer.style.display = 'block';
+        } else {
+            kospiLayer.style.display = 'none';
+        }
+    };
+
+
+
+
+
+    // 검색어 필터링 함수 (최종 수정본)
+    const updateSearch = () => {
+        selectedIndex = -1; // 초기화
+        
+        // 입력값: 공백 제거 + 소문자 변환
+        const keyword = searchInput.value.replace(/\s+/g, '').toLowerCase();
+        
+        if (clearBtn) clearBtn.style.display = keyword.length > 0 ? 'block' : 'none';
+        
+        if (keyword === "") {
+            showLayer(kospiData);
+        }
+        else {
+            const filtered = kospiData.filter(stock => {
+                // 비교 대상: 공백 제거 + 소문자 변환
+                const cleanName = stock.name.replace(/\s+/g, '').toLowerCase();
+                
+                // startsWith 대신 includes를 사용하면 중간 글자만 쳐도 검색됩니다!
+                return cleanName.includes(keyword); 
+            });
+            showLayer(filtered);
+        }
+    };
+
+
+
+    
+
+    searchInput.addEventListener('input', updateSearch);
+    searchInput.addEventListener('mouseenter', updateSearch);
+
+    // X 버튼
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            searchInput.value = '';
+            clearBtn.style.display = 'none';
+            searchInput.focus();
+            kospiLayer.style.display = 'none';
+            selectedIndex = -1;
+        });
+    }
+
+    // 키보드 이벤트 (통합)
+    searchInput.addEventListener('keydown', (e) => {
+        const layer = document.getElementById('kospi-layer');
+        const items = layer.querySelectorAll('div');
+        const isLayerVisible = (layer.style.display === 'block');
+
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+            if (isLayerVisible) {
+                e.preventDefault();
+                if (e.key === 'ArrowDown' && selectedIndex < items.length - 1) selectedIndex++;
+                if (e.key === 'ArrowUp' && selectedIndex > 0) selectedIndex--;
+                updateSelection(items);
+            }
+        } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (isLayerVisible && selectedIndex >= 0 && items[selectedIndex]) {
+                items[selectedIndex].click();
+            } else {
+                searchFromLeft();
+            }
+        }
+    });
+
+    // 마우스 이탈 제어
+    searchInput.addEventListener('mouseleave', () => {
+        setTimeout(() => { if (!kospiLayer.matches(':hover')) kospiLayer.style.display = 'none'; }, 100);
+    });
+    kospiLayer.addEventListener('mouseenter', () => { kospiLayer.style.display = 'block'; });
+    kospiLayer.addEventListener('mouseleave', () => { kospiLayer.style.display = 'none'; });
+});
+
+function updateSelection(items) {
+    items.forEach((item, idx) => {
+        if (idx === selectedIndex) {
+            item.style.backgroundColor = '#f0f7ff';
+            item.scrollIntoView({ block: 'nearest' });
+        } else {
+            item.style.backgroundColor = 'transparent';
+        }
+    });
+}
+
+function selectAndCentral(name) {
+    const searchInput = document.getElementById('search-input');
+    const clearBtn = document.getElementById('clear-btn');
+    searchInput.value = name;
+    if (clearBtn) clearBtn.style.display = 'block';
+    
+    // 제목 업데이트 및 중앙 로직
+    updateDashboard(name); // <-- 아까 만드신 제목 변경 함수
+    if (typeof showCentral === 'function') showCentral(name);
+    
+    document.getElementById('kospi-layer').style.display = 'none';
+    selectedIndex = -1;
+}
+</script>
+
+
+
+
+
+
+
+
+<script>
+    // 종목명 업데이트 함수 (검색/리스트 클릭 시 공통 호출)
+    function updateDashboard(name) {
+        const analysisTitle = document.getElementById('analysis-title');
+        if (analysisTitle) {
+            analysisTitle.innerText = name;
+        }
+        
+        // 향후 여기서 해당 종목의 재무 데이터나 차트를 
+        // 서버에서 다시 받아와 점수를 갱신하는 로직을 연결하면 됩니다.
+        console.log("분석 대상 종목:", name);
+    }
+</script>
+
+
+<script>
+    // 페이지 로드 완료 시 자동 실행
+    window.addEventListener('load', () => {
+        selectAndCentral("삼성전자");
+        document.getElementById('search-input').value = "";
+    });
+</script>
+
+
+
+
+
+
+
+
+</body>
+</html>
