@@ -373,13 +373,17 @@
 
 <script>
 
+let kospiData = [];
+
+
+
+
 
     // 검색 버튼(검색창 옆 파란 버튼) 클릭 시 호출되는 함수
 function searchFromLeft() {
     const searchInput = document.getElementById('search-input');
     const name = searchInput.value.trim();
     
-    // 전역 배열 kospiData에서 name으로 code를 찾아냄
     const stock = kospiData.find(s => s.name === name);
     
     if (stock) {
@@ -388,9 +392,6 @@ function searchFromLeft() {
         alert("종목을 찾을 수 없습니다.");
     }
 }
-
-
-
 
 
 
@@ -512,10 +513,11 @@ let selectedIndex = -1;
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
     const kospiLayer = document.getElementById('kospi-layer');
-    const kospiDataElement = document.getElementById('kospi-data');
     const clearBtn = document.getElementById('clear-btn');
-    
+
+    const kospiDataElement = document.getElementById('kospi-data');
     const kospiData = kospiDataElement ? JSON.parse(kospiDataElement.textContent) : [];
+
 
     // 레이어 그리기
     const showLayer = (data) => {
@@ -560,6 +562,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             showLayer(filtered);
         }
+
     };
 
 
@@ -609,6 +612,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     kospiLayer.addEventListener('mouseenter', () => { kospiLayer.style.display = 'block'; });
     kospiLayer.addEventListener('mouseleave', () => { kospiLayer.style.display = 'none'; });
+
+
+selectAndCentral('005930', '삼성전자');
+
 });
 
 function updateSelection(items) {
