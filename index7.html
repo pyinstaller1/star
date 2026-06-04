@@ -309,15 +309,32 @@
 
 
 
+
+
+
     <div class="center-panel">
-        <div id="chart-container" style="width: 100%; height: 400px;"></div>
+
+        <div id="chart-wrapper" style="position:relative; z-index: 1;">
+
+            <div id="chart-title"
+                 style="
+                    position:absolute;
+                    top:10%;
+                    left:50%;
+                    transform:translate(-50%,-50%);
+                    font-size: 58px;
+                    font-weight:800;
+                    color: rgba(100, 149, 237, 0.3);
+                    pointer-events:none;
+                    z-index: 2;
+                    white-space:nowrap;">
+            </div>
+
+            <div id="chart-container" style="width:100%; height:400px;"></div>
+
+        </div>
+
     </div>
-
-
-
-
-
-
 
 
 
@@ -643,6 +660,8 @@ function updateSelection(items) {
 <script>
 // 관제탑 함수 수정 (데이터 추출 부분 추가)
 function selectAndCentral(code, name) {
+    document.getElementById('chart-title').innerText = name;
+    
     const searchInput = document.getElementById('search-input');
     if (searchInput) searchInput.value = name;
     
@@ -682,27 +701,8 @@ function renderIlbongChart(data) {
         myChart.remove();
         myChart = null;
     }
-    
-    myChart = LightweightCharts.createChart(container, {
-        width: container.clientWidth,
-        height: 400,
-        timeScale: {
-            rightOffset: 10,
-            barSpacing: 6, // 초기 확대 비율 설정 (이 값을 조절해 보세요)
-        },
-    });
 
-
-
-const candleSeries = myChart.addCandlestickSeries();
-
-
-
-
-
-
-
-
+    // 1. 데이터 가공 (제일 먼저 수행)
     const formatDate = (dateStr) => {
         const s = dateStr.toString();
         return `${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}`;
@@ -713,26 +713,83 @@ const candleSeries = myChart.addCandlestickSeries();
         open: item.open || 0,
         high: item.high || 0,
         low: item.low || 0,
-        close: item.close || 0
+        close: item.close || 0,
+        ma5: item.ma5,
+        ma20: item.ma20,
+        ma60: item.ma60,
+        ma120: item.ma120
     }));
+
+    // 2. 차트 초기화
+    myChart = LightweightCharts.createChart(container, {
+        width: container.clientWidth,
+        height: 400,
+        rightPriceScale: { scaleMargins: { top: 0.05, bottom: 0.05 } },
+        timeScale: { rightOffset: 10, barSpacing: 6 },
+        localization: {
+            priceFormatter: (price) => Math.floor(price).toLocaleString('ko-KR'),
+        },
+    });
+
+
+
+
+
+
+
+    // 4. 이평선 시리즈 추가 (chartData가 이미 정의되어 있으므로 정상 작동)
+    const maSettings = [
+        { key: 'ma5', color: '#FF9800', width: 0.8 }, // 굵기 1로 조정
+        { key: 'ma20', color: '#9C27B0', width: 0.8 },
+        { key: 'ma60', color: '#2196F3', width: 0.8 },
+        { key: 'ma120', color: '#F44336', width: 0.8 }
+    ];
+
+    const maSeriesList = maSettings.map(ma => {
+        return myChart.addLineSeries({
+            color: ma.color,
+            lineWidth: ma.width,
+            priceFormat: { type: 'price', precision: 0, minMove: 1 },
+            title: '',               // 1. 차트 상단 범례(숫자) 제거
+            priceLineVisible: false, // 2. 오른쪽 현재가 점선 제거
+            lastValueVisible: false  // 3. 마지막 값(현재가) 라벨 제거
+        });
+    });
+
+    maSettings.forEach((ma, index) => {
+        const maData = chartData.map(d => ({
+            time: d.time,
+            value: d[ma.key]
+        })).filter(d => d.value !== null && d.value !== undefined);
+        
+        maSeriesList[index].setData(maData);
+    });
+
     
+
+    // 3. 캔들 시리즈 추가
+    const candleSeries = myChart.addCandlestickSeries({
+        upColor: '#d60000', borderUpColor: '#d60000', wickUpColor: '#d60000',
+        downColor: '#0057d8', borderDownColor: '#0057d8', wickDownColor: '#0057d8',
+        priceFormat: { type: 'price', precision: 0, minMove: 1 },
+    });
     candleSeries.setData(chartData);
 
-    // [핵심 수정 부분]
-    // 데이터 총 개수를 확인하고 마지막 100개만 보이도록 설정
+
+
+
+
+
+
+
+    // 5. 시점 설정
     const totalCount = chartData.length;
     if (totalCount > 100) {
-        // 마지막 100개 위치로 뷰포트를 고정
-        myChart.timeScale().setVisibleLogicalRange({
-            from: totalCount - 100, 
-            to: totalCount - 1
-        });
+        myChart.timeScale().setVisibleLogicalRange({ from: totalCount - 100, to: totalCount - 1 });
     } else {
         myChart.timeScale().fitContent();
     }
 }
-
-
 
 
 
