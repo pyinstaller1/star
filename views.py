@@ -14,6 +14,8 @@ from django.http import HttpResponse
 
 import json
 import requests
+import queue
+import threading
 
 from dotenv import load_dotenv
 import os
@@ -185,6 +187,8 @@ def index7_view(request):
                 'hname': s[1],
                 'price': formatted_price, # 쉼표 포함
                 'rate': s[3],
+                'rsi': s[5],
+                'cap': s[4],                
             })
             
         groups_data.append({
@@ -204,12 +208,11 @@ def index7_view(request):
             p_val = s[2]
             
         kospi_list.append({
-            'shcode': s[0], 
-            'hname': s[1],
-            'price': p_val,
-            'rate': s[3]
-        })
+            'code': s[0], 
+            'name': s[1],
+            'cap': s[4],
 
+        })
 
 
 
@@ -219,13 +222,60 @@ def index7_view(request):
     if list_ilbong:
         list_ilbong = list_ilbong[::-1]
 
-    # print(list_ilbong)
+
+
+
+
+
+
+    last_update_str = "미정"
+    try:
+        sam_data = get_ilbong_data('005930')
+        if sam_data:
+            last_day = sam_data[-1]
+            raw_date = str(last_day.get('date', '')).strip()
+            
+            dt_obj = None
+            if len(raw_date) == 8 and raw_date.isdigit():
+                last_update_str = f"{int(raw_date[4:6])}/{int(raw_date[6:8])}"
+                try: dt_obj = datetime.strptime(raw_date, '%Y%m%d')
+                except: pass
+            elif "-" in raw_date and len(raw_date.split("-")) == 3:
+                parts = raw_date.split("-")
+                last_update_str = f"{int(parts[1])}/{int(parts[2])}"
+                try: dt_obj = datetime.strptime(raw_date, '%Y-%m-%d')
+                except: pass
+            else:
+                last_update_str = raw_date
+
+            if dt_obj:
+                weeks = ['월', '화', '수', '목', '금', '토', '일']
+                weekday_str = weeks[dt_obj.weekday()]
+                last_update_str = f"{last_update_str} ({weekday_str})"
+    except Exception as e:
+        last_update_str = "확인불가"
+
+
+
+
+    
 
     return render(request, 'index7.html', {
         'list_ilbong': json.dumps(list_ilbong),
         'groups': groups_data,
         'kospi': kospi_list,
+        'last_update': last_update_str,
+
+
+
+        
     })
+
+
+
+
+
+
 
 
 
@@ -463,7 +513,6 @@ def add_gwansim_group_view(request):
 
 @csrf_exempt
 def add_gwansim_group_st_view(request):
-    print(8)
     if request.method == 'POST':
         try:
             import json
@@ -471,17 +520,10 @@ def add_gwansim_group_st_view(request):
             group_name = data.get('group_name')
             codes = data.get('codes')
 
-            print(data)
-            print(group_name)
-            print(codes)
-
             if not group_name:
-                print(7777777)
                 return JsonResponse({'success': False, 'message': '그룹명을 입력하세요.'})
-            print(7)
-            insert_tb_gwansim_group_st(group_name, codes)
 
-            print(77777)
+            insert_tb_gwansim_group_st(group_name, codes)
             
             return JsonResponse({'success': True})
         except Exception as e:
@@ -501,44 +543,6 @@ def add_gwansim_group_st_view(request):
 
 
 
-
-
-
-
-def select_tb_gwansim_group8():
-    """데이터베이스에서 관심그룹 목록을 순서대로 조회"""
-    try:
-        with duckdb.connect(db_path) as conn:
-            return conn.execute("""
-                SELECT group_id, group_name 
-                FROM tb_gwansim_group 
-                ORDER BY order_no ASC
-            """).fetchall()
-    except Exception as e:
-        print(f"그룹 조회 중 오류 발생: {e}")
-        return []
-
-def select_tb_gwansim_stock8(group_id):
-    """특정 그룹에 속한 종목들을 tb_kospi와 조인하여 기존 코스피 행 구조와 100% 일치하게 반환"""
-    con = duckdb.connect(db_path)
-    
-    # ⭐️ 기존 select_tb_kospi()가 넘겨주던 데이터 구조(행 인덱스)를 그대로 맞추기 위해
-    # tb_kospi의 모든 컬럼(A.*)을 order_no 순서대로 정렬해서 긁어옵니다.
-    sql = """
-        SELECT A.*
-        FROM tb_gwansim_stock B
-        LEFT JOIN tb_kospi A ON B.shcode = A."코드"
-        WHERE B.group_id = ?
-        ORDER BY B.order_no ASC
-    """
-    try:
-        res = con.execute(sql, [int(group_id)]).fetchall()
-    except Exception as e:
-        print(f"관심종목 조회 중 오류 발생: {e}")
-        res = []
-    finally:
-        con.close()
-    return res
 
 
 def delete_gwansim_stock_view(request):
@@ -1051,6 +1055,9 @@ def partial_hoga_view(request, shcode):
         all_rems.append(int(hoga_data.get(f'bid_rem{i}', 0)))
     
     max_rem = max(all_rems) if all_rems else 1
+    # print(hoga_data)
+
+    # print(max_rem)
     
     return render(request, '_partial_hoga.html', {
         'hoga': hoga_data,
@@ -1059,35 +1066,102 @@ def partial_hoga_view(request, shcode):
 
 
 
+
+
+
+
+
+
 def st_hoga_view(request):
+
+    mode = request.GET.get('mode', 'buy')
+
+    #print(mode)
+
+    # 기존 기능 유지
     hoga = select_hoga('005930')
-    print(hoga)
+    # print(hoga)
 
+    list_hoga = select_st_hoga(mode)
 
-    # mode = request.GET.get('mode', 'golden')
-    
-    list_hoga = select_hoga_st()
-    print(list_hoga)
+    for item in list_hoga:
 
+        # 시간 문자열 변환
+        if isinstance(item.get('updated_at'), datetime):
+            item['updated_at'] = item['updated_at'].strftime('%H:%M:%S')
 
+        # 전체 호가 잔량 수집
+        rems = [
 
-    # 각 종목의 순수 MACD 보조지표 선 데이터만 패킹합니다.
-    for stock in cross_stocks:
-        shcode = stock['code']  # 🎯 진짜 주식 코드(예: '005930')가 정확히 딕셔너리의 key가 됩니다.
-        json_stocks_data[shcode] = get_ilbong_data(shcode) 
+            item.get('offer_rem1', 0),
+            item.get('offer_rem2', 0),
+            item.get('offer_rem3', 0),
+            item.get('offer_rem4', 0),
+            item.get('offer_rem5', 0),
+            item.get('offer_rem6', 0),
+            item.get('offer_rem7', 0),
+            item.get('offer_rem8', 0),
+            item.get('offer_rem9', 0),
+            item.get('offer_rem10', 0),
 
+            item.get('bid_rem1', 0),
+            item.get('bid_rem2', 0),
+            item.get('bid_rem3', 0),
+            item.get('bid_rem4', 0),
+            item.get('bid_rem5', 0),
+            item.get('bid_rem6', 0),
+            item.get('bid_rem7', 0),
+            item.get('bid_rem8', 0),
+            item.get('bid_rem9', 0),
+            item.get('bid_rem10', 0),
+        ]
 
+        # None 제거 + 숫자 변환
+        rems = [
+            int(r) for r in rems
+            if r not in [None, '', '-']
+        ]
+
+        # 최대 잔량 저장
+        item['max_rem'] = max(rems) if rems else 1
+
+    # print(list_hoga)
 
     return render(request, 'strategy/st_hoga.html', {
-        'mode': mode,
-        'cross_stocks': cross_stocks,
-        'json_stocks_data': json.dumps(json_stocks_data)
+        'list_hoga': list_hoga,
+        'mode': request.GET.get('mode', 'buy'),
     })
 
 
+def hoga_stream_view(request):
+    log_queue = queue.Queue()
+
+    # 로그를 큐에 넣는 함수
+    def logger(msg):
+        log_queue.put(msg)
+
+    # 수집 로직을 별도 스레드에서 실행
+    threading.Thread(target=save_hoga, args=(logger,)).start()
+
+    # 클라이언트로 데이터 스트리밍
+    def event_stream():
+        while True:
+            msg = log_queue.get()
+            yield f"data: {msg}\n\n"
+            # 완료 메시지가 나오면 루프 종료
+            if "모든 수집 및 저장 완료" in msg:
+                break
+
+    return StreamingHttpResponse(event_stream(), content_type='text/event-stream; charset=utf-8')
 
 
+from api.hoga import stop_event
 
+@csrf_exempt
+def stop_hoga_view(request):
+    if request.method == 'POST':
+        stop_event.set() # '멈춰!' 신호 전송
+        return JsonResponse({"message": "중지 신호 전달됨"})
 
 
 
@@ -1220,7 +1294,7 @@ def get_naver_fin_view(request):
     # DataFrame을 JSON 리스트 형태로 변환
     data = df.to_dict(orient='records')
 
-    print(data)
+    # print(data)
     return JsonResponse({'data': data}, safe=False)
 
 
@@ -1236,7 +1310,12 @@ def fin_page_view(request):
 
 
 
-
+def get_ilbong_view(request):
+    code = request.GET.get('code')
+    print(code)
+    list_ilbong = select_tb_ilbong(code)
+    print(list_ilbong)
+    return JsonResponse({'list_ilbong': list_ilbong}, safe=False)
 
 
 

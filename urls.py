@@ -2,7 +2,12 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.index, name='index'),
+    # path('', views.index, name='index'),
+    # path('', views.st_hoga_view, name='index'),
+
+
+    path('', views.index7_view, name='index7'),
+    
     path('index7', views.index7_view, name='index7'),
 
     
@@ -39,6 +44,9 @@ urlpatterns = [
     path('strategy/', views.strategy_view, name='strategy'),
     path('st_macd/', views.st_macd_view, name='st_macd'),
     path('st_hoga/', views.st_hoga_view, name='st_hoga'),
+    path('hoga_stream/', views.hoga_stream_view, name='hoga_stream'),
+    path('stop_hoga/', views.stop_hoga_view, name='stop_hoga'),
+    
 
 
     path('gwansim/', views.gwansim_view, name='gwansim'),
@@ -49,7 +57,7 @@ urlpatterns = [
     path('add_naver_fin/', views.add_naver_fin_view, name='add_naver_fin'),
     path('get_naver_fin/', views.get_naver_fin_view, name='get_naver_fin'),
 
-
+    path('get_ilbong/', views.get_ilbong_view, name='get_ilbong'),
 
     
 ]

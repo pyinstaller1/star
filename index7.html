@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -203,7 +203,7 @@
                 </thead>
                 <tbody id="stock-table-body">
                     {% for stock in group.stocks %}
-                    <tr onclick="updateDashboard('{{ stock.hname }}')">
+                    <tr onclick="selectAndCentral('{{ stock.shcode }}', '{{ stock.hname }}')">
                         <td class="col-no">{{ forloop.counter }}</td>
                         <td class="col-name" style="font-size:15px;">{{ stock.hname }}</td>
                         <td class="col-price" style="font-size:14px;">{{ stock.price }}</td>
@@ -306,17 +306,12 @@
 
 
 
+
+
+
     <div class="center-panel">
-        <div style="height: 300px; margin-bottom: 20px;">
-            <canvas id="ilbongChart"></canvas>
-        </div>
-        <div id="ilbongTableContainer"></div>
+        <div id="chart-container" style="width: 100%; height: 400px;"></div>
     </div>
-
-
-
-
-
 
 
 
@@ -339,7 +334,6 @@
 
 
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
 
@@ -353,59 +347,6 @@
 
 
 
-
-
-
-
-<script>
-// 서버에서 받아온 ilbongData는 이미 JSON.parse된 상태라고 가정
-const ilbongData = JSON.parse('{{ list_ilbong|safe }}');
-
-// 라이브러리가 로드되었는지 체크하는 함수
-function initIlbongChart() {
-    // 라이브러리 존재 확인
-    if (typeof LightweightCharts === 'undefined') {
-        setTimeout(initIlbongChart, 100);
-        return;
-    }
-
-    const ilbongData = JSON.parse('{{ list_ilbong|safe }}');
-    const centerPanel = document.querySelector('.center-panel');
-    
-    // 기존 컨테이너 비우기
-    centerPanel.innerHTML = '<div id="chart-container" style="width: 100%; height: 500px;"></div>';
-    const chartContainer = document.getElementById('chart-container');
-
-    // 차트 생성
-    const chart = LightweightCharts.createChart(chartContainer, {
-        width: chartContainer.clientWidth,
-        height: 500,
-        layout: { background: { type: 'solid', color: '#ffffff' }, textColor: '#333' },
-        grid: { vertLines: { color: '#f0f0f0' }, horzLines: { color: '#f0f0f0' } },
-    });
-
-    // 캔들스틱 시리즈 추가 (가장 에러가 많이 나는 부분)
-    // 최신 v4.x 버전에서는 이 방식을 사용합니다
-    const candleSeries = chart.addCandlestickSeries({
-        upColor: '#ef4444', downColor: '#3b82f6', borderVisible: false, wickUpColor: '#ef4444', wickDownColor: '#3b82f6'
-    });
-    
-    // 데이터 포맷팅
-    const formattedData = ilbongData.map(d => ({
-        time: d.date.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'),
-        open: parseFloat(d.open),
-        high: parseFloat(d.high),
-        low: parseFloat(d.low),
-        close: parseFloat(d.close)
-    })).sort((a, b) => a.time.localeCompare(b.time)); // 시간순 정렬 보장
-
-    candleSeries.setData(formattedData);
-    chart.timeScale().fitContent();
-}
-
-initIlbongChart();
-window.addEventListener('DOMContentLoaded', initIlbongChart);
-</script>
 
 
 
@@ -434,18 +375,40 @@ window.addEventListener('DOMContentLoaded', initIlbongChart);
 
 
     // 검색 버튼(검색창 옆 파란 버튼) 클릭 시 호출되는 함수
-    function searchFromLeft() {
-        const searchInput = document.getElementById('search-input'); // id 수정: left-search -> search-input
-        if (!searchInput) return;
-        
-        const name = searchInput.value;
-        if (name) {
-            updateDashboard(name); // 제목 업데이트
-            if (typeof showCentral === 'function') showCentral(name); // 기존 기능 유지
-        }
-    }               
-                    
-                   
+function searchFromLeft() {
+    const searchInput = document.getElementById('search-input');
+    const name = searchInput.value.trim();
+    
+    // 전역 배열 kospiData에서 name으로 code를 찾아냄
+    const stock = kospiData.find(s => s.name === name);
+    
+    if (stock) {
+        selectAndCentral(stock.code, stock.name);
+    } else {
+        alert("종목을 찾을 수 없습니다.");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
     function sortTable(th, colIdx) {
         const table = th.closest('table');
         const tbody = table.querySelector('tbody');
@@ -561,9 +524,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 `<div style="cursor:pointer; padding:8px 10px; border-bottom:1px solid #eee; display:flex; justify-content:space-between; align-items:center;" 
                       onmouseover="this.style.backgroundColor='#f0f7ff'" 
                       onmouseout="this.style.backgroundColor='transparent'"
-                      onclick="selectAndCentral('${stock.name}')">
-                    <span style="font-weight:500;">${stock.name}</span>
-                    <span style="color:#888; font-size:11px;">${stock.cap}억</span>
+                      onclick="selectAndCentral('${stock.code}', '${stock.name}')"> <span style="font-weight:500;">${stock.name}</span>
+                     <span style="color:#888; font-size:11px;">${stock.cap}억</span>
                 </div>`
             ).join('');
             kospiLayer.style.display = 'block';
@@ -660,49 +622,89 @@ function updateSelection(items) {
     });
 }
 
-function selectAndCentral(name) {
+
+
+</script>
+
+
+
+
+
+
+
+
+<script>
+// 관제탑 함수 수정 (데이터 추출 부분 추가)
+function selectAndCentral(code, name) {
     const searchInput = document.getElementById('search-input');
-    const clearBtn = document.getElementById('clear-btn');
-    searchInput.value = name;
-    if (clearBtn) clearBtn.style.display = 'block';
+    if (searchInput) searchInput.value = name;
     
-    // 제목 업데이트 및 중앙 로직
-    updateDashboard(name); // <-- 아까 만드신 제목 변경 함수
-    if (typeof showCentral === 'function') showCentral(name);
+    // 대시보드 제목 업데이트
+    const analysisTitle = document.getElementById('analysis-title');
+    if (analysisTitle) analysisTitle.innerText = name;
+    
+    // 서버 요청 및 차트 렌더링 호출
+    fetch(`/get_ilbong/?code=${code}`)
+        .then(response => response.json())
+        .then(data => {
+            // data는 { "list_ilbong": [...] } 형태입니다.
+            // 여기서 .list_ilbong을 붙여서 배열만 전달해야 합니다!
+            renderIlbongChart(data.list_ilbong); 
+        })
+        .catch(err => console.error("데이터 로드 오류:", err));
     
     document.getElementById('kospi-layer').style.display = 'none';
-    selectedIndex = -1;
 }
-</script>
+
+// 대시보드 UI 전용 함수
+function updateDashboardUI(name) {
+    const analysisTitle = document.getElementById('analysis-title');
+    if (analysisTitle) analysisTitle.innerText = name; // 이름 사용
+}
 
 
 
+// 차트 렌더링 함수
+// 전역 변수로 차트 객체 관리
+let myChart = null;
 
-
-
-
-
-<script>
-    // 종목명 업데이트 함수 (검색/리스트 클릭 시 공통 호출)
-    function updateDashboard(name) {
-        const analysisTitle = document.getElementById('analysis-title');
-        if (analysisTitle) {
-            analysisTitle.innerText = name;
-        }
-        
-        // 향후 여기서 해당 종목의 재무 데이터나 차트를 
-        // 서버에서 다시 받아와 점수를 갱신하는 로직을 연결하면 됩니다.
-        console.log("분석 대상 종목:", name);
+function renderIlbongChart(data) {
+    const container = document.getElementById('chart-container');
+    
+    // 1. 기존 차트 객체가 있다면 파괴 (메모리 및 이벤트 정리)
+    if (myChart) {
+        myChart.remove();
+        myChart = null;
     }
-</script>
-
-
-<script>
-    // 페이지 로드 완료 시 자동 실행
-    window.addEventListener('load', () => {
-        selectAndCentral("삼성전자");
-        document.getElementById('search-input').value = "";
+    
+    // 2. 이제 innerHTML 초기화 없이 바로 새 차트 생성
+    myChart = LightweightCharts.createChart(container, {
+        width: container.clientWidth, // 부모 너비에 맞춤
+        height: 400,
     });
+
+    const candleSeries = myChart.addCandlestickSeries();
+    
+    // 날짜 포맷팅 함수
+    const formatDate = (dateStr) => {
+        const s = dateStr.toString();
+        return `${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}`;
+    };
+    
+    // 데이터 매핑
+    const chartData = data.map(item => ({
+        time: formatDate(item.date),
+        open: item.open || 0,
+        high: item.high || 0,
+        low: item.low || 0,
+        close: item.close || 0
+    }));
+    
+    candleSeries.setData(chartData);
+    
+    // 차트 크기 자동 조정
+    myChart.timeScale().fitContent();
+}
 </script>
 
 

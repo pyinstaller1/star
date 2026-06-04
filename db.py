@@ -1,5 +1,6 @@
 ﻿import os
 import time
+import math
 import requests
 import duckdb
 import pandas as pd
@@ -41,6 +42,48 @@ def get_ilbong_data(shcode: str):
 base_dir = os.path.dirname(os.path.abspath(__file__))
 db_path = os.path.abspath(os.path.join(base_dir, '..', '..', 'stock.duckdb'))
 # db_path = os.path.abspath(os.path.join(base_dir, '..', '..', 'stock.duckdb'))
+
+
+
+def select_tb_ilbong(code):
+    with duckdb.connect(db_path) as con:
+        # 1. 쿼리 실행 및 딕셔너리 리스트 변환
+        raw_list = con.execute(
+            "SELECT * FROM tb_ilbong WHERE code = ? ORDER BY date ASC", 
+            [code]
+        ).df().to_dict('records')
+        
+        # 2. 함수 내부에서 곧바로 데이터 정제 (NaN -> None)
+        cleaned_list = []
+        for row in raw_list:
+            # {key: (None if math.isnan(val) else val) for key, val in row.items()} 
+            # 위 한 줄이 아래 반복문을 대신합니다 (딕셔너리 컴프리헨션)
+            new_row = {k: (None if isinstance(v, float) and math.isnan(v) else v) for k, v in row.items()}
+            cleaned_list.append(new_row)
+            
+        return cleaned_list
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -130,6 +173,69 @@ def get_ilbong_db(shcode: str):
 
 
 
+
+
+
+
+def upsert_hoga_bulk(bulk_data):
+    if not bulk_data:
+        return
+
+    con = duckdb.connect(db_path)
+    
+    try:
+        # 1. 컬럼 순서를 DB 테이블 스키마와 완벽히 일치시킴 (code, offer1, offer_rem1, bid1, bid_rem1, ...)
+        cols = ["code"]
+        for i in range(1, 11):
+            cols.extend([f"offer{i}", f"offer_rem{i}", f"bid{i}", f"bid_rem{i}"])
+
+        # 2. 파이썬 데이터 매핑도 위 순서와 1:1로 맞춤
+        # 데이터에서 shcode는 code로 가져오고, 나머지는 순서대로 추출
+        values = []
+        for d in bulk_data:
+            row = [d.get('shcode')]
+            for i in range(1, 11):
+                row.append(d.get(f'offer{i}', 0))
+                row.append(d.get(f'offer_rem{i}', 0))
+                row.append(d.get(f'bid{i}', 0))
+                row.append(d.get(f'bid_rem{i}', 0))
+            values.append(row)
+
+        cols_def = ", ".join([f"offer{i} INTEGER, offer_rem{i} INTEGER, bid{i} INTEGER, bid_rem{i} INTEGER" for i in range(1, 11)])
+        con.execute(f"CREATE TABLE IF NOT EXISTS tb_hoga (code VARCHAR PRIMARY KEY, {cols_def}, updated_at TIMESTAMP)")            
+        
+        # 3. 임시 테이블 생성
+        con.execute("CREATE OR REPLACE TEMP TABLE temp_hoga AS SELECT * FROM tb_hoga WHERE 1=0")
+        
+        # 4. 쿼리문 자동 생성 (순서가 꼬일 일 없음)
+        col_str = ", ".join(cols)
+        placeholders = ", ".join(["?"] * len(cols))
+        
+        # 5. 일괄 삽입
+        con.executemany(f"INSERT INTO temp_hoga ({col_str}) VALUES ({placeholders})", values)
+        
+        # 6. 원본 테이블로 Upsert (updated_at은 여기서 처리)
+        # 중요: 원본 테이블 컬럼 순서가 (code, ..., bid_rem10, updated_at) 형태여야 함
+        con.execute(f"""
+            INSERT OR REPLACE INTO tb_hoga
+            SELECT {col_str}, CURRENT_TIMESTAMP FROM temp_hoga
+        """)
+        
+        print(f"✅ {len(bulk_data)}건의 데이터를 성공적으로 일괄 업데이트했습니다.")
+        
+    except Exception as e:
+        print(f"❌ DB 일괄 저장 중 오류 발생: {e}")
+        raise e
+    finally:
+        con.close()
+        
+
+
+
+
+
+
+
 def upsert_hoga(code, data):
     """
     10단계 호가 데이터를 저장/갱신합니다.
@@ -139,7 +245,7 @@ def upsert_hoga(code, data):
     
     # 2. 쿼리 작성
     sql = """
-        INSERT OR REPLACE INTO tb_hoga_current 
+        INSERT OR REPLACE INTO tb_hoga
         (code, 
          offer1, offer2, offer3, offer4, offer5, offer6, offer7, offer8, offer9, offer10,
          offer_rem1, offer_rem2, offer_rem3, offer_rem4, offer_rem5, offer_rem6, offer_rem7, offer_rem8, offer_rem9, offer_rem10,
@@ -164,7 +270,7 @@ def upsert_hoga(code, data):
     except duckdb.Error:
         # 테이블이 없는 경우 생성
         cols = ", ".join([f"offer{i} INTEGER, offer_rem{i} INTEGER, bid{i} INTEGER, bid_rem{i} INTEGER" for i in range(1, 11)])
-        con.execute(f"CREATE TABLE IF NOT EXISTS tb_hoga_current (code VARCHAR PRIMARY KEY, {cols}, updated_at TIMESTAMP)")
+        con.execute(f"CREATE TABLE IF NOT EXISTS tb_hoga (code VARCHAR PRIMARY KEY, {cols}, updated_at TIMESTAMP)")
         con.execute(sql, params)
     finally:
         con.close()
@@ -174,7 +280,7 @@ def select_hoga(code):
     특정 종목의 호가 데이터를 조회합니다.
     """
     cols = ", ".join([f"offer{i}, offer_rem{i}, bid{i}, bid_rem{i}" for i in range(1, 11)])
-    sql = f"SELECT code, {cols}, updated_at FROM tb_hoga_current WHERE code = ?"
+    sql = f"SELECT code, {cols}, updated_at FROM tb_hoga WHERE code = ?"
     
     con = duckdb.connect(db_path)
     try:
@@ -194,36 +300,91 @@ def select_hoga(code):
         return None
     finally:
         con.close()
+        
 
 
 
 
 
-def select_hoga_st():
+def select_st_hoga(mode):
     con = duckdb.connect(db_path)
 
+    list_kospi = select_tb_kospi()
+    codes = [item[0] for item in list_kospi]
+    codes = "','".join(codes)
 
-
-
-
-
-
-
-
-    codes = ['005930', '003380']
-
+    
     cols = ", ".join([f"offer{i}, offer_rem{i}, bid{i}, bid_rem{i}" for i in range(1, 11)])
-    sql = f"SELECT code, {cols}, updated_at FROM tb_hoga_current WHERE code = ?"
+    sql = f"SELECT code, 종목명 as name, {cols}, updated_at FROM tb_hoga a, tb_kospi b WHERE code in ('{codes}') and a.code = b.코드"
+
+    tick = {'매도1': 3,  '매도2': 7,  '매도3': 11, '매도4': 15, '매도5': 19, '매도6': 23, '매도7': 27, '매도8': 31,
+            '매수1': 5,  '매수2': 9,  '매수3': 13, '매수4': 17, '매수5': 21, '매수6': 25, '매수7': 29, '매수8': 33 }
 
 
+    
     list_hoga = []
-    for code in codes:
-        print(7)
-        res = con.execute(sql, [code]).fetchone()
 
-        # res는 튜플로 나오므로, DuckDB의 description의 컬럼명을 가져와서 딕셔너리로 만듭니다.
-        description = [desc[0] for desc in con.description]
-        list_hoga.append(dict(zip(description, res)))
+
+
+    rows = con.execute(sql).fetchall()
+    description = [desc[0] for desc in con.description]
+
+    
+    for row in rows:
+        # buy_cond = (row[tick['매수1']] > 500 and (row[tick['매수1']]/10 > row[tick['매도1']]) and (row[tick['매수1']]/10 > row[tick['매도2']]) and (row[tick['매수1']]/10 > row[tick['매도3']]) and (row[tick['매수1']]/10 > row[tick['매도4']]) and (row[tick['매수1']]/10 > row[tick['매도5']]) )
+
+
+
+        buy_cond = (
+            row[tick['매수1']] > 500 and
+            row[tick['매수1']] / 10 > row[tick['매도1']] and
+            row[tick['매수1']] / 10 > row[tick['매도2']] and
+            row[tick['매수1']] / 10 > row[tick['매도3']] and
+            row[tick['매수1']] / 10 > row[tick['매도4']] and
+            row[tick['매수1']] / 10 > row[tick['매도5']] and
+            
+            row[tick['매수2']] / 5 > row[tick['매도1']] and
+            row[tick['매수2']] / 5 > row[tick['매도2']] and
+            row[tick['매수2']] / 5 > row[tick['매도3']] and
+            row[tick['매수2']] / 5 > row[tick['매도4']] and
+            row[tick['매수2']] / 5 > row[tick['매도5']]
+            
+        )
+
+
+        # sell_cond = row[tick['매도1']] > 500 and (row[tick['매도1']]/10 > row[tick['매수1']]) and (row[tick['매도1']]/10 > row[tick['매수2']]) and (row[tick['매도1']]/10 > row[tick['매수3']]) and (row[tick['매도1']]/10 > row[tick['매수4']]) and (row[tick['매도1']]/10 > row[tick['매수5']])
+        
+
+        sell_cond = (
+            row[tick['매도1']] > 500 and
+            row[tick['매도1']] / 10 > row[tick['매수1']] and
+            row[tick['매도1']] / 10 > row[tick['매수2']] and
+            row[tick['매도1']] / 10 > row[tick['매수3']] and
+            row[tick['매도1']] / 10 > row[tick['매수4']] and
+            row[tick['매도1']] / 10 > row[tick['매수5']] and
+
+            row[tick['매도2']] / 5 > row[tick['매수1']] and
+            row[tick['매도2']] / 5 > row[tick['매수2']] and
+            row[tick['매도2']] / 5 > row[tick['매수3']] and
+            row[tick['매도2']] / 5 > row[tick['매수4']] and
+            row[tick['매도2']] / 5 > row[tick['매수5']]
+
+            
+        )
+
+
+
+
+
+        if mode=='buy' and buy_cond:
+            list_hoga.append(dict(zip(description, row)))
+                                 
+        elif mode=='sell' and sell_cond:
+            list_hoga.append(dict(zip(description, row)))
+
+        elif mode=='etc' and not buy_cond and not sell_cond:
+            list_hoga.append(dict(zip(description, row)))
+
     return list_hoga
 
 
@@ -822,7 +983,6 @@ def delete_tb_gwansim_stock(group_id, shcode):
 
 
 def insert_tb_gwansim_group_st(group_name, codes):
-    print(888)
 
     # 1. DB 연결 및 테이블/시퀀스 준비 (존재하면 건너뜀)
     conn = duckdb.connect(db_path)
@@ -838,7 +998,6 @@ def insert_tb_gwansim_group_st(group_name, codes):
 
     # 2. 값 계산: 쿼리 결과를 바로 꺼내서 정수 변환 (None 처리)
     result = conn.execute("SELECT MAX(group_id), MAX(order_no) FROM tb_gwansim_group").fetchone()
-    print(result)
     max_id = result[0] if result[0] is not None else 0
     max_order = result[1] if result[1] is not None else 0
     
@@ -856,7 +1015,6 @@ def insert_tb_gwansim_group_st(group_name, codes):
     print(f"생성된 group_id: {new_id}")
     
     for code in codes:
-        print(code)
         result = conn.execute("SELECT MAX(order_no) FROM tb_gwansim_stock WHERE group_id = ?", [new_id]).fetchone()
         next_no = (result[0] if result and result[0] is not None else 0) + 1
             
