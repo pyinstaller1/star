@@ -332,6 +332,18 @@
 
             <div id="chart-container" style="width:100%; height:400px;"></div>
 
+
+            <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
+                <label style="cursor: pointer;">
+                    <input type="checkbox" id="toggleMA" checked> 이평선
+                </label>
+            </div>
+
+
+
+
+
+
         </div>
 
     </div>
@@ -693,6 +705,7 @@ function updateDashboardUI(name) {
 // 차트 렌더링 함수
 // 전역 변수로 차트 객체 관리
 let myChart = null;
+let maSeriesList = [];
 
 function renderIlbongChart(data) {
     const container = document.getElementById('chart-container');
@@ -745,7 +758,7 @@ function renderIlbongChart(data) {
         { key: 'ma120', color: '#F44336', width: 0.8 }
     ];
 
-    const maSeriesList = maSettings.map(ma => {
+    maSeriesList = maSettings.map(ma => {
         return myChart.addLineSeries({
             color: ma.color,
             lineWidth: ma.width,
@@ -757,21 +770,33 @@ function renderIlbongChart(data) {
     });
 
     maSettings.forEach((ma, index) => {
+        // 캔들스틱의 전체 최저가/최고가 범위 구하기 (여유율을 둠)
+        const minPrice = Math.min(...chartData.map(d => d.low));
+        const maxPrice = Math.max(...chartData.map(d => d.high));
+        const buffer = (maxPrice - minPrice) * 0.5; // 위아래로 50% 여유
+
         const maData = chartData.map(d => ({
             time: d.time,
             value: d[ma.key]
-        })).filter(d => d.value !== null && d.value !== undefined);
+        })).filter(d => 
+            d.value !== null && 
+            d.value !== undefined &&
+            d.value >= (minPrice - buffer) && // 범위 내에 있는 데이터만 통과
+            d.value <= (maxPrice + buffer)
+        );
         
         maSeriesList[index].setData(maData);
     });
-
-    
+        
 
     // 3. 캔들 시리즈 추가
     const candleSeries = myChart.addCandlestickSeries({
         upColor: '#d60000', borderUpColor: '#d60000', wickUpColor: '#d60000',
         downColor: '#0057d8', borderDownColor: '#0057d8', wickDownColor: '#0057d8',
         priceFormat: { type: 'price', precision: 0, minMove: 1 },
+        priceLineVisible: false,
+        lastValueVisible: false,
+        
     });
     candleSeries.setData(chartData);
 
@@ -790,6 +815,57 @@ function renderIlbongChart(data) {
         myChart.timeScale().fitContent();
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// 체크박스 제어 로직
+document.getElementById('toggleMA').addEventListener('change', (e) => {
+    const isVisible = e.target.checked;
+    
+    // 생성해둔 maSeriesList를 순회하며 visible 상태 변경
+    if (typeof maSeriesList !== 'undefined') {
+        maSeriesList.forEach(series => {
+            series.applyOptions({
+                visible: isVisible
+            });
+        });
+    }
+});
+
 
 
 
