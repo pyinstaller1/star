@@ -678,27 +678,36 @@ let myChart = null;
 function renderIlbongChart(data) {
     const container = document.getElementById('chart-container');
     
-    // 1. 기존 차트 객체가 있다면 파괴 (메모리 및 이벤트 정리)
     if (myChart) {
         myChart.remove();
         myChart = null;
     }
     
-    // 2. 이제 innerHTML 초기화 없이 바로 새 차트 생성
     myChart = LightweightCharts.createChart(container, {
-        width: container.clientWidth, // 부모 너비에 맞춤
+        width: container.clientWidth,
         height: 400,
+        timeScale: {
+            rightOffset: 10,
+            barSpacing: 6, // 초기 확대 비율 설정 (이 값을 조절해 보세요)
+        },
     });
 
-    const candleSeries = myChart.addCandlestickSeries();
-    
-    // 날짜 포맷팅 함수
+
+
+const candleSeries = myChart.addCandlestickSeries();
+
+
+
+
+
+
+
+
     const formatDate = (dateStr) => {
         const s = dateStr.toString();
         return `${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)}`;
     };
     
-    // 데이터 매핑
     const chartData = data.map(item => ({
         time: formatDate(item.date),
         open: item.open || 0,
@@ -708,10 +717,25 @@ function renderIlbongChart(data) {
     }));
     
     candleSeries.setData(chartData);
-    
-    // 차트 크기 자동 조정
-    myChart.timeScale().fitContent();
+
+    // [핵심 수정 부분]
+    // 데이터 총 개수를 확인하고 마지막 100개만 보이도록 설정
+    const totalCount = chartData.length;
+    if (totalCount > 100) {
+        // 마지막 100개 위치로 뷰포트를 고정
+        myChart.timeScale().setVisibleLogicalRange({
+            from: totalCount - 100, 
+            to: totalCount - 1
+        });
+    } else {
+        myChart.timeScale().fitContent();
+    }
 }
+
+
+
+
+
 </script>
 
 
