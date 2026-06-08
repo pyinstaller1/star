@@ -5,7 +5,9 @@
     <title>증권 통합 시스템</title>
     {% load static %}
 
-    <script src="{% static 'lightweight-charts.standalone.production.js' %}"></script>
+
+    <script src="https://unpkg.com/lightweight-charts@5.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- <script src="{% static 'lightweight-charts.standalone.production.js' %}"></script> -->
     <link rel="stylesheet" type="text/css" href="{% static 'pretendard/pretendard-subset.css' %}">
 
 
@@ -312,41 +314,169 @@
 
 
 
+
+
     <div class="center-panel">
 
-        <div id="chart-wrapper" style="position:relative; z-index: 1;">
+        <div id="chart-wrapper" style="position:relative;">
 
+            <!-- 📌 차트 영역 -->
+            <div id="chart-container" style="width:850px; height:400px; position:relative; z-index:1;"></div>
+
+
+
+
+<div id="rsi-container" style="width:828px; height:120px; margin-top:-7px; overflow:hidden; "></div>
+                    
+
+<div id="macd-container" style="width:846px; height:0px; overflow:hidden; margin-top:0px;"></div>
+
+
+
+<div style="position:relative; width:870px;">
+
+    <div id="flow-legend"
+         style="
+            position:absolute;
+            top:2px;
+            left:8px;
+            z-index:10;
+            font-size:12px;
+            background:rgba(255,255,255,0.8);
+            padding:2px 6px;
+            border-radius:3px;
+            pointer-events:none;">
+        <span style="color:rgb(214,0,0);font-weight:bold;">개인</span>
+        <span style="margin-left:12px;color:rgb(100,180,255);font-weight:bold;">외국인</span>
+        <span style="margin-left:12px;color:rgb(255,215,100);font-weight:bold;">기관</span>
+    </div>
+
+    <div id="flow-container" style="width:870px; height:120px; overflow:hidden;"></div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            <!-- 📌 큰 워터마크 -->
             <div id="chart-title"
                  style="
                     position:absolute;
-                    top:10%;
+                    top:20px;
                     left:50%;
                     transform:translate(-50%,-50%);
-                    font-size: 58px;
+                    font-size:38px;
                     font-weight:800;
-                    color: rgba(100, 149, 237, 0.3);
+                    color:rgba(100,149,237,0.5);
                     pointer-events:none;
-                    z-index: 2;
+                    z-index:3;
                     white-space:nowrap;">
             </div>
+                    
 
-            <div id="chart-container" style="width:100%; height:400px;"></div>
 
 
-            <div style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
-                <label style="cursor: pointer;">
-                    <input type="checkbox" id="toggleMA" checked> 이평선
-                </label>
+
+
+
+
+
+
+
+            <!-- 📌 체크박스 -->
+            <div style="margin-top:10px; display:flex; gap:10px; align-items:center;">
+                <label><input type="checkbox" id="toggleMA" checked> 이평선</label>
+                <label><input type="checkbox" id="toggleEMA26"> 26일선</label>
+                <label><input type="checkbox" id="toggleBollinger"> 볼린저밴드</label>
+                <label><input type="checkbox" id="toggleIlmok"> 일목균형표</label>
+                <label><input type="checkbox" id="toggleRSI"> RSI</label>
+                <label><input type="checkbox" id="toggleMACD" checked> MACD</label>
+
+
+
+
+                    
             </div>
 
-
-
-
-
+            <!-- 📌 MA legend -->
+            <div id="ma-legend"
+                 style="
+                    position:absolute;
+                    top:5px;
+                    left:7px;
+                    z-index:4;
+                    background:rgba(255,255,255,0.8);
+                    padding:4px 8px;
+                    border-radius:4px;
+                    font-size:12px;
+                    pointer-events:none;">
+                <span style="color:#FF9800">5일선</span>
+                <span style="color:#9C27B0; margin-left:8px;">20일선</span>
+                <span style="color:#2196F3; margin-left:8px;">60일선</span>
+                <span style="color:#F44336; margin-left:8px;">120일선</span>
+            </div>
 
         </div>
 
     </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -403,7 +533,6 @@
 <script>
 
 let kospiData = [];
-
 
 
 
@@ -706,6 +835,25 @@ function updateDashboardUI(name) {
 // 전역 변수로 차트 객체 관리
 let myChart = null;
 let maSeriesList = [];
+let ema26Series = null;                    
+let bollUpperSeries = null;
+let bollMiddleSeries = null;
+let bollLowerSeries = null;
+let ilmokASeries = null;
+let ilmokBSeries = null;
+let ilmokAData = [];
+let ilmokBData = [];
+let rsiChart = null;
+let rsiSeries = null;
+let macdChart = null;
+let macdSeries = null;
+let macd9Series = null;
+let macdHistSeries = null;
+let flowChart = null;
+let personalSeries = null;
+let instituteSeries = null;
+let foreignerSeries = null;
+
 
 function renderIlbongChart(data) {
     const container = document.getElementById('chart-container');
@@ -714,6 +862,38 @@ function renderIlbongChart(data) {
         myChart.remove();
         myChart = null;
     }
+
+
+
+
+
+if (rsiChart) {
+    rsiChart.remove();
+    rsiChart = null;
+}    
+
+if (macdChart) {
+    macdChart.remove();
+    macdChart = null;
+}
+
+if (flowChart) {
+    flowChart.remove();
+    flowChart = null;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // 1. 데이터 가공 (제일 먼저 수행)
     const formatDate = (dateStr) => {
@@ -727,22 +907,174 @@ function renderIlbongChart(data) {
         high: item.high || 0,
         low: item.low || 0,
         close: item.close || 0,
+        volume: item.volume || 0,
         ma5: item.ma5,
         ma20: item.ma20,
         ma60: item.ma60,
-        ma120: item.ma120
+        ma120: item.ma120,
+        ema26: item.ema26,
+        bol_u: item.bol_u,
+        bol_l: item.bol_l,
+        ilmok_a: item.ilmok_a,
+        ilmok_b: item.ilmok_b,
+        rsi: item.rsi14,
+        macd: item.macd,
+        macd9: item.macd9,
+        개인: item.개인,
+        기관: item.기관,
+        외국인: item.외국인,        
+        
     }));
 
     // 2. 차트 초기화
     myChart = LightweightCharts.createChart(container, {
         width: container.clientWidth,
         height: 400,
-        rightPriceScale: { scaleMargins: { top: 0.05, bottom: 0.05 } },
+        layout: { attributionLogo: false },
+        
+        rightPriceScale: { scaleMargins: { top: 0.01, bottom: 0.12 } },
         timeScale: { rightOffset: 10, barSpacing: 6 },
         localization: {
             priceFormatter: (price) => Math.floor(price).toLocaleString('ko-KR'),
+
+            timeFormatter: (time) => {
+                const d = new Date(time);
+                return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+            }
+
+
+            
         },
+    crosshair: {
+        vertLine: {
+            color: 'rgba(0,0,0,0.15)', // 세로선만 표시
+            width: 1,
+            labelVisible: true
+        },
+        horzLine: {
+            color: 'transparent', // 가로선 숨김
+            labelVisible: true    // 가격 라벨은 유지
+        }
+    }
+        
     });
+
+
+
+
+
+
+const volumeSeries = myChart.addSeries(
+    LightweightCharts.HistogramSeries,
+    {
+        priceFormat: {
+            type: 'volume',
+        },
+
+        priceScaleId: '',
+
+        priceLineVisible: false,
+        lastValueVisible: false,
+    }
+);
+
+volumeSeries.priceScale().applyOptions({
+    scaleMargins: {
+        top: 0.8,
+        bottom: 0,
+    },
+});
+    
+volumeSeries.setData(
+    chartData.map(d => ({
+        time: d.time,
+        value: d.volume,
+        color: d.close >= d.open
+            ? 'rgba(214,0,0,0.35)'
+            : 'rgba(0,87,216,0.35)'
+    }))
+);
+
+
+
+
+
+
+
+
+
+    const ilmokVisible =
+        document.getElementById('toggleIlmok').checked;
+
+
+
+
+    ilmokAData = chartData
+        .filter(d => d.ilmok_a != null)
+        .map(d => ({
+            time: d.time,
+            value: d.ilmok_a
+        }));
+
+    ilmokBData = chartData
+        .filter(d => d.ilmok_b != null)
+        .map(d => ({
+            time: d.time,
+            value: d.ilmok_b
+        }));
+
+
+
+    // A 시리즈 (양운): B 값을 기준으로 위쪽(A-B)만 칠함
+    ilmokASeries = myChart.addSeries(LightweightCharts.AreaSeries, {
+        topColor: 'rgba(255, 82, 82, 0.0)',
+        bottomColor: 'rgba(255, 255, 255, 0.3)',
+        lineColor: '#2196F3',
+        lineWidth: 1,
+        lastValueVisible: false,
+        autoscaleInfoProvider: () => null,
+        crosshairMarkerVisible: false,        
+        visible: ilmokVisible,
+
+    });
+
+    ilmokBSeries = myChart.addSeries(LightweightCharts.AreaSeries, {
+        topColor: 'rgba(82, 82, 255, 0.0)',
+        bottomColor: 'rgba(255, 255, 255, 0.3)', // 음운
+        lineColor: '#F44336',
+        lineWidth: 1,
+        lastValueVisible: false,        
+        autoscaleInfoProvider: () => null,
+        crosshairMarkerVisible: false,
+        visible: ilmokVisible
+    });
+
+
+    ilmokASeries.setData(ilmokAData);
+    ilmokBSeries.setData(ilmokBData);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -758,16 +1090,31 @@ function renderIlbongChart(data) {
         { key: 'ma120', color: '#F44336', width: 0.8 }
     ];
 
+
+
     maSeriesList = maSettings.map(ma => {
-        return myChart.addLineSeries({
-            color: ma.color,
-            lineWidth: ma.width,
-            priceFormat: { type: 'price', precision: 0, minMove: 1 },
-            title: '',               // 1. 차트 상단 범례(숫자) 제거
-            priceLineVisible: false, // 2. 오른쪽 현재가 점선 제거
-            lastValueVisible: false  // 3. 마지막 값(현재가) 라벨 제거
-        });
+        return myChart.addSeries(
+            LightweightCharts.LineSeries,
+            {
+                color: ma.color,
+                lineWidth: ma.width,
+                priceFormat: {
+                    type: 'price',
+                    precision: 0,
+                    minMove: 1
+                },
+                title: '',
+                priceLineVisible: false,
+                lastValueVisible: false,
+                crosshairMarkerVisible: false,
+                autoscaleInfoProvider: () => null
+            }
+        );
     });
+
+
+
+
 
     maSettings.forEach((ma, index) => {
         // 캔들스틱의 전체 최저가/최고가 범위 구하기 (여유율을 둠)
@@ -789,16 +1136,875 @@ function renderIlbongChart(data) {
     });
         
 
+
+
+
+
+
+
+
+
+
+
+
+
     // 3. 캔들 시리즈 추가
-    const candleSeries = myChart.addCandlestickSeries({
-        upColor: '#d60000', borderUpColor: '#d60000', wickUpColor: '#d60000',
-        downColor: '#0057d8', borderDownColor: '#0057d8', wickDownColor: '#0057d8',
-        priceFormat: { type: 'price', precision: 0, minMove: 1 },
+    const candleSeries = myChart.addSeries(
+        LightweightCharts.CandlestickSeries,
+        {
+            upColor: '#d60000',
+            borderUpColor: '#d60000',
+            wickUpColor: '#d60000',
+
+            downColor: '#0057d8',
+            borderDownColor: '#0057d8',
+            wickDownColor: '#0057d8',
+
+            priceFormat: {
+                type: 'price',
+                precision: 0,
+                minMove: 1
+            },
+
+            priceLineVisible: false,
+            lastValueVisible: false
+        }
+    );
+
+    candleSeries.setData(chartData);
+
+
+    ema26Series = myChart.addSeries(
+        LightweightCharts.LineSeries,
+        {
+            color: '#000000',
+            lineWidth: 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+            autoscaleInfoProvider: () => null,
+            visible: document.getElementById('toggleEMA26').checked
+        }
+    );
+
+
+    ema26Series.setData(
+        chartData
+            .filter(d => d.ema26 !== null && d.ema26 !== undefined)
+            .map(d => ({
+                time: d.time,
+                value: d.ema26
+            }))
+    );
+
+    const bollVisible = document.getElementById('toggleBollinger').checked;
+
+    bollUpperSeries = myChart.addSeries(
+        LightweightCharts.LineSeries,
+        {
+            color: '#777777',
+            lineWidth: 3,
+            lineStyle: 1, // 점선
+            priceLineVisible: false,
+            lastValueVisible: false,
+            autoscaleInfoProvider: () => null,
+            crosshairMarkerVisible: false,
+            visible: bollVisible
+        }
+    );
+
+    bollMiddleSeries = myChart.addSeries(
+        LightweightCharts.LineSeries,
+        {
+            color: '#777777',
+            lineWidth: 3,
+            lineStyle: 1,
+            
+            priceLineVisible: false,
+            lastValueVisible: false,
+            autoscaleInfoProvider: () => null,
+            crosshairMarkerVisible: false,
+            visible: bollVisible
+        }
+    );
+
+    bollLowerSeries = myChart.addSeries(
+        LightweightCharts.LineSeries,
+        {
+            color: '#777777',
+            lineWidth: 3,
+            lineStyle: 1,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            autoscaleInfoProvider: () => null,
+            crosshairMarkerVisible: false,
+            visible: bollVisible
+        }
+    );
+
+
+
+
+    bollUpperSeries.setData(
+        chartData
+            .filter(d => d.bol_u != null)
+            .map(d => ({
+                time: d.time,
+                value: d.bol_u
+            }))
+    );
+
+    bollMiddleSeries.setData(
+        chartData
+            .filter(d => d.ma20 != null)
+            .map(d => ({
+                time: d.time,
+                value: d.ma20
+            }))
+    );
+
+    bollLowerSeries.setData(
+        chartData
+            .filter(d => d.bol_l != null)
+            .map(d => ({
+                time: d.time,
+                value: d.bol_l
+            }))
+    );
+
+
+
+
+
+
+
+const rsiVisible = document.getElementById('toggleRSI').checked;
+
+
+const rsiContainer = document.getElementById('rsi-container');
+
+
+        
+
+
+rsiChart = LightweightCharts.createChart(
+    rsiContainer,
+    {
+        width: rsiContainer.clientWidth,
+        height: 120,
+
+
+        localization: {
+            priceFormatter: (price) =>
+                Math.round(price).toString()
+        },
+        
+        layout: { attributionLogo: false },
+        rightPriceScale: { autoScale: false },
+
+        handleScroll: {
+            mouseWheel: false,
+            pressedMouseMove: false,
+            horzTouchDrag: false,
+            vertTouchDrag: false,
+        },
+
+        handleScale: {
+            mouseWheel: false,
+            pinch: false,
+            axisPressedMouseMove: false,
+            axisDoubleClickReset: false,
+        },
+
+        crosshair: {
+            mode: 0,
+            vertLine: {
+                visible: false,
+                labelVisible: false,
+            },
+            horzLine: {
+                visible: false,
+                labelVisible: false,
+            },
+        },
+
+        grid: {
+            vertLines: { visible: false },
+            horzLines: { visible: false }
+        },
+
+        timeScale: {
+            visible: false
+        }
+    }
+);
+
+
+
+
+
+rsiChart.applyOptions({
+    crosshair: {
+        vertLine: {
+            visible: false,
+            labelVisible: false,
+        },
+        horzLine: {
+            visible: false,
+            labelVisible: false,
+        },
+    }
+});
+
+
+
+
+
+
+
+
+const rsiOver70Series = rsiChart.addSeries(
+    LightweightCharts.AreaSeries,
+    {
+        lineColor: 'transparent',
+
+    crosshairMarkerVisible: false,
+    crosshairMarkerRadius: 0,
+
+    priceLineVisible: false,
+    lastValueVisible: false,
+
+        
+        topColor: 'rgba(255,0,0,0.25)',
+        bottomColor: 'rgba(255,0,0,0.25)',
+        baseValue: {
+            type: 'price',
+            price: 70
+        },
+        priceLineVisible: false,
+        lastValueVisible: false
+    }
+);
+
+
+
+
+rsiOver70Series.setData(
+    chartData.map(d => ({
+        time: d.time,
+        value: d.rsi >= 70 ? d.rsi : 0
+    }))
+);
+
+
+
+
+const rsi70Series = rsiChart.addSeries(
+    LightweightCharts.AreaSeries,
+    {
+        lineColor: 'transparent',
+    crosshairMarkerVisible: false,
+    crosshairMarkerRadius: 0,
+
+    priceLineVisible: false,
+    lastValueVisible: false,
+
+        
+        topColor: 'rgba(255,255,255,1.0)',
+        bottomColor: 'rgba(255,255,255,1.0)',
+        priceLineVisible: false,
+        lastValueVisible: false
+    }
+);
+
+
+rsi70Series.setData(
+    chartData.map(d => ({
+        time: d.time,
+        value: d.rsi >= 70 ? 70 : 70
+    }))
+);
+
+
+
+
+
+
+
+
+const rsiUnder30Series = rsiChart.addSeries(
+    LightweightCharts.AreaSeries,
+    {
+        lineColor: 'transparent',
+
+
+
+    crosshairMarkerVisible: false,
+    crosshairMarkerRadius: 0,
+
+    priceLineVisible: false,
+    lastValueVisible: false,
+
+
+        
+        topColor: 'rgba(0,0,255,0.25)',
+        bottomColor: 'rgba(0,0,255,0.25)',
+        baseValue: {
+            type: 'price',
+            price: 30
+        },
+        priceLineVisible: false,
+        lastValueVisible: false
+    }
+);
+
+
+
+
+rsiUnder30Series.setData(
+    chartData.map(d => ({
+        time: d.time,
+        value: 30
+    }))
+);
+
+
+
+
+
+
+const rsi30Series = rsiChart.addSeries(
+    LightweightCharts.AreaSeries,
+    {
+        lineColor: 'transparent',
+
+
+    crosshairMarkerVisible: false,
+    crosshairMarkerRadius: 0,
+
+    priceLineVisible: false,
+    lastValueVisible: false,
+
+        
+        topColor: 'rgba(255,255,255,1.0)',
+        bottomColor: 'rgba(255,255,255,1.0)',
+        priceLineVisible: false,
+        lastValueVisible: false
+    }
+);
+
+
+rsi30Series.setData(
+    chartData.map(d => ({
+        time: d.time,
+        value: d.rsi <= 30 ? d.rsi : 30
+    }))
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
+myChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (rsiChart && range) {
+        rsiChart.timeScale().setVisibleLogicalRange(range);
+    }
+});
+
+rsiChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (myChart) {
+        myChart.timeScale().setVisibleLogicalRange(range);
+    }
+});
+
+rsiSeries = rsiChart.addSeries(
+    LightweightCharts.LineSeries,
+    {
+        color: '#7B1FA2',
+        lineWidth: 1,
         priceLineVisible: false,
         lastValueVisible: false,
+        crosshairMarkerVisible: false,
+        crosshairMarkerRadius: 0,
+
+    }
+);
+
+rsiSeries.setData(
+    chartData
+        .filter(d => d.rsi != null)
+        .map(d => ({
+            time: d.time,
+            value: d.rsi
+        }))
+);
+
+    
+
+
+
+
+
+
+
+
+rsiSeries.applyOptions({
+    autoscaleInfoProvider: () => ({
+        priceRange: {
+            minValue: 0,
+            maxValue: 100,
+        },
+    }),
+});
+
+
+
+
+rsiSeries.applyOptions({
+    crosshairMarkerVisible: false,
+    crosshairMarkerRadius: 0,
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+const rsi70TopSeries = rsiChart.addSeries(
+    LightweightCharts.LineSeries,
+    {
+        color: 'rgba(211,47,47,0.7)',
+        lineWidth: 1,
+        lineStyle: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false
+    }
+);
+
+rsi70TopSeries.setData([
+    {
+        time: chartData[0].time,
+        value: 70
+    },
+    {
+        time: chartData[chartData.length - 1].time,
+        value: 70
+    }
+]);
+
+
+
+
+
+const rsi50TopSeries = rsiChart.addSeries(
+    LightweightCharts.LineSeries,
+    {
+        color: 'rgba(100,100,100,0.7)',
+        lineWidth: 1,
+        lineStyle: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false
+    }
+);
+
+rsi50TopSeries.setData([
+    {
+        time: chartData[0].time,
+        value: 50
+    },
+    {
+        time: chartData[chartData.length - 1].time,
+        value: 50
+    }
+]);
+
+
+
+
+
+
+
+const rsi30TopSeries = rsiChart.addSeries(
+    LightweightCharts.LineSeries,
+    {
+        color: 'rgba(25,118,210,0.7)',
+        lineWidth: 1,
+        lineStyle: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false
+    }
+);
+
+rsi30TopSeries.setData([
+    {
+        time: chartData[0].time,
+        value: 30
+    },
+    {
+        time: chartData[chartData.length - 1].time,
+        value: 30
+    }
+]);
+
+
+
+
+
+
+
+
+
+
+rsiContainer.style.position = 'relative';
+
+function addScaleMask(top, height) {
+    const mask = document.createElement('div');
+
+    mask.style.position = 'absolute';
+    mask.style.right = '0px';
+    mask.style.top = top + 'px';
+    mask.style.width = '50px';
+    mask.style.height = height + 'px';
+    mask.style.background = '#fff';
+    mask.style.pointerEvents = 'none';
+    mask.style.zIndex = '100';
+
+    rsiContainer.appendChild(mask);
+}
+    
+// 80 가리기
+addScaleMask(0, 41);
+
+// 40 가리기
+addScaleMask(58, 16);
+
+// 0 가리기
+addScaleMask(91, 29);
+
+
+
+
+    
+
+rsiSeries.createPriceLine({
+    price: 70,
+    color: 'rgba(255,205,210,0.7)',
+    lineVisible: false,
+    axisLabelVisible: true,
+    title: ''
+});
+
+
+
+
+rsiSeries.createPriceLine({
+    price: 30,
+    color: 'rgba(187,222,251,0.5)',
+    lineVisible: false,
+    axisLabelVisible: true,
+    title: ''
+});
+
+
+
+
+
+
+
+
+const macdContainer =
+    document.getElementById('macd-container');
+
+macdChart = LightweightCharts.createChart(
+    macdContainer,
+    {
+        width: macdContainer.clientWidth,
+        height: 120,
+
+
+        localization: {
+            priceFormatter: (price) =>
+                Math.round(price).toLocaleString('ko-KR')
+        },
+
+        layout: { attributionLogo:false },
+
+
+
+        crosshair: {
+            vertLine: {
+                visible: false,
+                labelVisible: false
+            },
+            horzLine: {
+                visible: false,
+                labelVisible: false
+            }
+        },
+
+        grid: {
+            vertLines:{ visible:false },
+            horzLines:{ visible:false }
+        },
+
+        timeScale:{
+            visible:false
+        }
+
+    }
+);
+
+
+
+
+
+
+myChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (macdChart && range) {
+        macdChart.timeScale().setVisibleLogicalRange(range);
+    }
+});
+
+macdChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (myChart && range) {
+        myChart.timeScale().setVisibleLogicalRange(range);
+    }
+});
+
+
+
+
+
+
+macdHistSeries = macdChart.addSeries(
+    LightweightCharts.HistogramSeries,
+    {
+        priceLineVisible:false,
+        lastValueVisible:false,
         
-    });
-    candleSeries.setData(chartData);
+    }
+);
+
+macdHistSeries.setData(
+    chartData
+        .filter(d => d.macd != null && d.macd9 != null)
+        .map(d => ({
+            time:d.time,
+            value:d.macd - d.macd9,
+            color:
+                (d.macd - d.macd9) >= 0
+                ? 'rgba(214,0,0,0.5)'
+                : 'rgba(0,87,216,0.5)'
+        }))
+);
+
+
+
+
+macdSeries = macdChart.addSeries(
+    LightweightCharts.LineSeries,
+    {
+        color:'#1976D2',
+        lineWidth:1.5,
+        priceLineVisible:false,
+        lastValueVisible:false,
+        crosshairMarkerVisible:false
+    }
+);
+
+macdSeries.setData(
+    chartData
+        .filter(d => d.macd != null)
+        .map(d => ({
+            time:d.time,
+            value:d.macd
+        }))
+);
+    
+
+macd9Series = macdChart.addSeries(
+    LightweightCharts.LineSeries,
+    {
+        color:'#FF9800',
+        lineWidth:1.5,
+        priceLineVisible:false,
+        lastValueVisible:false,
+        crosshairMarkerVisible:false
+    }
+);
+
+macd9Series.setData(
+    chartData
+        .filter(d => d.macd9 != null)
+        .map(d => ({
+            time:d.time,
+            value:d.macd9
+        }))
+);
+
+
+
+document.getElementById('macd-container').style.height = document.getElementById('toggleMACD').checked ? '120px' : '0px';
+
+
+
+
+
+
+
+
+
+
+// flowChart 초기화
+const flowContainer = document.getElementById('flow-container');
+flowChart = LightweightCharts.createChart(flowContainer, {
+    width: 800,
+    height: 100,
+    layout: { attributionLogo: false },
+    timeScale: { visible: false },
+    rightPriceScale: { visible: false },
+    crosshair: { vertLine: { visible: false }, horzLine: { visible: false } },
+    grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+    barSpacing: 4
+});
+
+// 시리즈 생성 (완전 불투명)
+personalSeries = flowChart.addSeries(LightweightCharts.HistogramSeries, {
+    color: 'rgb(255,100,100)',       // 개인 → 밝은 빨강
+    lastValueVisible: false,
+    priceLineVisible: false
+});
+instituteSeries = flowChart.addSeries(LightweightCharts.HistogramSeries, {
+    color: 'rgb(255,215,100)',       // 기관 → 밝은 골드
+    lastValueVisible: false,
+    priceLineVisible: false
+});
+foreignerSeries = flowChart.addSeries(LightweightCharts.HistogramSeries, {
+    color: 'rgb(100,180,255)',       // 외국인 → 밝은 파랑
+    lastValueVisible: false,
+    priceLineVisible: false
+});
+
+// 시간 계산
+const baseTimes = chartData.map(d => Math.floor(new Date(d.time).getTime() / 1000));
+
+// 데이터 세팅
+// 작은 값이 위로 올라가게 하려면, 큰 값 → 아래, 작은 값 → 위 순서대로 setData
+chartData.forEach((d, i) => {
+    const time = baseTimes[i];
+
+    // 누적 안 하고 각 시리즈 값 그대로
+    personalSeries.update({ time: time, value: d.개인 });
+    instituteSeries.update({ time: time, value: d.기관 });
+    foreignerSeries.update({ time: time, value: d.외국인 });
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+candleSeries.setData(chartData);
+
+
+
+
+
 
 
 
@@ -814,10 +2020,18 @@ function renderIlbongChart(data) {
     } else {
         myChart.timeScale().fitContent();
     }
+
+
+
+document.getElementById('rsi-container').style.height = document.getElementById('toggleRSI').checked ? '120px' : '0px';
+
+
+
+
+
+
+    
 }
-
-
-
 
 
 
@@ -864,7 +2078,102 @@ document.getElementById('toggleMA').addEventListener('change', (e) => {
             });
         });
     }
+
+    document.getElementById('ma-legend').style.display =
+        isVisible ? 'block' : 'none';
+    
 });
+
+
+
+
+document.getElementById('toggleEMA26').addEventListener('change', (e) => {
+    if (ema26Series) {
+        ema26Series.applyOptions({
+            visible: e.target.checked
+        });
+    }
+});
+
+
+
+
+
+document.getElementById('toggleBollinger').addEventListener('change', (e) => {
+    const visible = e.target.checked;
+
+    if (bollUpperSeries)
+        bollUpperSeries.applyOptions({ visible });
+
+    if (bollMiddleSeries)
+        bollMiddleSeries.applyOptions({ visible });
+
+    if (bollLowerSeries)
+        bollLowerSeries.applyOptions({ visible });
+});
+
+
+
+document.getElementById('toggleIlmok').addEventListener('change', (e) => {
+
+    const visible = e.target.checked;
+
+    if (ilmokASeries)
+        ilmokASeries.applyOptions({ visible });
+
+    if (ilmokBSeries)
+        ilmokBSeries.applyOptions({ visible });
+
+});
+
+
+document.getElementById('toggleRSI').addEventListener('change', (e) => {
+
+    const rsiContainer =
+        document.getElementById('rsi-container');
+
+    if (e.target.checked) {
+
+        rsiContainer.style.height = '120px';
+
+        if (rsiChart) {
+            rsiChart.resize(
+                rsiContainer.clientWidth,
+                120
+            );
+        }
+
+    } else {
+
+        rsiContainer.style.height = '0px';
+
+    }
+});
+
+
+document.getElementById('toggleMACD').addEventListener('change', (e) => {
+
+    const macdContainer =
+        document.getElementById('macd-container');
+
+    if (e.target.checked) {
+
+        macdContainer.style.height = '120px';
+
+        if (macdChart) {
+            macdChart.resize(
+                macdContainer.clientWidth,
+                120
+            );
+        }
+
+    } else {
+
+        macdContainer.style.height = '0px';
+
+    }
+});
+
 
 
 
