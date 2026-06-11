@@ -321,39 +321,17 @@
         <div id="chart-wrapper" style="position:relative;">
 
             <!-- 📌 차트 영역 -->
-            <div id="chart-container" style="width:850px; height:400px; position:relative; z-index:1;"></div>
+            <div id="chart-container" style="width:700px; height:300px; position:relative; z-index:1;"></div>
+
+            <div id="rsi-container" style="width:700px; height:80px; margin-top:-7px; overflow:hidden; ">
+                <div style="position:absolute;top:7px;left:8px;z-index:10;font-size:16px;font-weight:bold;pointer-events:none;white-space:nowrap;color:#333;">RSI</div>
+            </div>
 
 
 
-
-<div id="rsi-container" style="width:828px; height:120px; margin-top:-7px; overflow:hidden; "></div>
-                    
-
-<div id="macd-container" style="width:846px; height:0px; overflow:hidden; margin-top:0px;"></div>
-
-
-
-<div style="position:relative; width:870px;">
-
-    <div id="flow-legend"
-         style="
-            position:absolute;
-            top:2px;
-            left:8px;
-            z-index:10;
-            font-size:12px;
-            background:rgba(255,255,255,0.8);
-            padding:2px 6px;
-            border-radius:3px;
-            pointer-events:none;">
-        <span style="color:rgb(214,0,0);font-weight:bold;">개인</span>
-        <span style="margin-left:12px;color:rgb(100,180,255);font-weight:bold;">외국인</span>
-        <span style="margin-left:12px;color:rgb(255,215,100);font-weight:bold;">기관</span>
-    </div>
-
-    <div id="flow-container" style="width:870px; height:120px; overflow:hidden;"></div>
-
-</div>
+            <div id="macd-container" style="width:700px; height:80px; margin-top:-7px; position:relative; overflow:hidden;">
+                <div id="macd-label" style="position:absolute; top:8px; left:5px; font-size:16px; font-weight:bold; color:#1976D2; pointer-events:none; white-space:nowrap; z-index:10;">MACD</div>
+            </div>
 
 
 
@@ -365,8 +343,27 @@
 
 
 
+            <div style="position:relative; width:700px;">
 
+                <div id="flow-legend"
+                     style="
+                        position:absolute;
+                        top:8px;
+                        left:8px;
+                        z-index:10;
+                        font-size:12px;
+                        background:rgba(255,255,255,0.8);
+                        padding:2px 3px;
+                        border-radius:3px;
+                        pointer-events:none;">
+                    <span style="color:rgb(214,0,0);font-weight:bold;">개인</span>
+                    <span style="margin-left:6px;color:rgb(40,140,240);font-weight:bold;">외국인</span>
+                    <span style="margin-left:6px;color:rgb(235,185,40);font-weight:bold;">기관</span>
+                </div>
 
+                <div id="flow-container" style="width:700px; height:120px; overflow:hidden;"></div>
+
+            </div>
 
 
 
@@ -375,7 +372,7 @@
                  style="
                     position:absolute;
                     top:20px;
-                    left:50%;
+                    left:35%;
                     transform:translate(-50%,-50%);
                     font-size:38px;
                     font-weight:800;
@@ -385,7 +382,6 @@
                     white-space:nowrap;">
             </div>
                     
-
 
 
 
@@ -928,11 +924,19 @@ if (flowChart) {
 
     // 2. 차트 초기화
     myChart = LightweightCharts.createChart(container, {
-        width: container.clientWidth,
-        height: 400,
+        width: 700,
+        height: 300,
         layout: { attributionLogo: false },
         
-        rightPriceScale: { scaleMargins: { top: 0.01, bottom: 0.12 } },
+        rightPriceScale: { minimumWidth: 75, scaleMargins: { top: 0.01, bottom: 0.12 } },
+
+
+
+
+
+
+
+        
         timeScale: { rightOffset: 10, barSpacing: 6 },
         localization: {
             priceFormatter: (price) => Math.floor(price).toLocaleString('ko-KR'),
@@ -1290,8 +1294,8 @@ const rsiContainer = document.getElementById('rsi-container');
 rsiChart = LightweightCharts.createChart(
     rsiContainer,
     {
-        width: rsiContainer.clientWidth,
-        height: 120,
+        width: 700,
+        height: 80,
 
 
         localization: {
@@ -1300,8 +1304,10 @@ rsiChart = LightweightCharts.createChart(
         },
         
         layout: { attributionLogo: false },
-        rightPriceScale: { autoScale: false },
-
+        rightPriceScale: { 
+            minimumWidth: 75,   // 캔들 차트와 동일
+            scaleMargins: { top: 0.0, bottom: 0.0 }
+        },
         handleScroll: {
             mouseWheel: false,
             pressedMouseMove: false,
@@ -1353,7 +1359,9 @@ rsiChart.applyOptions({
             visible: false,
             labelVisible: false,
         },
-    }
+    },
+
+    
 });
 
 
@@ -1537,11 +1545,6 @@ myChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
     }
 });
 
-rsiChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
-    if (myChart) {
-        myChart.timeScale().setVisibleLogicalRange(range);
-    }
-});
 
 rsiSeries = rsiChart.addSeries(
     LightweightCharts.LineSeries,
@@ -1718,13 +1721,17 @@ rsi30TopSeries.setData([
 
 rsiContainer.style.position = 'relative';
 
-function addScaleMask(top, height) {
+
+
+
+function addScaleMask8(top, height) {
     const mask = document.createElement('div');
 
     mask.style.position = 'absolute';
-    mask.style.right = '0px';
+    mask.style.right = '-20px';
+
     mask.style.top = top + 'px';
-    mask.style.width = '50px';
+    mask.style.width = '150px';
     mask.style.height = height + 'px';
     mask.style.background = '#fff';
     mask.style.pointerEvents = 'none';
@@ -1732,15 +1739,31 @@ function addScaleMask(top, height) {
 
     rsiContainer.appendChild(mask);
 }
+
+
+
+function addScaleMask(top, height) {
+    const mask = document.createElement('div');
+
+    mask.style.position = 'absolute';
+    mask.style.right = '-20px';
+
+    mask.style.top = top + 'px';
+    mask.style.width = '50px';
+    mask.style.height = height + 'px';
+    mask.style.background = '#fff';
+    mask.style.pointerEvents = 'none';
+    mask.style.zIndex = '10000';
+
+    rsiContainer.appendChild(mask);
+}
     
-// 80 가리기
-addScaleMask(0, 41);
 
 // 40 가리기
-addScaleMask(58, 16);
+addScaleMask(0, 300);
 
 // 0 가리기
-addScaleMask(91, 29);
+addScaleMask(67, 10);
 
 
 
@@ -1763,7 +1786,8 @@ rsiSeries.createPriceLine({
     color: 'rgba(187,222,251,0.5)',
     lineVisible: false,
     axisLabelVisible: true,
-    title: ''
+    title: '',
+    
 });
 
 
@@ -1779,8 +1803,8 @@ const macdContainer =
 macdChart = LightweightCharts.createChart(
     macdContainer,
     {
-        width: macdContainer.clientWidth,
-        height: 120,
+        width: 700,
+        height: 80,
 
 
         localization: {
@@ -1790,7 +1814,45 @@ macdChart = LightweightCharts.createChart(
 
         layout: { attributionLogo:false },
 
+        rightPriceScale: {
+            minimumWidth: 75,       // 원하는 최소 폭
+            scaleMargins: { top: 0.0, bottom: 0.0 }
+        },
 
+
+
+
+
+    handleScroll: {
+        mouseWheel: false,
+        pressedMouseMove: false,
+        horzTouchDrag: false,
+        vertTouchDrag: false
+    },
+
+    handleScale: {
+        axisDoubleClickReset: false,
+        axisPressedMouseMove: false,
+        pinch: false,
+        mouseWheel: false
+    },
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
 
         crosshair: {
             vertLine: {
@@ -1819,18 +1881,18 @@ macdChart = LightweightCharts.createChart(
 
 
 
-
 myChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+    if (rsiChart && range) {
+        rsiChart.timeScale().setVisibleLogicalRange(range);
+    }
     if (macdChart && range) {
         macdChart.timeScale().setVisibleLogicalRange(range);
     }
-});
-
-macdChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
-    if (myChart && range) {
-        myChart.timeScale().setVisibleLogicalRange(range);
+    if (flowChart && range) {
+        flowChart.timeScale().setVisibleLogicalRange(range);
     }
 });
+
 
 
 
@@ -1905,7 +1967,7 @@ macd9Series.setData(
 
 
 
-document.getElementById('macd-container').style.height = document.getElementById('toggleMACD').checked ? '120px' : '0px';
+document.getElementById('macd-container').style.height = document.getElementById('toggleMACD').checked ? '80px' : '0px';
 
 
 
@@ -1919,14 +1981,33 @@ document.getElementById('macd-container').style.height = document.getElementById
 // flowChart 초기화
 const flowContainer = document.getElementById('flow-container');
 flowChart = LightweightCharts.createChart(flowContainer, {
-    width: 800,
-    height: 100,
+    width: 700,
+    height: 120,
     layout: { attributionLogo: false },
     timeScale: { visible: false },
-    rightPriceScale: { visible: false },
+    rightPriceScale: { 
+        visible: true,       // 없으면 왼쪽과 미묘하게 어긋남
+        minimumWidth: 75,
+        scaleMargins: { top: 0.0, bottom: 0.0 },
+    },
+    localization: {
+        priceFormatter: price => {
+            const v = Math.round(price / 1000);
+            if (v === 0) return '0';
+            return v.toLocaleString('ko-KR') + '천';
+        }
+    },
+
+
+
+
+
+    
     crosshair: { vertLine: { visible: false }, horzLine: { visible: false } },
     grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-    barSpacing: 4
+    barSpacing: 6,
+    handleScroll: false,
+    handleScale: false,
 });
 
 // 시리즈 생성 (완전 불투명)
@@ -1935,13 +2016,15 @@ personalSeries = flowChart.addSeries(LightweightCharts.HistogramSeries, {
     lastValueVisible: false,
     priceLineVisible: false
 });
-instituteSeries = flowChart.addSeries(LightweightCharts.HistogramSeries, {
-    color: 'rgb(255,215,100)',       // 기관 → 밝은 골드
+
+foreignerSeries = flowChart.addSeries(LightweightCharts.HistogramSeries, {
+    color: 'rgb(100,180,255)',       // 외국인 → 밝은 파랑
     lastValueVisible: false,
     priceLineVisible: false
 });
-foreignerSeries = flowChart.addSeries(LightweightCharts.HistogramSeries, {
-    color: 'rgb(100,180,255)',       // 외국인 → 밝은 파랑
+
+instituteSeries = flowChart.addSeries(LightweightCharts.HistogramSeries, {
+    color: 'rgb(255,215,100)',       // 기관 → 밝은 골드
     lastValueVisible: false,
     priceLineVisible: false
 });
@@ -2065,7 +2148,6 @@ document.getElementById('rsi-container').style.height = document.getElementById(
 
 
 
-
 // 체크박스 제어 로직
 document.getElementById('toggleMA').addEventListener('change', (e) => {
     const isVisible = e.target.checked;
@@ -2134,14 +2216,15 @@ document.getElementById('toggleRSI').addEventListener('change', (e) => {
 
     if (e.target.checked) {
 
-        rsiContainer.style.height = '120px';
+        rsiContainer.style.height = '80px';
 
         if (rsiChart) {
             rsiChart.resize(
-                rsiContainer.clientWidth,
-                120
+                700,
+                80
             );
         }
+
 
     } else {
 
@@ -2158,12 +2241,12 @@ document.getElementById('toggleMACD').addEventListener('change', (e) => {
 
     if (e.target.checked) {
 
-        macdContainer.style.height = '120px';
+        macdContainer.style.height = '80px';
 
         if (macdChart) {
             macdChart.resize(
-                macdContainer.clientWidth,
-                120
+                700,
+                80
             );
         }
 
@@ -2173,8 +2256,6 @@ document.getElementById('toggleMACD').addEventListener('change', (e) => {
 
     }
 });
-
-
 
 
 
