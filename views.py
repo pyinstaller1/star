@@ -1313,6 +1313,7 @@ def fin_page_view(request):
 def get_ilbong_view(request):
     code = request.GET.get('code')
     list_ilbong = select_tb_ilbong(code)
+    
     return JsonResponse({'list_ilbong': list_ilbong}, safe=False)
 
 
@@ -1321,6 +1322,71 @@ def get_ilbong_view(request):
 
 
 
+
+def get_ilbong_main_view(request):
+    code = request.GET.get('code')
+
+    list_ilbong = select_tb_ilbong(code)
+
+    d = datetime.strptime(str(list_ilbong[-1]['date']), '%Y%m%d')
+    base_date = f'{d.month}.{d.day}.({"월화수목금토일"[d.weekday()]}) 기준'
+
+    list_fin = select_naver_fin(code).to_dict(orient='records')
+
+    return JsonResponse({
+        'list_ilbong': list_ilbong,
+        'base_date': base_date,
+        'list_fin': list_fin,
+    })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def get_ilbong_view(request):
+    code = request.GET.get('code')
+    
+    # 1. 일봉 데이터
+    list_ilbong = select_tb_ilbong(code)
+    
+    # 2. 최신일 계산
+    d = datetime.strptime(str(list_ilbong[-1]['date']), '%Y%m%d')
+    base_date = f'{d.month}.{d.day}.({"월화수목금토일"[d.weekday()]}) 기준'
+    
+    # 3. 재무 데이터
+    df_fin = select_naver_fin(code)
+    list_financial = df_fin.to_dict(orient='records')
+
+    # 4. 필요하면 분기별 데이터도 추가 가능
+    # list_quarter = select_quarter_data(code).to_dict(orient='records')
+    
+    return JsonResponse({
+        'list_ilbong': list_ilbong,
+        'base_date': base_date,
+        'list_financial': list_financial,
+        # 'list_quarter': list_quarter
+    }, safe=False)
 
 
 

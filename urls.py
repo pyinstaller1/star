@@ -58,6 +58,17 @@ urlpatterns = [
     path('get_naver_fin/', views.get_naver_fin_view, name='get_naver_fin'),
 
     path('get_ilbong/', views.get_ilbong_view, name='get_ilbong'),
+    path('get_ilbong_main/', views.get_ilbong_main_view, name='get_ilbong_main'),
+
+
+
+    path('select_checkbox/', views.select_checkbox_view, name='select_checkbox'),
+    path('update_checkbox/', views.update_checkbox_view, name='update_checkbox'),
+        
+
+
+
+
 
     
 ]

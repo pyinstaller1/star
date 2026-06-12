@@ -209,7 +209,7 @@
                         <td class="col-no">{{ forloop.counter }}</td>
                         <td class="col-name" style="font-size:15px;">{{ stock.hname }}</td>
                         <td class="col-price" style="font-size:14px;">{{ stock.price }}</td>
-                        <td class="col-num {% if '+' in stock.rate %}rate-pos{% else %}rate-neg{% endif %}">
+                        <td class="col-num {% if '+' in stock.rate %}rate-pos{% else %}rate-neg{% endif %}" style="font-size: 11px;">
                             {{ stock.rate }}
                         </td>
                          <td class="col-rsi-style {% if stock.rsi >= 70 %}rsi-high{% elif stock.rsi <= 30 %}rsi-low{% endif %}" style="font-size:11px;">
@@ -397,17 +397,16 @@
 
 
             <!-- 📌 체크박스 아래 일봉 테이블 -->
-            <div id="ilbong-table-wrapper" 
-                 style="margin-top:30px; margin-right:30px; max-height:130px; overflow-y:auto; border:1px solid #ccc; border-radius:4px; background:#fff;">
-                <table style="width:100%; border-collapse:collapse; font-size:12px;">
+            <div id="ilbong-table-wrapper" style=" width:550px; margin-top:30px; margin-right:30px; max-height:180px; font-family:'Pretendard'; font-variant-numeric: tabular-nums; overflow-y:auto; border:1px solid #ccc; border-radius:4px; background:#fff;">
+                <table style="width:500px; border-collapse:collapse; font-size:12px;  table-layout:fixed; ">
                     <thead>
                         <tr>
-                            <th style="text-align: center;">일자</th>
-                            <th style="text-align: right;">현재가</th>
-                            <th style="text-align: right;">RSI</th>
-                            <th style="text-align: right;">개인</th>
-                            <th style="text-align: right;">외국인</th>
-                            <th style="text-align: right;">기관</th>
+                            <th style="width:70px; text-align: center;">일자</th>
+                            <th style="width:62px; text-align: right;">현재가</th>
+                            <th style="width:51px; text-align: right;">RSI</th>
+                            <th style="width:85px; text-align: right;">개인</th>
+                            <th style="width:85px; text-align: right;">외국인</th>
+                            <th style="width:85px; text-align: right;">기관</th>
                         </tr>
                     </thead>
                     <tbody id="ilbong-table-body">
@@ -427,20 +426,27 @@
 
 
 
+            <div id="base-date" style="position:absolute; top:0px; left:15px; z-index:10; font-size:12px; color:#888; font-weight:500;"></div>
+
+
+                    
+
+            <!-- 📌 MA legend -->
+            <div id="ma-legend" style="position:absolute; top:16px; left:7px; z-index:4; background:rgba(255,255,255,0.8); padding:4px 8px; border-radius:4px; font-size:12px; pointer-events:none;">
+                <span style="color:#FF9800">5</span>
+                <span style="color:#9C27B0; margin-left:3px;">20</span>
+                <span style="color:#2196F3; margin-left:3px;">60</span>
+                <span style="color:#F44336; margin-left:3px;">120</span>
+            </div>
+
+
+
 
 
 
 
 
                     
-
-            <!-- 📌 MA legend -->
-            <div id="ma-legend" style="position:absolute; top:15px; left:7px; z-index:4; background:rgba(255,255,255,0.8); padding:4px 8px; border-radius:4px; font-size:12px; pointer-events:none;">
-                <span style="color:#FF9800">5</span>
-                <span style="color:#9C27B0; margin-left:3px;">20</span>
-                <span style="color:#2196F3; margin-left:3px;">60</span>
-                <span style="color:#F44336; margin-left:3px;">120</span>
-            </div>
 
         </div>
 
@@ -502,7 +508,73 @@
 
 
                            
-    <div class="right-panel"></div>
+    <div class="right-panel">
+
+
+        <!-- 매출/영업이익 -->
+        <div style="width:510px; margin-bottom:20px;">
+            <div style="font-weight:bold; margin-bottom:5px;">
+                📊 매출/영업이익 (분기)
+            </div>
+
+            <table id="quarter-table"
+                   border="1"
+                   style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
+                <thead>
+                    <tr id="quarter-head" style="background:#f4f4f4;"></tr>
+                </thead>
+                <tbody id="quarter-body"></tbody>
+            </table>
+
+            <div style="height:180px;">
+                <canvas id="quarterChart"></canvas>
+            </div>
+        </div>
+
+        <!-- 자산/부채 -->
+        <div style="width:510px; margin-bottom:20px;">
+            <div style="font-weight:bold; margin-bottom:5px;">
+                📊 자산/부채 (분기)
+            </div>
+
+            <table id="quarter_balance_table"
+                   border="1"
+                   style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
+                <thead>
+                    <tr id="quarter_balance_head" style="background:#f4f4f4;"></tr>
+                </thead>
+                <tbody id="quarter_balance_body"></tbody>
+            </table>
+
+            <div style="height:180px;">
+                <canvas id="quarter_balance_chart"></canvas>
+            </div>
+        </div>
+
+        <!-- 현금흐름 -->
+        <div style="width:510px;">
+            <div style="font-weight:bold; margin-bottom:5px;">
+                📊 현금흐름 (분기)
+            </div>
+
+            <table id="quarter_cash_table"
+                   border="1"
+                   style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
+                <thead>
+                    <tr id="quarter_cash_head" style="background:#f4f4f4;"></tr>
+                </thead>
+                <tbody id="quarter_cash_body"></tbody>
+            </table>
+
+            <div style="height:180px;">
+                <canvas id="quarter_cf_chart"></canvas>
+            </div>
+        </div>
+
+
+
+
+    </div>
 
 
 
@@ -790,18 +862,35 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch('/select_checkbox/')
         .then(res => res.json())
         .then(data => {
-
             Object.keys(data).forEach(id => {
-
                 const el = document.getElementById(id);
-
-                if (el) {
-                    el.checked = data[id];
-                }
-
+                if (el) el.checked = data[id];
             });
-        selectAndCentral('005930', '삼성전자');
 
+            // **체크박스 상태 기반으로 시리즈 숨기기/보이기**
+            const maChecked = document.getElementById('toggleMA').checked;
+            if (maSeriesList && maSeriesList.length > 0) {
+                maSeriesList.forEach(series => series.applyOptions({ visible: maChecked }));
+            }
+            document.getElementById('ma-legend').style.display = maChecked ? 'block' : 'none';
+
+            if (ema26Series) {
+                ema26Series.applyOptions({ visible: document.getElementById('toggleEMA26').checked });
+            }
+            if (bollUpperSeries && bollMiddleSeries && bollLowerSeries) {
+                const visible = document.getElementById('toggleBollinger').checked;
+                bollUpperSeries.applyOptions({ visible });
+                bollMiddleSeries.applyOptions({ visible });
+                bollLowerSeries.applyOptions({ visible });
+            }
+            if (ilmokASeries && ilmokBSeries) {
+                const visible = document.getElementById('toggleIlmok').checked;
+                ilmokASeries.applyOptions({ visible });
+                ilmokBSeries.applyOptions({ visible });
+            }
+
+            // 이제 체크박스 상태에 맞춰 차트를 렌더링
+            selectAndCentral('005930', '삼성전자');
         });
 
 
@@ -837,27 +926,46 @@ function updateSelection(items) {
 
 
 <script>
-// 관제탑 함수 수정 (데이터 추출 부분 추가)
+                    
 function selectAndCentral(code, name) {
     document.getElementById('chart-title').innerText = name;
-    
     const searchInput = document.getElementById('search-input');
     if (searchInput) searchInput.value = name;
-    
-    // 대시보드 제목 업데이트
+
     const analysisTitle = document.getElementById('analysis-title');
     if (analysisTitle) analysisTitle.innerText = name;
-    
-    // 서버 요청 및 차트 렌더링 호출
-    fetch(`/get_ilbong/?code=${code}`)
-        .then(response => response.json())
+
+    fetch(`/get_ilbong_main/?code=${code}`)
+        .then(res => res.json())
         .then(data => {
-            // data는 { "list_ilbong": [...] } 형태입니다.
-            // 여기서 .list_ilbong을 붙여서 배열만 전달해야 합니다!
-            renderIlbongChart(data.list_ilbong); 
+            const list_ilbong = data.list_ilbong;
+            
+            // 최신일 계산 → #base-date div에 바로 출력
+            const d = new Date(String(list_ilbong.at(-1).date).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'));
+            document.getElementById('base-date').innerText =
+                `${d.getMonth() + 1}.${d.getDate()}.(${['일', '월','화','수','목','금','토'][d.getDay()]}) 기준`;
+
+            renderIlbongChart(list_ilbong);
+
+
+
+            const qData = data.list_fin.filter(i => i.구분 === '분기');
+
+            showSales('quarter', qData);
+            showSalesChart('quarterChart', qData);
+
+            showAsset('quarter_balance', qData);
+            showAssetChart('quarter_balance_chart', qData);
+
+            showCF('quarter', qData);
+            showCFChart('quarter_cf_chart', qData);
+
+
+            
         })
         .catch(err => console.error("데이터 로드 오류:", err));
     
+
     document.getElementById('kospi-layer').style.display = 'none';
 }
 
@@ -1137,6 +1245,8 @@ volumeSeries.setData(
     ];
 
 
+    const maVisible = document.getElementById('toggleMA').checked;
+
 
     maSeriesList = maSettings.map(ma => {
         return myChart.addSeries(
@@ -1144,6 +1254,7 @@ volumeSeries.setData(
             {
                 color: ma.color,
                 lineWidth: ma.width,
+                visible: maVisible,
                 priceFormat: {
                     type: 'price',
                     precision: 0,
@@ -2052,12 +2163,45 @@ instituteSeries = flowChart.addSeries(LightweightCharts.HistogramSeries, {
     priceLineVisible: false
 });
 
+
+
+
+
+
+
+
+
 // 시간 계산
 const baseTimes = chartData.map(d => Math.floor(new Date(d.time).getTime() / 1000));
 
 // 데이터 세팅
 // 작은 값이 위로 올라가게 하려면, 큰 값 → 아래, 작은 값 → 위 순서대로 setData
 chartData.forEach((d, i) => {
+
+
+    const flowZeroLine = flowChart.addSeries(
+        LightweightCharts.LineSeries,
+        {
+            color: 'rgba(120,120,120,0.7)',
+            lineWidth: 1,
+            lineStyle: 0, // 점선
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        }
+    );
+
+    flowZeroLine.setData([
+        { time: baseTimes[0], value: 0 },
+        { time: baseTimes[baseTimes.length - 1], value: 0 }
+    ]);
+
+
+
+
+
+
+    
     const time = baseTimes[i];
 
     // 누적 안 하고 각 시리즈 값 그대로
@@ -2154,17 +2298,24 @@ data.slice().reverse().forEach(d => {
     tr.innerHTML = `
         <td style="text-align:right; font-size:13px;">${dateStr}</td>
         <td style="text-align:right; font-size:13px;">${Number(d.close).toLocaleString()}</td>
-        <td style="text-align:right; font-size:13px;">${d.rsi14 ?? '-'}</td>
-        <td style="text-align:right; font-size:13px;">${Number(d.개인 || 0).toLocaleString()}</td>
-        <td style="text-align:right; font-size:13px;">${Number(d.외국인 || 0).toLocaleString()}</td>
-        <td style="text-align:right; font-size:13px;">${Number(d.기관 || 0).toLocaleString()}</td>
+        <td style="text-align:right; font-size:13px; color:${d.rsi14 >= 70 ? '#d9534f' : d.rsi14 <= 30 ? '#337ab7' : '#000' }">${d.rsi14 != null ? d.rsi14.toFixed(2) : '-'}</td>
+        <td style="text-align:right; font-size:13px; color:${d.개인 >= 0 ? '#d9534f' : '#337ab7'}">${Number(d.개인 || 0).toLocaleString()}</td>
+        <td style="text-align:right; font-size:13px; color:${d.외국인 >= 0 ? '#d9534f' : '#337ab7'}">${Number(d.외국인 || 0).toLocaleString()}</td>
+        <td style="text-align:right; font-size:13px; color:${d.기관 >= 0 ? '#d9534f' : '#337ab7'}">${Number(d.기관 || 0).toLocaleString()}</td>
+
+
+
+
+
+
+
+
+
+    
     `;
 
     tbody.appendChild(tr);
 });
-
-
-
 
 
 
