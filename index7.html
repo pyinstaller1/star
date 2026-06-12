@@ -17,7 +17,7 @@
         
         .main-layout {
             display: grid;
-            grid-template-columns: 400px 880px 1fr;
+            grid-template-columns: 400px 730px 1fr;
             height: 100vh;
         }
 
@@ -321,15 +321,15 @@
         <div id="chart-wrapper" style="position:relative;">
 
             <!-- 📌 차트 영역 -->
-            <div id="chart-container" style="width:700px; height:300px; position:relative; z-index:1;"></div>
+            <div id="chart-container" style="width:700px; height:303px; position:relative; z-index:1;"></div>
 
-            <div id="rsi-container" style="width:700px; height:80px; margin-top:-7px; overflow:hidden; ">
+            <div id="rsi-container" style="width:700px; height:80px; margin-top:-5px; overflow:hidden; ">
                 <div style="position:absolute;top:7px;left:8px;z-index:10;font-size:16px;font-weight:bold;pointer-events:none;white-space:nowrap;color:#333;">RSI</div>
             </div>
 
 
 
-            <div id="macd-container" style="width:700px; height:80px; margin-top:-7px; position:relative; overflow:hidden;">
+            <div id="macd-container" style="width:700px; height:80px; margin-top:-5px; position:relative; overflow:hidden;">
                 <div id="macd-label" style="position:absolute; top:8px; left:5px; font-size:16px; font-weight:bold; color:#1976D2; pointer-events:none; white-space:nowrap; z-index:10;">MACD</div>
             </div>
 
@@ -344,25 +344,12 @@
 
 
             <div style="position:relative; width:700px;">
-
-                <div id="flow-legend"
-                     style="
-                        position:absolute;
-                        top:8px;
-                        left:8px;
-                        z-index:10;
-                        font-size:12px;
-                        background:rgba(255,255,255,0.8);
-                        padding:2px 3px;
-                        border-radius:3px;
-                        pointer-events:none;">
+                <div id="flow-legend" style="position:absolute; top:8px; left:8px; z-index:10; font-size:12px; background:rgba(255,255,255,0.8); padding:2px 3px; border-radius:3px; pointer-events:none;">
                     <span style="color:rgb(214,0,0);font-weight:bold;">개인</span>
                     <span style="margin-left:6px;color:rgb(40,140,240);font-weight:bold;">외국인</span>
                     <span style="margin-left:6px;color:rgb(235,185,40);font-weight:bold;">기관</span>
                 </div>
-
                 <div id="flow-container" style="width:700px; height:120px; overflow:hidden;"></div>
-
             </div>
 
 
@@ -399,29 +386,60 @@
                 <label><input type="checkbox" id="toggleIlmok"> 일목균형표</label>
                 <label><input type="checkbox" id="toggleRSI"> RSI</label>
                 <label><input type="checkbox" id="toggleMACD" checked> MACD</label>
-
-
+                <label><input type="checkbox" id="toggleFlow" checked> 외국인</label>
 
 
                     
             </div>
 
+
+
+
+
+            <!-- 📌 체크박스 아래 일봉 테이블 -->
+            <div id="ilbong-table-wrapper" 
+                 style="margin-top:10px; max-height:130px; overflow-y:auto; border:1px solid #ccc; border-radius:4px; background:#fff;">
+                <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead>
+                        <tr>
+                            <th>일자</th>
+                            <th>현재가</th>
+                            <th>RSI</th>
+                            <th>개인</th>
+                            <th>외국인</th>
+                            <th>기관</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ilbong-table-body">
+                        <!-- JS로 데이터 채움 -->
+                    </tbody>
+                </table>
+            </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                    
+
             <!-- 📌 MA legend -->
-            <div id="ma-legend"
-                 style="
-                    position:absolute;
-                    top:5px;
-                    left:7px;
-                    z-index:4;
-                    background:rgba(255,255,255,0.8);
-                    padding:4px 8px;
-                    border-radius:4px;
-                    font-size:12px;
-                    pointer-events:none;">
-                <span style="color:#FF9800">5일선</span>
-                <span style="color:#9C27B0; margin-left:8px;">20일선</span>
-                <span style="color:#2196F3; margin-left:8px;">60일선</span>
-                <span style="color:#F44336; margin-left:8px;">120일선</span>
+            <div id="ma-legend" style="position:absolute; top:15px; left:7px; z-index:4; background:rgba(255,255,255,0.8); padding:4px 8px; border-radius:4px; font-size:12px; pointer-events:none;">
+                <span style="color:#FF9800">5</span>
+                <span style="color:#9C27B0; margin-left:3px;">20</span>
+                <span style="color:#2196F3; margin-left:3px;">60</span>
+                <span style="color:#F44336; margin-left:3px;">120</span>
             </div>
 
         </div>
@@ -768,9 +786,33 @@ document.addEventListener('DOMContentLoaded', () => {
     kospiLayer.addEventListener('mouseleave', () => { kospiLayer.style.display = 'none'; });
 
 
-selectAndCentral('005930', '삼성전자');
+
+    fetch('/select_checkbox/')
+        .then(res => res.json())
+        .then(data => {
+
+            Object.keys(data).forEach(id => {
+
+                const el = document.getElementById(id);
+
+                if (el) {
+                    el.checked = data[id];
+                }
+
+            });
+        selectAndCentral('005930', '삼성전자');
+
+        });
+
+
+    
 
 });
+
+
+
+
+
 
 function updateSelection(items) {
     items.forEach((item, idx) => {
@@ -1724,14 +1766,16 @@ rsiContainer.style.position = 'relative';
 
 
 
-function addScaleMask8(top, height) {
+
+
+function addScaleMask(top, height) {
     const mask = document.createElement('div');
 
     mask.style.position = 'absolute';
-    mask.style.right = '-20px';
+    mask.style.right = '43px';
 
     mask.style.top = top + 'px';
-    mask.style.width = '150px';
+    mask.style.width = '30px';
     mask.style.height = height + 'px';
     mask.style.background = '#fff';
     mask.style.pointerEvents = 'none';
@@ -1739,31 +1783,10 @@ function addScaleMask8(top, height) {
 
     rsiContainer.appendChild(mask);
 }
-
-
-
-function addScaleMask(top, height) {
-    const mask = document.createElement('div');
-
-    mask.style.position = 'absolute';
-    mask.style.right = '-20px';
-
-    mask.style.top = top + 'px';
-    mask.style.width = '50px';
-    mask.style.height = height + 'px';
-    mask.style.background = '#fff';
-    mask.style.pointerEvents = 'none';
-    mask.style.zIndex = '10000';
-
-    rsiContainer.appendChild(mask);
-}
     
 
-// 40 가리기
-addScaleMask(0, 300);
-
-// 0 가리기
-addScaleMask(67, 10);
+addScaleMask(6, 10);
+addScaleMask(37, 10);
 
 
 
@@ -1988,7 +2011,7 @@ flowChart = LightweightCharts.createChart(flowContainer, {
     rightPriceScale: { 
         visible: true,       // 없으면 왼쪽과 미묘하게 어긋남
         minimumWidth: 75,
-        scaleMargins: { top: 0.0, bottom: 0.0 },
+        scaleMargins: { top: 0.03, bottom: 0.035 },
     },
     localization: {
         priceFormatter: price => {
@@ -2045,9 +2068,10 @@ chartData.forEach((d, i) => {
 
 
 
+document.getElementById('flow-container').style.height = document.getElementById('toggleFlow').checked ? '120px' : '0px';
 
 
-
+document.getElementById('flow-legend').style.display = document.getElementById('toggleFlow').checked ? 'block' : 'none';
 
 
 
@@ -2106,7 +2130,58 @@ candleSeries.setData(chartData);
 
 
 
-document.getElementById('rsi-container').style.height = document.getElementById('toggleRSI').checked ? '120px' : '0px';
+   document.getElementById('rsi-container').style.height = document.getElementById('toggleRSI').checked ? '80px' : '0px';
+
+
+
+
+
+
+
+// 테이블에 5줄만 보여주고 스크롤 가능
+const tbody = document.getElementById('ilbong-table-body');
+tbody.innerHTML = '';
+
+data.slice().reverse().forEach(d => {
+
+    const dateStr =
+        String(d.date).substring(0,4) + '.' +
+        String(d.date).substring(4,6) + '.' +
+        String(d.date).substring(6,8);
+
+    const tr = document.createElement('tr');
+
+    tr.innerHTML = `
+        <td style="text-align:right; font-size:13px;">${dateStr}</td>
+        <td style="text-align:right; font-size:13px;">${Number(d.close).toLocaleString()}</td>
+        <td style="text-align:right; font-size:13px;">${d.rsi14 ?? '-'}</td>
+        <td style="text-align:right; font-size:13px;">${Number(d.개인 || 0).toLocaleString()}</td>
+        <td style="text-align:right; font-size:13px;">${Number(d.외국인 || 0).toLocaleString()}</td>
+        <td style="text-align:right; font-size:13px;">${Number(d.기관 || 0).toLocaleString()}</td>
+    `;
+
+    tbody.appendChild(tr);
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2132,12 +2207,49 @@ document.getElementById('rsi-container').style.height = document.getElementById(
 
 
 
+function getCookie(name) {
 
+    let cookieValue = null;
 
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
 
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
 
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(
+                    cookie.substring(name.length + 1)
+                );
 
+                break;
+            }
+        }
+    }
 
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+function saveCheckbox(id, checked) {
+    fetch('/update_checkbox/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken,  // 이전 getCookie 대신 미리 가져온 변수 사용
+        },
+        body: JSON.stringify({
+            checkbox_id: id,
+            checked: checked
+        })
+    })
+    .then(res => {
+        if (!res.ok) throw new Error('CSRF 실패 또는 서버 오류');
+        return res.json();
+    })
+    .catch(err => console.error('체크박스 저장 오류:', err));
+}
 
 
 
@@ -2150,6 +2262,9 @@ document.getElementById('rsi-container').style.height = document.getElementById(
 
 // 체크박스 제어 로직
 document.getElementById('toggleMA').addEventListener('change', (e) => {
+    saveCheckbox('toggleMA', e.target.checked);
+
+
     const isVisible = e.target.checked;
     
     // 생성해둔 maSeriesList를 순회하며 visible 상태 변경
@@ -2170,6 +2285,9 @@ document.getElementById('toggleMA').addEventListener('change', (e) => {
 
 
 document.getElementById('toggleEMA26').addEventListener('change', (e) => {
+
+    saveCheckbox('toggleEMA26', e.target.checked);
+    
     if (ema26Series) {
         ema26Series.applyOptions({
             visible: e.target.checked
@@ -2182,6 +2300,9 @@ document.getElementById('toggleEMA26').addEventListener('change', (e) => {
 
 
 document.getElementById('toggleBollinger').addEventListener('change', (e) => {
+
+    saveCheckbox('toggleBollinger', e.target.checked);
+    
     const visible = e.target.checked;
 
     if (bollUpperSeries)
@@ -2198,6 +2319,8 @@ document.getElementById('toggleBollinger').addEventListener('change', (e) => {
 
 document.getElementById('toggleIlmok').addEventListener('change', (e) => {
 
+    saveCheckbox('toggleIlmok', e.target.checked);
+
     const visible = e.target.checked;
 
     if (ilmokASeries)
@@ -2210,6 +2333,8 @@ document.getElementById('toggleIlmok').addEventListener('change', (e) => {
 
 
 document.getElementById('toggleRSI').addEventListener('change', (e) => {
+
+    saveCheckbox('toggleRSI', e.target.checked);
 
     const rsiContainer =
         document.getElementById('rsi-container');
@@ -2236,6 +2361,8 @@ document.getElementById('toggleRSI').addEventListener('change', (e) => {
 
 document.getElementById('toggleMACD').addEventListener('change', (e) => {
 
+    saveCheckbox('toggleMACD', e.target.checked);
+
     const macdContainer =
         document.getElementById('macd-container');
 
@@ -2258,6 +2385,33 @@ document.getElementById('toggleMACD').addEventListener('change', (e) => {
 });
 
 
+document.getElementById('toggleFlow').addEventListener('change', (e) => {
+
+    saveCheckbox('toggleFlow', e.target.checked);
+
+    const flowContainer =
+        document.getElementById('flow-container');
+
+    if (e.target.checked) {
+
+        flowContainer.style.height = '120px';
+        document.getElementById('flow-legend').style.display = 'block';
+
+        if (flowChart) {
+            flowChart.resize(
+                700,
+                120
+            );
+        }
+
+    } else {
+
+        flowContainer.style.height = '0px';
+        document.getElementById('flow-legend').style.display = 'none';
+
+
+    }
+});
 
 </script>
 
