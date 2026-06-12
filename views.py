@@ -1312,9 +1312,7 @@ def fin_page_view(request):
 
 def get_ilbong_view(request):
     code = request.GET.get('code')
-    print(code)
     list_ilbong = select_tb_ilbong(code)
-    print(list_ilbong)
     return JsonResponse({'list_ilbong': list_ilbong}, safe=False)
 
 
@@ -1329,12 +1327,27 @@ def get_ilbong_view(request):
 
 
 
+def select_checkbox_view(request):
+
+    data = select_tb_checkbox()
+    return JsonResponse(data)
 
 
 
+@csrf_exempt
+def update_checkbox_view(request):
 
+    if request.method != 'POST':
+        return JsonResponse({'result': 'fail'})
 
+    body = json.loads(request.body)
 
+    checkbox_id = body.get('checkbox_id')
+    checked = body.get('checked')
+
+    update_tb_checkbox(checkbox_id, checked)
+
+    return JsonResponse({'result': 'ok'})
 
 
 
