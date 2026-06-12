@@ -9,7 +9,7 @@
     <script src="https://unpkg.com/lightweight-charts@5.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <!-- <script src="{% static 'lightweight-charts.standalone.production.js' %}"></script> -->
     <link rel="stylesheet" type="text/css" href="{% static 'pretendard/pretendard-subset.css' %}">
-
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
     <style>
@@ -761,6 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const kospiDataElement = document.getElementById('kospi-data');
     const kospiData = kospiDataElement ? JSON.parse(kospiDataElement.textContent) : [];
+    
 
 
     // 레이어 그리기
@@ -928,12 +929,19 @@ function updateSelection(items) {
 <script>
                     
 function selectAndCentral(code, name) {
+
+
+
+    
     document.getElementById('chart-title').innerText = name;
     const searchInput = document.getElementById('search-input');
     if (searchInput) searchInput.value = name;
 
     const analysisTitle = document.getElementById('analysis-title');
     if (analysisTitle) analysisTitle.innerText = name;
+
+
+
 
     fetch(`/get_ilbong_main/?code=${code}`)
         .then(res => res.json())
@@ -2565,6 +2573,290 @@ document.getElementById('toggleFlow').addEventListener('change', (e) => {
 });
 
 </script>
+
+
+
+
+
+
+
+
+
+<script>
+/* ------------------ 재무표/차트 관련 함수 추가 ------------------ */
+
+function showSales(type, data) {
+    const head = document.getElementById(type + '-head');
+    const body = document.getElementById(type + '-body');
+    const fields = [{ key: '매출', label: '매출' }, { key: '영업이익', label: '영익' }];
+
+    head.innerHTML = '<th style="padding:2px; font-weight:normal;">(억)</th>';
+    data.forEach((d, index) => {
+        const isEstimate = index >= (data.length - 3);
+        let th = document.createElement('th');
+        th.style.padding = '1px';
+        th.style.fontSize = '11px';
+        th.style.border = '1px solid lightgray';
+        if (isEstimate) { th.style.color = '#777'; th.style.backgroundColor = '#eeeeee'; }
+        th.innerText = d.기간;
+        head.appendChild(th);
+    });
+
+    body.innerHTML = '';
+    fields.forEach(field => {
+        let tr = document.createElement('tr');
+        tr.innerHTML = `<td style="padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        data.forEach((d, index) => {
+            const isEstimate = index >= (data.length - 3);
+            let td = document.createElement('td');
+            td.style.padding = '1px';
+            td.style.textAlign = 'right';
+            td.style.fontSize = '11px';
+            td.style.border = '1px solid lightgray';
+            if (isEstimate) { td.style.color = '#777'; td.style.backgroundColor = '#eeeeee'; }
+            else if (field.key === '영업이익' && d[field.key] < 0) { td.style.color = 'red'; }
+            td.innerText = (d[field.key] ?? 0).toLocaleString();
+            tr.appendChild(td);
+        });
+        body.appendChild(tr);
+    });
+}
+
+function showSalesChart(canvasId, data) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // 이전 차트 객체 있으면 destroy 제거 → 그냥 update 처리
+    if (window[canvasId + 'Obj']) {
+        window[canvasId + 'Obj'].data.labels = data.map(d => d.기간);
+        window[canvasId + 'Obj'].data.datasets[0].data = data.map(d => d.매출);
+        window[canvasId + 'Obj'].data.datasets[1].data = data.map(d => d.영업이익);
+        window[canvasId + 'Obj'].update();
+        return;
+    }
+
+    // 회색 배경 플러그인 (뒤 3개는 회색)
+    const backgroundPlugin = {
+        id: 'customCanvasBackgroundColor',
+        beforeDraw: chart => {
+            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+            const dataset = chart.getDatasetMeta(0).data;
+            const threshold = dataset.length - 3;
+            ctx.save();
+            ctx.fillStyle = '#eeeeee';
+            for (let i = threshold; i < dataset.length; i++) {
+                const start = x.getPixelForValue(i - 0.5);
+                const end = x.getPixelForValue(i + 0.5);
+                ctx.fillRect(start, top, end - start, bottom - top);
+            }
+            ctx.restore();
+        }
+    };
+
+    window[canvasId + 'Obj'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.기간),
+            datasets: [
+                { label: '매출', data: data.map(d => d.매출), backgroundColor: '#475569' },
+                { label: '영업이익', data: data.map(d => d.영업이익), backgroundColor: '#ef4444' }
+            ]
+        },
+        plugins: [backgroundPlugin],
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 12 }, color: '#000' } } }, scales: { x: { ticks: { font: { size: 11 }, color: '#000', autoSkip: false, maxRotation: 0, minRotation: 0 } }, y: { ticks: { font: { size: 9 } } } } }
+    });
+}
+
+function showAsset(type, data) {
+    const head = document.getElementById(type + '_head');
+    const body = document.getElementById(type + '_body');
+    head.innerHTML = '<th style="padding:2px; font-weight:normal;">(억)</th>';
+    data.forEach((d, index) => {
+        const isEstimate = index >= (data.length - 3);
+        let th = document.createElement('th');
+        th.style.cssText = `padding:2px; text-align:center; border:1px solid lightgray; font-size:11px; background: ${isEstimate ? '#eeeeee' : '#f4f4f4'}; color: ${isEstimate ? '#777' : '#000'};`;
+        th.innerText = d.기간;
+        head.appendChild(th);
+    });
+
+    body.innerHTML = '';
+    const fields = [{ key: '자산', label: '자산' }, { key: '부채', label: '부채' }];
+    fields.forEach(field => {
+        let tr = document.createElement('tr');
+        tr.innerHTML = `<td style="padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        data.forEach((d, index) => {
+            const isEstimate = index >= (data.length - 3);
+            let td = document.createElement('td');
+            td.style.cssText = `padding:1px; text-align:right; border:1px solid lightgray; font-size:11px; ${isEstimate ? 'background:#eeeeee; color:#777;' : ''}`;
+            td.innerText = (d[field.key] ?? 0).toLocaleString();
+            tr.appendChild(td);
+        });
+        body.appendChild(tr);
+    });
+}
+
+function showAssetChart(canvasId, data) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // 기존 차트 있으면 update만
+    if (window[canvasId + 'Obj']) {
+        window[canvasId + 'Obj'].data.labels = data.map(d => d.기간);
+        window[canvasId + 'Obj'].data.datasets[0].data = data.map(d => d.자산);
+        window[canvasId + 'Obj'].data.datasets[1].data = data.map(d => d.부채);
+        window[canvasId + 'Obj'].update();
+        return;
+    }
+
+    // 뒤 3개 회색 배경
+    const backgroundPlugin = {
+        id: 'customCanvasBackgroundColor',
+        beforeDraw: chart => {
+            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+            const dataset = chart.getDatasetMeta(0).data;
+            const threshold = dataset.length - 3;
+            ctx.save();
+            ctx.fillStyle = '#eeeeee';
+            for (let i = threshold; i < dataset.length; i++) {
+                const start = x.getPixelForValue(i - 0.5);
+                const end = x.getPixelForValue(i + 0.5);
+                ctx.fillRect(start, top, end - start, bottom - top);
+            }
+            ctx.restore();
+        }
+    };
+
+    window[canvasId + 'Obj'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.기간),
+            datasets: [
+                { label: '자산', data: data.map(d => d.자산), backgroundColor: '#1e40af' },
+                { label: '부채', data: data.map(d => d.부채), backgroundColor: '#fbbf24' }
+            ]
+        },
+        plugins: [backgroundPlugin],
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 12 }, color: '#000' } } }, scales: { x: { ticks: { font: { size: 11 }, color: '#000', autoSkip: false, maxRotation: 0, minRotation: 0 } }, y: { ticks: { font: { size: 9 } } } } }
+    });
+}
+
+function showCF(type, data) {
+    const head = document.getElementById(type + '_cash_head');
+    const body = document.getElementById(type + '_cash_body');
+    const fields = [
+        { key: '영업현금흐름', label: '영업' },
+        { key: '투자현금흐름', label: '투자' },
+        { key: '재무현금흐름', label: '재무' },
+        { key: 'FCF', label: 'FCF' }
+    ];
+
+    head.innerHTML = '<th style="padding:2px; font-weight:normal;">(억)</th>';
+    data.forEach((d, index) => {
+        const isEstimate = index >= (data.length - 3);
+        let th = document.createElement('th');
+        th.style.cssText = `padding:1px; text-align:center; border:1px solid lightgray; font-size:11px; background:${isEstimate ? '#eeeeee' : '#f4f4f4'};`;
+        th.innerText = d.기간;
+        head.appendChild(th);
+    });
+
+    body.innerHTML = '';
+    fields.forEach(field => {
+        let tr = document.createElement('tr');
+        tr.innerHTML = `<td style="padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        data.forEach((d, index) => {
+            const isEstimate = index >= (data.length - 3);
+            let td = document.createElement('td');
+            td.style.cssText = `padding:1px; text-align:right; border:1px solid lightgray; font-size:11px; background:${isEstimate ? '#eeeeee' : ''};`;
+            let val = d[field.key] ?? 0;
+            td.innerText = val.toLocaleString();
+            if (val < 0) td.style.color = 'red';
+            tr.appendChild(td);
+        });
+        body.appendChild(tr);
+    });
+}
+
+function showCFChart(canvasId, data) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    // 기존 차트 있으면 데이터만 교체
+    if (window[canvasId + 'Obj']) {
+        window[canvasId + 'Obj'].data.labels = data.map(d => d.기간);
+        window[canvasId + 'Obj'].data.datasets[0].data = data.map(d => d.영업현금흐름 ?? 0);
+        window[canvasId + 'Obj'].data.datasets[1].data = data.map(d => d.투자현금흐름 ?? 0);
+        window[canvasId + 'Obj'].data.datasets[2].data = data.map(d => d.재무현금흐름 ?? 0);
+        window[canvasId + 'Obj'].data.datasets[3].data = data.map(d => d.FCF ?? 0);
+        window[canvasId + 'Obj'].update();
+        return;
+    }
+
+    const backgroundPlugin = {
+        id: 'cfBackgroundPlugin',
+        beforeDraw: chart => {
+            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+            const dataset = chart.getDatasetMeta(0).data;
+            if (!dataset || dataset.length < 3) return;
+
+            const threshold = dataset.length - 3;
+
+            ctx.save();
+            ctx.fillStyle = '#eeeeee';
+
+            for (let i = threshold; i < dataset.length; i++) {
+                const start = x.getPixelForValue(i - 0.5);
+                const end = x.getPixelForValue(i + 0.5);
+                ctx.fillRect(start, top, end - start, bottom - top);
+            }
+
+            ctx.restore();
+        }
+    };
+
+    window[canvasId + 'Obj'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.기간),
+            datasets: [
+                { label: '영업', data: data.map(d => d.영업현금흐름 ?? 0), backgroundColor: '#3b82f6', order: 1 },
+                { label: '투자', data: data.map(d => d.투자현금흐름 ?? 0), backgroundColor: '#ef4444', order: 1 },
+                { label: '재무', data: data.map(d => d.재무현금흐름 ?? 0), backgroundColor: '#f59e0b', order: 1 },
+                { label: 'FCF', data: data.map(d => d.FCF ?? 0), type: 'line', borderColor: '#10b981', borderWidth: 2, fill: false, order: 0, tension: 0 }
+            ]
+        },
+        plugins: [backgroundPlugin],
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 10, weight: 'bold' }, color: '#000' } } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 9 }, color: '#000' } }, x: { stacked: false, ticks: { font: { size: 9 }, color: '#000' } } } }
+    });
+}
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
