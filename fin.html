@@ -346,17 +346,19 @@
 
         <div>
             <div style="font-weight:bold; margin-bottom:5px;">📊 영업이익률 / ROE</div>
-
             <table id="roe_table" border="1" style="width: 360px; border-collapse:collapse; font-size:11px;">
                 <thead><tr id="roe_head"></tr></thead>
                 <tbody id="roe_body"></tbody>
             </table>
 
-            <div style="width: 360px; height:180px;"><canvas id="roe_chart"></canvas></div>
+            <div style="width: 360px; height:180px;"><canvas id="roe_chart"></canvas></div>                    
+        </div>
 
 
 
 
+        <div>
+            <div style="font-weight:bold; margin-bottom:5px; margin-top:20px">📊 기타 재무 지표 </div>
             <table style="width:360px;border-collapse:collapse;font-size:11px;">
                 <thead>
                     <tr id="etc_head"></tr>
@@ -364,28 +366,7 @@
                 <tbody id="etc_body"></tbody>
             </table>
 
-
-
-
-
-
-
-
-
-
-
-                    
         </div>
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1544,24 +1525,43 @@ function showEtc(data) {
         `;
     });
 
-    const realStartIndex = data.length - 4;
-
     let tr = `<tr>`;
 
     fields.forEach(f => {
-        const v = data[realStartIndex]?.[f.key];
 
-        tr += `
-            <td style="padding:2px;text-align:right;border:1px solid lightgray;font-size:11px;">
-                ${v != null ? v : '-'}
-            </td>
-        `;
+        // PER, PBR → 최신 1개
+        if (f.key !== '부채비율') {
+
+            const v = data[data.length - 4]?.[f.key];
+
+            tr += `
+                <td style="padding:2px;text-align:right;border:1px solid lightgray;font-size:11px;">
+                    ${v != null ? Math.round(v * 10) / 10 + '&nbsp;' : '-' + '&nbsp;'}
+                </td>
+            `;
+
+        } else {
+
+            // 부채비율 → 최근 3개
+            const last3 = data.slice(data.length - 6, data.length - 3);
+
+            const values = last3
+                .map(d => d.부채비율)
+                .filter(v => v != null)
+                .map(v => Math.round(v * 10) / 10 + '%')
+                .join('&nbsp; → &nbsp;');
+
+            tr += `
+                <td style="padding:2px;text-align:center;border:1px solid lightgray;font-size:11px;">
+                    ${values}
+                </td>
+            `;
+        }
     });
 
     tr += `</tr>`;
     body.innerHTML = tr;
 }
-
 
 
 

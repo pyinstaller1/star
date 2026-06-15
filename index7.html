@@ -2790,11 +2790,11 @@ function showCF(type, data) {
         { key: 'FCF', label: 'FCF' }
     ];
 
-    head.innerHTML = '<th style="padding:2px; font-weight:normal;">(억)</th>';
+    head.innerHTML = '<th style="height:15px; padding:0px; font-weight:normal; font-size:11px;">(억)</th>';
     data.forEach((d, index) => {
         const isEstimate = index >= (data.length - 3);
         let th = document.createElement('th');
-        th.style.cssText = `padding:1px; text-align:center; border:1px solid lightgray; font-size:11px; background:${isEstimate ? '#eeeeee' : '#f4f4f4'};`;
+        th.style.cssText = `padding:0px; text-align:center; border:1px solid lightgray; font-size:11px; background:${isEstimate ? '#eeeeee' : '#f4f4f4'};`;
         th.innerText = d.기간;
         head.appendChild(th);
     });
@@ -2802,11 +2802,11 @@ function showCF(type, data) {
     body.innerHTML = '';
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:15px; padding:0px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
             let td = document.createElement('td');
-            td.style.cssText = `padding:1px; text-align:right; border:1px solid lightgray; font-size:11px; background:${isEstimate ? '#eeeeee' : ''};`;
+            td.style.cssText = `padding:0px; text-align:right; border:1px solid lightgray; font-size:11px; background:${isEstimate ? '#eeeeee' : ''};`;
             let val = d[field.key] ?? 0;
             td.innerText = val.toLocaleString();
             if (val < 0) td.style.color = 'red';
