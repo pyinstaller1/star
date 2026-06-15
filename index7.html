@@ -6,10 +6,9 @@
     {% load static %}
 
 
-    <script src="https://unpkg.com/lightweight-charts@5.1.0/dist/lightweight-charts.standalone.production.js"></script>
-    <!-- <script src="{% static 'lightweight-charts.standalone.production.js' %}"></script> -->
+    <script src="{% static 'lightweight-charts.standalone.production.js' %}"></script>
     <link rel="stylesheet" type="text/css" href="{% static 'pretendard/pretendard-subset.css' %}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{% static 'chart.js' %}"></script>
 
 
     <style>
@@ -622,6 +621,14 @@ let kospiData = [];
 
 
 
+console.log(document.querySelector('#quarter-body td').offsetHeight)
+
+
+console.log(document.querySelector('#qoq-body td').offsetHeight)
+
+
+LightweightCharts.version()
+
 
     // 검색 버튼(검색창 옆 파란 버튼) 클릭 시 호출되는 함수
 function searchFromLeft() {
@@ -931,8 +938,12 @@ function updateSelection(items) {
 function selectAndCentral(code, name) {
 
 
+    currentCode = code;
+    currentName = name;
 
-    
+
+
+
     document.getElementById('chart-title').innerText = name;
     const searchInput = document.getElementById('search-input');
     if (searchInput) searchInput.value = name;
@@ -953,11 +964,14 @@ function selectAndCentral(code, name) {
             document.getElementById('base-date').innerText =
                 `${d.getMonth() + 1}.${d.getDate()}.(${['일', '월','화','수','목','금','토'][d.getDay()]}) 기준`;
 
+
+
             renderIlbongChart(list_ilbong);
 
 
 
             const qData = data.list_fin.filter(i => i.구분 === '분기');
+
 
             showSales('quarter', qData);
             showSalesChart('quarterChart', qData);
@@ -969,12 +983,17 @@ function selectAndCentral(code, name) {
             showCFChart('quarter_cf_chart', qData);
 
 
+
             
         })
         .catch(err => console.error("데이터 로드 오류:", err));
     
 
     document.getElementById('kospi-layer').style.display = 'none';
+
+
+    
+
 }
 
 // 대시보드 UI 전용 함수
@@ -1008,7 +1027,12 @@ let personalSeries = null;
 let instituteSeries = null;
 let foreignerSeries = null;
 
+let currentCode = null;
+let currentName = null;
 
+
+
+                    
 function renderIlbongChart(data) {
     const container = document.getElementById('chart-container');
     
@@ -1446,45 +1470,75 @@ volumeSeries.setData(
 const rsiVisible = document.getElementById('toggleRSI').checked;
 
 
-const rsiContainer = document.getElementById('rsi-container');
 
 
-        
+if (rsiVisible){
+    const rsiContainer = document.getElementById('rsi-container');
 
 
-rsiChart = LightweightCharts.createChart(
-    rsiContainer,
-    {
-        width: 700,
-        height: 80,
+            
 
 
-        localization: {
-            priceFormatter: (price) =>
-                Math.round(price).toString()
-        },
-        
-        layout: { attributionLogo: false },
-        rightPriceScale: { 
-            minimumWidth: 75,   // 캔들 차트와 동일
-            scaleMargins: { top: 0.0, bottom: 0.0 }
-        },
-        handleScroll: {
-            mouseWheel: false,
-            pressedMouseMove: false,
-            horzTouchDrag: false,
-            vertTouchDrag: false,
-        },
+    rsiChart = LightweightCharts.createChart(
+        rsiContainer,
+        {
+            width: 700,
+            height: 80,
 
-        handleScale: {
-            mouseWheel: false,
-            pinch: false,
-            axisPressedMouseMove: false,
-            axisDoubleClickReset: false,
-        },
 
+            localization: {
+                priceFormatter: (price) =>
+                    Math.round(price).toString()
+            },
+            
+            layout: { attributionLogo: false },
+            rightPriceScale: { 
+                minimumWidth: 75,   // 캔들 차트와 동일
+                scaleMargins: { top: 0.0, bottom: 0.0 }
+            },
+            handleScroll: {
+                mouseWheel: false,
+                pressedMouseMove: false,
+                horzTouchDrag: false,
+                vertTouchDrag: false,
+            },
+
+            handleScale: {
+                mouseWheel: false,
+                pinch: false,
+                axisPressedMouseMove: false,
+                axisDoubleClickReset: false,
+            },
+
+            crosshair: {
+                mode: 0,
+                vertLine: {
+                    visible: false,
+                    labelVisible: false,
+                },
+                horzLine: {
+                    visible: false,
+                    labelVisible: false,
+                },
+            },
+
+            grid: {
+                vertLines: { visible: false },
+                horzLines: { visible: false }
+            },
+
+            timeScale: {
+                visible: false
+            }
+        }
+    );
+
+
+
+
+
+    rsiChart.applyOptions({
         crosshair: {
-            mode: 0,
             vertLine: {
                 visible: false,
                 labelVisible: false,
@@ -1495,292 +1549,325 @@ rsiChart = LightweightCharts.createChart(
             },
         },
 
-        grid: {
-            vertLines: { visible: false },
-            horzLines: { visible: false }
-        },
-
-        timeScale: {
-            visible: false
-        }
-    }
-);
-
-
-
-
-
-rsiChart.applyOptions({
-    crosshair: {
-        vertLine: {
-            visible: false,
-            labelVisible: false,
-        },
-        horzLine: {
-            visible: false,
-            labelVisible: false,
-        },
-    },
-
-    
-});
-
-
-
-
-
-
-
-
-const rsiOver70Series = rsiChart.addSeries(
-    LightweightCharts.AreaSeries,
-    {
-        lineColor: 'transparent',
-
-    crosshairMarkerVisible: false,
-    crosshairMarkerRadius: 0,
-
-    priceLineVisible: false,
-    lastValueVisible: false,
-
         
-        topColor: 'rgba(255,0,0,0.25)',
-        bottomColor: 'rgba(255,0,0,0.25)',
-        baseValue: {
-            type: 'price',
-            price: 70
-        },
-        priceLineVisible: false,
-        lastValueVisible: false
-    }
-);
+    });
 
 
 
 
-rsiOver70Series.setData(
-    chartData.map(d => ({
-        time: d.time,
-        value: d.rsi >= 70 ? d.rsi : 0
-    }))
-);
 
 
 
 
-const rsi70Series = rsiChart.addSeries(
-    LightweightCharts.AreaSeries,
-    {
-        lineColor: 'transparent',
-    crosshairMarkerVisible: false,
-    crosshairMarkerRadius: 0,
+    const rsiOver70Series = rsiChart.addSeries(
+        LightweightCharts.AreaSeries,
+        {
+            lineColor: 'transparent',
 
-    priceLineVisible: false,
-    lastValueVisible: false,
-
-        
-        topColor: 'rgba(255,255,255,1.0)',
-        bottomColor: 'rgba(255,255,255,1.0)',
-        priceLineVisible: false,
-        lastValueVisible: false
-    }
-);
-
-
-rsi70Series.setData(
-    chartData.map(d => ({
-        time: d.time,
-        value: d.rsi >= 70 ? 70 : 70
-    }))
-);
-
-
-
-
-
-
-
-
-const rsiUnder30Series = rsiChart.addSeries(
-    LightweightCharts.AreaSeries,
-    {
-        lineColor: 'transparent',
-
-
-
-    crosshairMarkerVisible: false,
-    crosshairMarkerRadius: 0,
-
-    priceLineVisible: false,
-    lastValueVisible: false,
-
-
-        
-        topColor: 'rgba(0,0,255,0.25)',
-        bottomColor: 'rgba(0,0,255,0.25)',
-        baseValue: {
-            type: 'price',
-            price: 30
-        },
-        priceLineVisible: false,
-        lastValueVisible: false
-    }
-);
-
-
-
-
-rsiUnder30Series.setData(
-    chartData.map(d => ({
-        time: d.time,
-        value: 30
-    }))
-);
-
-
-
-
-
-
-const rsi30Series = rsiChart.addSeries(
-    LightweightCharts.AreaSeries,
-    {
-        lineColor: 'transparent',
-
-
-    crosshairMarkerVisible: false,
-    crosshairMarkerRadius: 0,
-
-    priceLineVisible: false,
-    lastValueVisible: false,
-
-        
-        topColor: 'rgba(255,255,255,1.0)',
-        bottomColor: 'rgba(255,255,255,1.0)',
-        priceLineVisible: false,
-        lastValueVisible: false
-    }
-);
-
-
-rsi30Series.setData(
-    chartData.map(d => ({
-        time: d.time,
-        value: d.rsi <= 30 ? d.rsi : 30
-    }))
-);
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-myChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
-    if (rsiChart && range) {
-        rsiChart.timeScale().setVisibleLogicalRange(range);
-    }
-});
-
-
-rsiSeries = rsiChart.addSeries(
-    LightweightCharts.LineSeries,
-    {
-        color: '#7B1FA2',
-        lineWidth: 1,
-        priceLineVisible: false,
-        lastValueVisible: false,
         crosshairMarkerVisible: false,
         crosshairMarkerRadius: 0,
 
-    }
-);
+        priceLineVisible: false,
+        lastValueVisible: false,
 
-rsiSeries.setData(
-    chartData
-        .filter(d => d.rsi != null)
-        .map(d => ({
+            
+            topColor: 'rgba(255,0,0,0.25)',
+            bottomColor: 'rgba(255,0,0,0.25)',
+            baseValue: {
+                type: 'price',
+                price: 70
+            },
+            priceLineVisible: false,
+            lastValueVisible: false
+        }
+    );
+
+
+
+
+    rsiOver70Series.setData(
+        chartData.map(d => ({
             time: d.time,
-            value: d.rsi
+            value: d.rsi >= 70 ? d.rsi : 0
         }))
-);
-
-    
+    );
 
 
 
 
+    const rsi70Series = rsiChart.addSeries(
+        LightweightCharts.AreaSeries,
+        {
+            lineColor: 'transparent',
+        crosshairMarkerVisible: false,
+        crosshairMarkerRadius: 0,
+
+        priceLineVisible: false,
+        lastValueVisible: false,
+
+            
+            topColor: 'rgba(255,255,255,1.0)',
+            bottomColor: 'rgba(255,255,255,1.0)',
+            priceLineVisible: false,
+            lastValueVisible: false
+        }
+    );
+
+
+    rsi70Series.setData(
+        chartData.map(d => ({
+            time: d.time,
+            value: d.rsi >= 70 ? 70 : 70
+        }))
+    );
 
 
 
 
-rsiSeries.applyOptions({
-    autoscaleInfoProvider: () => ({
-        priceRange: {
-            minValue: 0,
-            maxValue: 100,
+
+
+
+
+    const rsiUnder30Series = rsiChart.addSeries(
+        LightweightCharts.AreaSeries,
+        {
+            lineColor: 'transparent',
+
+
+
+        crosshairMarkerVisible: false,
+        crosshairMarkerRadius: 0,
+
+        priceLineVisible: false,
+        lastValueVisible: false,
+
+
+            
+            topColor: 'rgba(0,0,255,0.25)',
+            bottomColor: 'rgba(0,0,255,0.25)',
+            baseValue: {
+                type: 'price',
+                price: 30
+            },
+            priceLineVisible: false,
+            lastValueVisible: false
+        }
+    );
+
+
+
+
+    rsiUnder30Series.setData(
+        chartData.map(d => ({
+            time: d.time,
+            value: 30
+        }))
+    );
+
+
+
+
+
+
+    const rsi30Series = rsiChart.addSeries(
+        LightweightCharts.AreaSeries,
+        {
+            lineColor: 'transparent',
+
+
+        crosshairMarkerVisible: false,
+        crosshairMarkerRadius: 0,
+
+        priceLineVisible: false,
+        lastValueVisible: false,
+
+            
+            topColor: 'rgba(255,255,255,1.0)',
+            bottomColor: 'rgba(255,255,255,1.0)',
+            priceLineVisible: false,
+            lastValueVisible: false
+        }
+    );
+
+
+    rsi30Series.setData(
+        chartData.map(d => ({
+            time: d.time,
+            value: d.rsi <= 30 ? d.rsi : 30
+        }))
+    );
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+    myChart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+        if (rsiChart && range) {
+            rsiChart.timeScale().setVisibleLogicalRange(range);
+        }
+    });
+
+
+    rsiSeries = rsiChart.addSeries(
+        LightweightCharts.LineSeries,
+        {
+            color: '#7B1FA2',
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+            crosshairMarkerRadius: 0,
+
+        }
+    );
+
+    rsiSeries.setData(
+        chartData
+            .filter(d => d.rsi != null)
+            .map(d => ({
+                time: d.time,
+                value: d.rsi
+            }))
+    );
+
+        
+
+
+
+
+
+
+
+
+    rsiSeries.applyOptions({
+        autoscaleInfoProvider: () => ({
+            priceRange: {
+                minValue: 0,
+                maxValue: 100,
+            },
+        }),
+    });
+
+
+
+
+    rsiSeries.applyOptions({
+        crosshairMarkerVisible: false,
+        crosshairMarkerRadius: 0,
+    });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    const rsi70TopSeries = rsiChart.addSeries(
+        LightweightCharts.LineSeries,
+        {
+            color: 'rgba(211,47,47,0.7)',
+            lineWidth: 1,
+            lineStyle: 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        }
+    );
+
+    rsi70TopSeries.setData([
+        {
+            time: chartData[0].time,
+            value: 70
         },
-    }),
-});
-
-
-
-
-rsiSeries.applyOptions({
-    crosshairMarkerVisible: false,
-    crosshairMarkerRadius: 0,
-});
+        {
+            time: chartData[chartData.length - 1].time,
+            value: 70
+        }
+    ]);
 
 
 
 
 
+    const rsi50TopSeries = rsiChart.addSeries(
+        LightweightCharts.LineSeries,
+        {
+            color: 'rgba(100,100,100,0.7)',
+            lineWidth: 1,
+            lineStyle: 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        }
+    );
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    rsi50TopSeries.setData([
+        {
+            time: chartData[0].time,
+            value: 50
+        },
+        {
+            time: chartData[chartData.length - 1].time,
+            value: 50
+        }
+    ]);
 
 
 
@@ -1788,151 +1875,104 @@ rsiSeries.applyOptions({
 
 
 
+    const rsi30TopSeries = rsiChart.addSeries(
+        LightweightCharts.LineSeries,
+        {
+            color: 'rgba(25,118,210,0.7)',
+            lineWidth: 1,
+            lineStyle: 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        }
+    );
+
+    rsi30TopSeries.setData([
+        {
+            time: chartData[0].time,
+            value: 30
+        },
+        {
+            time: chartData[chartData.length - 1].time,
+            value: 30
+        }
+    ]);
 
 
 
 
-const rsi70TopSeries = rsiChart.addSeries(
-    LightweightCharts.LineSeries,
-    {
-        color: 'rgba(211,47,47,0.7)',
-        lineWidth: 1,
-        lineStyle: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false
+
+
+
+
+
+
+    rsiContainer.style.position = 'relative';
+
+
+
+
+
+
+    function addScaleMask(top, height) {
+        const mask = document.createElement('div');
+
+        mask.style.position = 'absolute';
+        mask.style.right = '43px';
+
+        mask.style.top = top + 'px';
+        mask.style.width = '30px';
+        mask.style.height = height + 'px';
+        mask.style.background = '#fff';
+        mask.style.pointerEvents = 'none';
+        mask.style.zIndex = '100';
+
+        rsiContainer.appendChild(mask);
     }
-);
+        
 
-rsi70TopSeries.setData([
-    {
-        time: chartData[0].time,
-        value: 70
-    },
-    {
-        time: chartData[chartData.length - 1].time,
-        value: 70
-    }
-]);
+    addScaleMask(6, 10);
+    addScaleMask(37, 10);
 
 
 
 
+        
 
-const rsi50TopSeries = rsiChart.addSeries(
-    LightweightCharts.LineSeries,
-    {
-        color: 'rgba(100,100,100,0.7)',
-        lineWidth: 1,
-        lineStyle: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false
-    }
-);
-
-rsi50TopSeries.setData([
-    {
-        time: chartData[0].time,
-        value: 50
-    },
-    {
-        time: chartData[chartData.length - 1].time,
-        value: 50
-    }
-]);
+    rsiSeries.createPriceLine({
+        price: 70,
+        color: 'rgba(255,205,210,0.7)',
+        lineVisible: false,
+        axisLabelVisible: true,
+        title: ''
+    });
 
 
 
 
+    rsiSeries.createPriceLine({
+        price: 30,
+        color: 'rgba(187,222,251,0.5)',
+        lineVisible: false,
+        axisLabelVisible: true,
+        title: '',
+        
+    });
 
-
-
-const rsi30TopSeries = rsiChart.addSeries(
-    LightweightCharts.LineSeries,
-    {
-        color: 'rgba(25,118,210,0.7)',
-        lineWidth: 1,
-        lineStyle: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        crosshairMarkerVisible: false
-    }
-);
-
-rsi30TopSeries.setData([
-    {
-        time: chartData[0].time,
-        value: 30
-    },
-    {
-        time: chartData[chartData.length - 1].time,
-        value: 30
-    }
-]);
-
-
-
-
-
-
-
-
-
-
-rsiContainer.style.position = 'relative';
-
-
-
-
-
-
-function addScaleMask(top, height) {
-    const mask = document.createElement('div');
-
-    mask.style.position = 'absolute';
-    mask.style.right = '43px';
-
-    mask.style.top = top + 'px';
-    mask.style.width = '30px';
-    mask.style.height = height + 'px';
-    mask.style.background = '#fff';
-    mask.style.pointerEvents = 'none';
-    mask.style.zIndex = '100';
-
-    rsiContainer.appendChild(mask);
 }
-    
-
-addScaleMask(6, 10);
-addScaleMask(37, 10);
 
 
 
 
-    
-
-rsiSeries.createPriceLine({
-    price: 70,
-    color: 'rgba(255,205,210,0.7)',
-    lineVisible: false,
-    axisLabelVisible: true,
-    title: ''
-});
 
 
 
 
-rsiSeries.createPriceLine({
-    price: 30,
-    color: 'rgba(187,222,251,0.5)',
-    lineVisible: false,
-    axisLabelVisible: true,
-    title: '',
-    
-});
 
 
+
+
+                    
 
 
 
@@ -2184,9 +2224,26 @@ const baseTimes = chartData.map(d => Math.floor(new Date(d.time).getTime() / 100
 
 // 데이터 세팅
 // 작은 값이 위로 올라가게 하려면, 큰 값 → 아래, 작은 값 → 위 순서대로 setData
-chartData.forEach((d, i) => {
+personalSeries.setData(
+    chartData.map((d, i) => ({
+        time: baseTimes[i],
+        value: d.개인
+    }))
+);
 
+instituteSeries.setData(
+    chartData.map((d, i) => ({
+        time: baseTimes[i],
+        value: d.기관
+    }))
+);
 
+foreignerSeries.setData(
+    chartData.map((d, i) => ({
+        time: baseTimes[i],
+        value: d.외국인
+    }))
+);
     const flowZeroLine = flowChart.addSeries(
         LightweightCharts.LineSeries,
         {
@@ -2204,19 +2261,6 @@ chartData.forEach((d, i) => {
         { time: baseTimes[baseTimes.length - 1], value: 0 }
     ]);
 
-
-
-
-
-
-    
-    const time = baseTimes[i];
-
-    // 누적 안 하고 각 시리즈 값 그대로
-    personalSeries.update({ time: time, value: d.개인 });
-    instituteSeries.update({ time: time, value: d.기관 });
-    foreignerSeries.update({ time: time, value: d.외국인 });
-});
 
 
 
@@ -2291,6 +2335,7 @@ candleSeries.setData(chartData);
 
 
 // 테이블에 5줄만 보여주고 스크롤 가능
+
 const tbody = document.getElementById('ilbong-table-body');
 tbody.innerHTML = '';
 
@@ -2500,14 +2545,7 @@ document.getElementById('toggleRSI').addEventListener('change', (e) => {
 
     if (e.target.checked) {
 
-        rsiContainer.style.height = '80px';
-
-        if (rsiChart) {
-            rsiChart.resize(
-                700,
-                80
-            );
-        }
+        selectAndCentral(currentCode, currentName);
 
 
     } else {
@@ -2590,11 +2628,11 @@ function showSales(type, data) {
     const body = document.getElementById(type + '-body');
     const fields = [{ key: '매출', label: '매출' }, { key: '영업이익', label: '영익' }];
 
-    head.innerHTML = '<th style="padding:2px; font-weight:normal;">(억)</th>';
+    head.innerHTML = '<th style="height:15px; padding:0px; font-weight:normal; font-size:11px ">(억)</th>';
     data.forEach((d, index) => {
         const isEstimate = index >= (data.length - 3);
         let th = document.createElement('th');
-        th.style.padding = '1px';
+        th.style.padding = '0px';
         th.style.fontSize = '11px';
         th.style.border = '1px solid lightgray';
         if (isEstimate) { th.style.color = '#777'; th.style.backgroundColor = '#eeeeee'; }
@@ -2605,7 +2643,7 @@ function showSales(type, data) {
     body.innerHTML = '';
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:15px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
             let td = document.createElement('td');
@@ -2664,18 +2702,18 @@ function showSalesChart(canvasId, data) {
             ]
         },
         plugins: [backgroundPlugin],
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 12 }, color: '#000' } } }, scales: { x: { ticks: { font: { size: 11 }, color: '#000', autoSkip: false, maxRotation: 0, minRotation: 0 } }, y: { ticks: { font: { size: 9 } } } } }
+        options: { animation: false, responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 12 }, color: '#000' } } }, scales: { x: { ticks: { font: { size: 11 }, color: '#000', autoSkip: false, maxRotation: 0, minRotation: 0 } }, y: { ticks: { font: { size: 9 } } } } }
     });
 }
 
 function showAsset(type, data) {
     const head = document.getElementById(type + '_head');
     const body = document.getElementById(type + '_body');
-    head.innerHTML = '<th style="padding:2px; font-weight:normal;">(억)</th>';
+    head.innerHTML = '<th style="height:15px; padding:0px; font-weight:normal; font-size:11px">(억)</th>';
     data.forEach((d, index) => {
         const isEstimate = index >= (data.length - 3);
         let th = document.createElement('th');
-        th.style.cssText = `padding:2px; text-align:center; border:1px solid lightgray; font-size:11px; background: ${isEstimate ? '#eeeeee' : '#f4f4f4'}; color: ${isEstimate ? '#777' : '#000'};`;
+        th.style.cssText = `padding:0px; text-align:center; border:1px solid lightgray; font-size:11px; background: ${isEstimate ? '#eeeeee' : '#f4f4f4'}; color: ${isEstimate ? '#777' : '#000'};`;
         th.innerText = d.기간;
         head.appendChild(th);
     });
@@ -2684,11 +2722,11 @@ function showAsset(type, data) {
     const fields = [{ key: '자산', label: '자산' }, { key: '부채', label: '부채' }];
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:15px; padding:0px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
             let td = document.createElement('td');
-            td.style.cssText = `padding:1px; text-align:right; border:1px solid lightgray; font-size:11px; ${isEstimate ? 'background:#eeeeee; color:#777;' : ''}`;
+            td.style.cssText = `padding:0px; text-align:right; border:1px solid lightgray; font-size:11px; ${isEstimate ? 'background:#eeeeee; color:#777;' : ''}`;
             td.innerText = (d[field.key] ?? 0).toLocaleString();
             tr.appendChild(td);
         });
@@ -2738,7 +2776,7 @@ function showAssetChart(canvasId, data) {
             ]
         },
         plugins: [backgroundPlugin],
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 12 }, color: '#000' } } }, scales: { x: { ticks: { font: { size: 11 }, color: '#000', autoSkip: false, maxRotation: 0, minRotation: 0 } }, y: { ticks: { font: { size: 9 } } } } }
+        options: { animation: false, responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 12 }, color: '#000' } } }, scales: { x: { ticks: { font: { size: 11 }, color: '#000', autoSkip: false, maxRotation: 0, minRotation: 0 } }, y: { ticks: { font: { size: 9 } } } } }
     });
 }
 
@@ -2828,7 +2866,7 @@ function showCFChart(canvasId, data) {
             ]
         },
         plugins: [backgroundPlugin],
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 10, weight: 'bold' }, color: '#000' } } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 9 }, color: '#000' } }, x: { stacked: false, ticks: { font: { size: 9 }, color: '#000' } } } }
+        options: { animation: false, responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 12 }, color: '#000' } } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 9 }, color: '#000' } }, x: { stacked: false, ticks: { font: { size: 9 }, color: '#000' } } } }
     });
 }
 </script>
