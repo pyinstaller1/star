@@ -306,7 +306,7 @@ def select_hoga(code):
 
 
 
-def select_st_hoga(mode):
+def select_st_hoga8(mode):
     con = duckdb.connect(db_path)
 
     list_kospi = select_tb_kospi()
@@ -391,7 +391,86 @@ def select_st_hoga(mode):
 
 
 
+def select_st_hoga(mode):
+    con = duckdb.connect(db_path)
+    
+    # 1. SQL 단에서 매수/매도 조건을 미리 계산하기 위한 수식 정의
+    # tick 딕셔너리의 인덱스 번호 대신 테이블 컬럼명을 직접 사용하여 DB 연산으로 처리합니다.
+    buy_condition = """
+        bid_rem1 > 500 AND
+        (bid_rem1 / 10.0) > offer_rem1 AND (bid_rem1 / 10.0) > offer_rem2 AND 
+        (bid_rem1 / 10.0) > offer_rem3 AND (bid_rem1 / 10.0) > offer_rem4 AND 
+        (bid_rem1 / 10.0) > offer_rem5 AND
+        (bid_rem2 / 5.0) > offer_rem1 AND (bid_rem2 / 5.0) > offer_rem2 AND 
+        (bid_rem2 / 5.0) > offer_rem3 AND (bid_rem2 / 5.0) > offer_rem4 AND 
+        (bid_rem2 / 5.0) > offer_rem5
+    """
+    
+    sell_condition = """
+        offer_rem1 > 500 AND
+        (offer_rem1 / 10.0) > bid_rem1 AND (offer_rem1 / 10.0) > bid_rem2 AND 
+        (offer_rem1 / 10.0) > bid_rem3 AND (offer_rem1 / 10.0) > bid_rem4 AND 
+        (offer_rem1 / 10.0) > bid_rem5 AND
+        (offer_rem2 / 5.0) > bid_rem1 AND (offer_rem2 / 5.0) > bid_rem2 AND 
+        (offer_rem2 / 5.0) > bid_rem3 AND (offer_rem2 / 5.0) > bid_rem4 AND 
+        (offer_rem2 / 5.0) > bid_rem5
+    """
 
+    # mode에 따라 SQL WHERE 절 동적 구성
+    if mode == 'buy':
+        filter_sql = f"WHERE ({buy_condition})"
+    elif mode == 'sell':
+        filter_sql = f"WHERE ({sell_condition})"
+    else:  # 'etc'
+        filter_sql = f"WHERE NOT ({buy_condition}) AND NOT ({sell_condition})"
+
+    # 2. 호가 잔량 20개 중 최댓값(max_rem)을 DB에서 바로 구하는 대형 컬럼 리스트 생성
+    all_rem_cols = [f"offer_rem{i}" for i in range(1, 11)] + [f"bid_rem{i}" for i in range(1, 11)]
+    max_rem_expression = f"GREATEST({', '.join(all_rem_cols)}) as max_rem"
+    
+    cols = ", ".join([f"offer{i}, offer_rem{i}, bid{i}, bid_rem{i}" for i in range(1, 11)])
+    
+    # 3. 문자열 IN 대신 깔끔한 INNER JOIN 구조로 쿼리 작성 (속도 극대화)
+    # 기존에 프론트엔드 template에서 사용하던 'item.max_rem'도 한 번에 넘겨줍니다.
+
+
+
+
+    sql = f"""
+        SELECT 
+            a.code, 
+            b.종목명 as name, 
+            {cols}, 
+            strftime(a.updated_at, '%H:%M:%S') as updated_at, -- DB에서 바로 포맷팅
+            GREATEST({', '.join(all_rem_cols)}) as max_rem
+        FROM tb_hoga a
+        INNER JOIN tb_kospi b ON a.code = b.코드
+        {filter_sql}
+    """
+
+
+
+
+
+
+
+    try:
+        # DuckDB의 df() 또는 dict() 변환 기능을 활용하면 파이썬 루프 없이 초고속 변환 가능
+        # 여기서는 기존 템플릿과의 호환성을 위해 fetchall_of_dicts()와 유사한 구조를 사용하거나,
+        # DuckDB에서 제공하는fetchall() 데이터를 바로 딕셔너리 리스트로 치환합니다.
+        res = con.execute(sql)
+        description = [desc[0] for desc in con.description]
+        
+        # 파이썬 레벨의 연산 없이 오직 결과 조립만 수행
+        list_hoga = [dict(zip(description, row)) for row in res.fetchall()]
+        
+    except duckdb.Error as e:
+        print(f"조회 오류 발생: {e}")
+        list_hoga = []
+    finally:
+        con.close()
+
+    return list_hoga
 
 
 
@@ -778,6 +857,7 @@ def create_db():
     create_tb_basic()
     create_tb_gwansim_group()
     create_tb_ilbong()
+    create_tb_checkbox()
     
 
 
@@ -1275,6 +1355,7 @@ def create_tb_ilbong():
             ma20 DOUBLE,
             ma60 DOUBLE,
             ma120 DOUBLE,
+            ema26 DOUBLE,            
             rsi14 DOUBLE,
             macd DOUBLE,
             macd9 DOUBLE,
@@ -1327,13 +1408,13 @@ def insert_tb_ilbong(ilbong_list):
     sql = """
         INSERT OR REPLACE INTO tb_ilbong (
             code, date, open, high, low, close, volume, 
-            ma5, ma20, ma60, ma120, 
+            ma5, ma20, ma60, ma120, ema26,
             rsi14, macd, macd9, bol_u, bol_l, bol_size, bol_dolpa, 
             ilmok_a, ilmok_b, ilmok_dolpa, ilmok_yang,
             개인, 외국인, 기관, 연기금, 사모펀드, 프로그램, 공매도수량, 공매도대금
         ) VALUES (
             $code, $date, $open, $high, $low, $close, $volume, 
-            $ma5, $ma20, $ma60, $ma120, 
+            $ma5, $ma20, $ma60, $ma120, $ema26,
             $rsi14, $macd, $macd9, $bol_u, $bol_l, $bol_size, $bol_dolpa, 
             $ilmok_a, $ilmok_b, $ilmok_dolpa, $ilmok_yang,
             $개인, $외국인, $기관, $연기금, $사모펀드, $프로그램, $공매도수량, $공매도대금
@@ -1464,10 +1545,11 @@ def insert_naver_fin(dict_total):
     create_sql = """
     CREATE TABLE IF NOT EXISTS tb_naver_fin (
         코드 VARCHAR, 구분 VARCHAR, 기간 VARCHAR,
-        매출 DOUBLE, 영업이익 DOUBLE, 자산 DOUBLE, 자본 DOUBLE, 부채 DOUBLE,
+        매출 DOUBLE, 영업이익 DOUBLE, 당기순이익 DOUBLE, 자산 DOUBLE, 자본 DOUBLE, 부채 DOUBLE,
         영업이익률 DOUBLE, 부채비율 DOUBLE, 영업현금흐름 DOUBLE, 투자현금흐름 DOUBLE,
-        재무현금흐름 DOUBLE, FCF DOUBLE, CAPEX DOUBLE, EPS DOUBLE, ROE DOUBLE, PER DOUBLE,
-        성장률 DOUBLE,
+        재무현금흐름 DOUBLE, FCF DOUBLE, CAPEX DOUBLE, ROE DOUBLE,
+        EPS DOUBLE, PER DOUBLE, BPS DOUBLE, PBR DOUBLE,
+        매출QOQ DOUBLE, 영업이익QOQ DOUBLE, 자본QOQ DOUBLE, EPSQOQ DOUBLE,
         PRIMARY KEY (코드, 구분, 기간)
     );
     """
@@ -1475,7 +1557,7 @@ def insert_naver_fin(dict_total):
     # 2. 삽입 쿼리 (파라미터 바인딩 사용)
     insert_sql = """
     INSERT OR REPLACE INTO tb_naver_fin VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     );
     """
 
@@ -1487,20 +1569,25 @@ def insert_naver_fin(dict_total):
             # 데이터 삽입 루프
             for gubun in ['분기', '연도']:
                 for period, data in dict_total[gubun].items():
-                    growth = data.get('매출QOQ') or data.get('매출YOY')
+                    매출성장 = data.get('매출QOQ') or data.get('매출YOY')
+                    영업이익성장 = data.get('영업이익QOQ') or data.get('영업이익YOY')
+                    자본성장 = data.get('자본QOQ') or data.get('자본YOY')
+                    EPS성장 = data.get('EPSQOQ') or data.get('EPSYOY')
+
+
+                    
                     
                     params = (
                         code, gubun, period,
-                        data.get('매출'), data.get('영업이익'), data.get('자산'),
-                        data.get('자본'), data.get('부채'), data.get('영업이익률'),
-                        data.get('부채비율'), data.get('영업현금흐름'), data.get('투자현금흐름'),
-                        data.get('재무현금흐름'), data.get('FCF'), data.get('CAPEX'),
-                        data.get('EPS'), data.get('ROE'), data.get('PER'),
-                        growth
+                        data.get('매출'), data.get('영업이익'), data.get('영업이익'),
+                        data.get('자산'), data.get('자본'), data.get('부채'), data.get('영업이익률'), data.get('부채비율'),
+                        data.get('영업현금흐름'), data.get('투자현금흐름'), data.get('재무현금흐름'), data.get('FCF'), data.get('CAPEX'),
+                        data.get('ROE'), data.get('EPS'), data.get('PER'), data.get('BPS'), data.get('PBR'),
+                        매출성장, 영업이익성장, 자본성장, EPS성장
                     )
                     conn.execute(insert_sql, params)
         
-        print(f"✅ {code} 재무 데이터 DB 삽입 완료! (정통 쿼리 방식)")
+        # print(f"✅ {code} 재무 데이터 DB 삽입 완료! (정통 쿼리 방식)")
         return True
     
     except Exception as e:
@@ -1518,8 +1605,8 @@ def insert_naver_fin(dict_total):
 
 def select_naver_fin(code):
     query = """
-    SELECT 코드, 구분, 기간, 매출, 영업이익, 자산, 자본, 부채, 영업이익률, 부채비율, 
-           영업현금흐름, 투자현금흐름, 재무현금흐름, FCF, CAPEX, EPS, ROE, PER, 성장률 
+    SELECT 코드, 구분, 기간, 매출, 영업이익, 당기순이익, 자산, 자본, 부채, 영업이익률, 부채비율, 
+           영업현금흐름, 투자현금흐름, 재무현금흐름, FCF, CAPEX, ROE, EPS, PER, BPS, PBR, 매출QOQ, 영업이익QOQ, 자본QOQ, EPSQOQ 
     FROM tb_naver_fin 
     WHERE 코드 = ? 
     ORDER BY 구분 DESC, 기간 ASC
@@ -1594,9 +1681,63 @@ def insert_tb_theme(list_theme):
 
 
 
+def create_tb_checkbox():
+
+    with duckdb.connect(db_path) as conn:
+
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS tb_checkbox (
+                checkbox_id VARCHAR PRIMARY KEY,
+                checked BOOLEAN DEFAULT TRUE
+            )
+        """)
+
+        conn.execute("""
+            INSERT OR IGNORE INTO tb_checkbox VALUES
+            ('toggleMA', TRUE),
+            ('toggleEMA26', FALSE),
+            ('toggleBollinger', FALSE),
+            ('toggleIlmok', FALSE),
+            ('toggleRSI', FALSE),
+            ('toggleMACD', TRUE),
+            ('toggleFlow', TRUE)
+        """)
 
 
 
 
 
+
+
+def update_tb_checkbox(checkbox_id, checked):
+
+    with duckdb.connect(db_path) as conn:
+
+        conn.execute("""
+            INSERT OR REPLACE INTO tb_checkbox
+            (checkbox_id, checked)
+            VALUES (?, ?)
+        """, [checkbox_id, checked])
+
+
+
+
+
+
+def select_tb_checkbox():
+
+    with duckdb.connect(db_path) as conn:
+
+        rows = conn.execute("""
+            SELECT checkbox_id, checked
+            FROM tb_checkbox
+        """).fetchall()
+
+    return {row[0]: row[1] for row in rows}
+
+
+
+
+
+create_tb_checkbox()
 
