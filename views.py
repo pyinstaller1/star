@@ -1136,50 +1136,17 @@ def st_hoga_view8(request):
 
 
 
-
-
-from datetime import datetime
-
 def st_hoga_view(request):
     mode = request.GET.get('mode', 'buy')
 
-    # 1. 데이터 가져오기
+    # 1. DB에서 max_rem과 updated_at 문자열까지 한방에 완벽하게 계산해서 가져옴
     list_hoga = select_st_hoga(mode)
 
-    # 호가 잔량 키 리스트를 미리 상수로 선언 (루프 내부에서 매번 리스트를 만들지 않도록 대폭 개선)
-    REM_KEYS = [f'offer_rem{i}' for i in range(1, 11)] + [f'bid_rem{i}' for i in range(1, 11)]
-    EXCLUDE_VALS = {None, '', '-'} # set(집합)으로 변경하여 IN 연산 속도 극대화
-
-    # 2. 루프 연산 최적화
-    for item in list_hoga:
-        # 시간 문자열 변환
-        updated_at = item.get('updated_at')
-        if isinstance(updated_at, datetime):
-            item['updated_at'] = updated_at.strftime('%H:%M:%S')
-
-        # [최적화 핵심] 매번 20개짜리 리스트를 새로 만들지 않고 generator와 집합 필터링으로 처리
-        # int() 변환 시 발생할 수 있는 ValueError 방지를 위해 try-except 적용 또는 안전한 변환
-        rems = []
-        for key in REM_KEYS:
-            val = item.get(key, 0)
-            if val not in EXCLUDE_VALS:
-                try:
-                    rems.append(int(val))
-                except (ValueError, TypeError):
-                    continue
-
-        # 최대 잔량 저장
-        item['max_rem'] = max(rems) if rems else 1
-
-    # ⚠️ [⚠️ 절대 주의] 데이터가 많을 때 print(list_hoga)는 서버를 멈추게 합니다. 주석 처리 혹은 제거하세요!
-    # print(list_hoga) 
-
+    # 2. 파이썬 루프 연산 "완전히 제거" -> 속도 극대화
     return render(request, 'strategy/st_hoga.html', {
         'list_hoga': list_hoga,
         'mode': mode,
     })
-
-
 
 
 
