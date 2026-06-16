@@ -1,0 +1,282 @@
+{% load static %}
+{% load humanize %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>호가창 대시보드</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
+    <style>
+        /* 사용자님 원본 스타일 100% 유지 */
+        body { margin:0; padding-top:80px; background:#f8fafc; font-family:'Pretendard',sans-serif; color:#111827; }
+        .top-control-bar {
+            position: fixed; top: 0; left: 0; right: 0; height: 70px; background-color: #ffffff;
+            border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between;
+            align-items: center; padding: 0 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); z-index: 1000;
+        }
+        .title-area h1 { margin: 0; font-size: 18px; font-weight: 700; }
+        .title-area span { font-size: 12px; color: #64748b; }
+        .right-control-area { display: flex; align-items: center; gap: 20px; }
+        .btn { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 700; border: none; cursor: pointer; text-decoration: none; background-color: #64748b; color: white; }
+        .hoga-grid { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 35px; padding: 5px; }
+        .hoga-card { width: 190px; flex: 0 0 190px; background: #fff; border: 1px solid #dbe2ea; border-radius: 7px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        .card-head { height:25px; display:flex; align-items:center; justify-content:space-between; padding:0 5px; border-bottom:1px solid #edf1f5; font-size:15px; }
+        .hoga-row { position:relative; display:flex; align-items:stretch; height:16px; margin:0; padding:0; line-height:16px; font-size:11px; }
+        .rem-cell { position:relative; width: 135px; overflow:hidden; display:flex; align-items:center; justify-content:flex-end; padding-right:1px; background:#fff; }
+        .price-cell { width: 55px; padding-right:2px; text-align:right; letter-spacing:-0.5px; background:#f8fafc; line-height:16px; z-index:2; font-weight: 510; font-variant-numeric: tabular-nums; }
+        .bid-price { color:#ff2d55; }
+        .offer-price { color:#007aff; }
+        .rem-text { position:relative; z-index:2; color:#000; font-size:10px; line-height:16px; margin-right: 0; font-weight: 388; }
+        .bar { position:absolute; right:0; top:0.5px; bottom:0.5px; margin:0; border:none; opacity:0.95; }
+        .bid-bar { background:#ff5c78; }
+        .offer-bar { background:#5aa7ff; }
+        .mid-line { height:1px; background:#dbe2ea; }
+        #log-list { list-style: none; padding: 10px; margin: 0; }
+        #log-list li { border-bottom: 1px solid #333; padding: 4px 0; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+<div class="top-control-bar">
+    <div class="title-area">
+        <h1>🚀 호가틱 전략</h1>
+        <span>포착 종목 수: {{ list_hoga|length }}</span>
+    </div>
+
+    <div class="right-control-area">
+        <label style="display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; user-select: none;">
+            <input type="checkbox" id="check-all-stocks" style="width: 16px; height: 16px; cursor: pointer;"> 전체 선택
+        </label>
+
+        <button type="button" class="btn" onclick="openGroupModal()" style="background-color: #2563eb;">🌟 관심종목 추가</button>
+
+        <form action="" method="GET" style="display:flex; align-items:center; gap:15px; margin-right:15px; padding:5px 15px; border:1px solid #e2e8f0; border-radius:8px; background-color:#f8fafc;">
+            <label style="font-size:15px; cursor:pointer;">
+                <input type="radio" name="mode" value="buy" {% if mode == 'buy' %}checked{% endif %} onchange="window.__t0 = performance.now(); this.form.submit()"> 매수 📈
+            </label>
+            <label style="font-size:15px; cursor:pointer;">
+                <input type="radio" name="mode" value="sell" {% if mode == 'sell' %}checked{% endif %} onchange="this.form.submit()"> 매도 📉
+            </label>
+            <label style="font-size:15px; cursor:pointer;">
+                <input type="radio" name="mode" value="etc" {% if mode == 'etc' %}checked{% endif %} onchange="this.form.submit()"> 나머지
+            </label>
+        </form>
+
+        <button class="btn" onclick="startHogaWindow('{% url 'hoga_stream' %}')" style="padding: 8px 16px; background: #2563eb; color: white; cursor: pointer;">📊 호가틱 수집</button>
+        <a href="{% url 'index' %}" class="btn">➔ 메인으로</a>
+    </div>
+</div>
+
+<div class="hoga-grid" style="padding-left:30px;">
+{% for item in list_hoga %}
+<div class="hoga-card">
+    <div class="card-head">
+        <div style="display:flex; align-items:center; gap:5px; font-weight:700;">
+            <input type="checkbox" class="stock-item-checkbox" data-code="{{ item.code }}">
+            <span style="font-size:15px; font-weight:700;">{{ forloop.counter }}.</span>
+            <span>{{ item.name }}</span>
+        </div>
+    </div>
+
+    <div class="hoga-wrap">
+        <!-- 매도(Offer) 호가 10 ~ 1 -->
+        <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem10 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem10|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer10|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem9 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem9|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer9|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem8 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem8|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer8|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem7 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem7|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer7|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem6 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem6|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer6|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem5 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem5|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer5|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem4 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem4|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer4|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem3 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem3|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer3|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem2 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem2|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer2|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem1 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem1|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer1|intcomma }}</div></div>
+        
+        <div class="mid-line"></div>
+
+        <!-- 매수(Bid) 호가 1 ~ 10 -->
+        <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem1 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem1|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid1|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem2 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem2|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid2|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem3 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem3|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid3|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem4 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem4|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid4|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem5 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem5|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid5|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem6 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem6|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid6|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem7 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem7|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid7|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem8 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem8|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid8|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem9 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem9|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid9|intcomma }}</div></div>
+        <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem10 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem10|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid10|intcomma }}</div></div>
+    </div>
+</div>
+{% endfor %}
+</div>
+
+<!-- 관심그룹 입력 모달 -->
+<div id="groupModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
+    <div style="background:#fff; padding:20px; border-radius:8px; width:300px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
+        <h3 style="margin-top:0;">관심그룹명 입력</h3>
+        <input type="text" id="groupName" value="호가틱" style="width:100%; padding:8px; box-sizing:border-box; margin-bottom:10px;">
+        <div style="display:flex; gap:10px;">
+            <button onclick="sendGwansim()" class="btn" style="flex:1;">확인</button>
+            <button onclick="closeGroupModal()" class="btn" style="flex:1; background-color:#94a3b8;">취소</button>
+        </div>
+    </div>
+</div>
+
+<!-- 통합 및 최적화된 스크립트 영역 -->
+<script>
+    // 전역 DOM 캐싱으로 무조건 성능 최적화
+    const masterCheckbox = document.getElementById('check-all-stocks');
+    const stockCheckboxes = document.querySelectorAll('.stock-item-checkbox');
+
+    // 1. 체크박스 전체 선택/해제 최적화 (DOM 탐색 제거로 초고속 처리)
+    if (masterCheckbox) {
+        masterCheckbox.addEventListener('change', function () {
+            console.time("toggleAllStocks");
+            const isChecked = this.checked;
+            for (let i = 0; i < stockCheckboxes.length; i++) {
+                stockCheckboxes[i].checked = isChecked;
+            }
+            console.timeEnd("toggleAllStocks");
+        });
+    }
+
+    // 선택된 종목 코드 배열 가져오기 (공통 유틸리티)
+    function getSelectedStockCodes() {
+        const selectedStocks = [];
+        for (let i = 0; i < stockCheckboxes.length; i++) {
+            if (stockCheckboxes[i].checked) {
+                selectedStocks.push(stockCheckboxes[i].dataset.code);
+            }
+        }
+        return selectedStocks;
+    }
+
+    // 2. 관심종목 모달 열기
+    function openGroupModal() { 
+        console.time("openGroupModal");
+        const selectedStocks = getSelectedStockCodes();
+        console.timeEnd("openGroupModal");
+
+        if (selectedStocks.length === 0) {
+            alert("선택된 종목이 없습니다. 관심종목으로 추가할 종목을 먼저 체크해주세요.");
+            return;
+        }
+
+        document.getElementById('groupModal').style.display = 'flex';
+        
+        const inputField = document.getElementById('groupName');
+        inputField.focus();
+        inputField.select(); 
+    }
+    
+    function closeGroupModal() { 
+        document.getElementById('groupModal').style.display = 'none'; 
+    }
+
+    // 3. 관심종목 서버 전송
+    function sendGwansim() {
+        const groupName = document.getElementById('groupName').value.trim();
+        const selectedStocks = getSelectedStockCodes();
+
+        if (!groupName) {
+            alert("그룹명을 입력해주세요.");
+            return;
+        }
+
+        fetch("{% url 'add_gwansim_group_st' %}", {
+            method: "POST",
+            headers: { 
+                "Content-Type": "application/json", 
+                "X-CSRFToken": "{{ csrf_token }}" 
+            },
+            body: JSON.stringify({ group_name: groupName, codes: selectedStocks })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success' || data.success === true) {
+                closeGroupModal();
+            } else {
+                alert(data.message || "오류가 발생하여 실패했습니다.");
+            }
+        })
+        .catch(err => {
+            alert("서버와 통신하는 중 문제가 발생했습니다.");
+        });
+    }
+
+    // 4. 호가 수집 및 실시간 로그 스트리밍 창 열기
+    function startHogaWindow(url) {
+        const newWin = window.open("", "_blank", "width=600,height=600");
+        if (!newWin) {
+            alert("팝업 차단이 설정되어 있습니다. 팝업 해제 후 다시 시도해주세요.");
+            return;
+        }
+        
+        newWin.document.write(`
+            <html>
+            <head><title>수집 로그</title></head>
+            <body style="background:#1e1e1e; color:#e0e0e0; font-family:monospace; padding:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="color:#fff; margin:0;">📊 수집 로그</h3>
+                    <button id="stopBtn" style="background:#ef4444; color:white; border:none; padding:5px 10px; cursor:pointer; font-weight:bold; border-radius:4px;">🛑 중지</button>
+                </div>
+                <ul id="log-list" style="list-style:none; padding:0; margin-top:15px;"></ul>
+            </body></html>
+        `);
+        newWin.document.close(); // document 생성 스트림 닫기
+
+        // 팝업 내부 중지 버튼 바인딩
+        newWin.document.getElementById('stopBtn').onclick = () => stopHoga();
+
+        // 스트리밍 데이터 패치
+        fetch(url)
+        .then(response => {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            const logList = newWin.document.getElementById('log-list');
+
+            function read() {
+                // 부모 창이나 팝업 창이 닫혔을 때 스트림 중단 예외 처리
+                if (newWin.closed) {
+                    reader.cancel();
+                    return;
+                }
+
+                reader.read().then(({done, value}) => {
+                    if (done) return;
+                    
+                    const chunk = decoder.decode(value, {stream: true});
+                    
+                    chunk.split('\n').forEach(line => {
+                        const clean = line.replace(/^data: /, '').trim();
+                        if (clean && logList) {
+                            const li = newWin.document.createElement('li');
+                            li.textContent = clean;
+                            
+                            // 조건별 로그 가시성 향상
+                            if (clean.includes('✅')) li.style.color = '#81c784';
+                            else if (clean.includes('❌')) li.style.color = '#e57373';
+                            
+                            li.style.padding = "5px 0";
+                            li.style.borderBottom = "1px solid #333";
+                            
+                            logList.prepend(li);
+                        }
+                    });
+                    read();
+                }).catch(err => console.error("Stream read error:", err));
+            }
+            read();
+        })
+        .catch(err => {
+            console.error("Fetch error:", err);
+        });
+    }
+
+    // 5. 호가 수집 중지 요청
+    function stopHoga() {
+        fetch("{% url 'stop_hoga' %}", { method: 'POST' })
+        .catch(err => console.error("Stop request failed:", err));
+    }
+</script>
+</body>
+</html>
