@@ -8,7 +8,7 @@ urlpatterns = [
 
     path('', views.index7_view, name='index7'),
     
-    path('index7', views.index7_view, name='index7'),
+    path('index7', views.index7_view, name='index'),
 
     
     path('kospi/', views.partial_kospi_view, name='_partial_kospi'),
@@ -50,11 +50,11 @@ urlpatterns = [
 
 
     path('gwansim/', views.gwansim_view, name='gwansim'),
-    path('fin/', views.fin_gwansim_view, name='fin_gwansim'),
+    # path('fin/', views.fin_gwansim_view, name='fin_gwansim'),
 
 
-    path('fin/', views.fin_page_view, name='fin_page'),
-    path('add_naver_fin/', views.add_naver_fin_view, name='add_naver_fin'),
+    path('fin/', views.fin_view, name='fin'),
+    # path('add_naver_fin/', views.add_naver_fin_view, name='add_naver_fin'),
     path('get_naver_fin/', views.get_naver_fin_view, name='get_naver_fin'),
 
     path('get_ilbong/', views.get_ilbong_view, name='get_ilbong'),
