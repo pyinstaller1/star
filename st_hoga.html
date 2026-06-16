@@ -1,5 +1,4 @@
 {% load static %}
-{% load humanize %}
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -18,12 +17,10 @@
         .title-area h1 { margin: 0; font-size: 18px; font-weight: 700; }
         .title-area span { font-size: 12px; color: #64748b; }
 
-        
-        .right-control-area { display: flex; align-items: center; gap: 20px; } /* 상단 우측 그룹 */
+        .right-control-area { display: flex; align-items: center; gap: 20px; } 
         .btn { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 700; border: none; cursor: pointer; text-decoration: none; background-color: #64748b; color: white; }
 
         .hoga-grid { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 35px; padding: 5px; }
-
                
         .hoga-card { width: 190px; flex: 0 0 190px; background: #fff; border: 1px solid #dbe2ea; border-radius: 7px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
         .card-head { height:25px; display:flex; align-items:center; justify-content:space-between; padding:0 5px; border-bottom:1px solid #edf1f5; font-size:15px; }
@@ -33,29 +30,20 @@
                     
         .price-cell { width: 55px; padding-right:2px; text-align:right; letter-spacing:-0.5px; background:#f8fafc; line-height:16px; z-index:2; font-weight: 510; font-variant-numeric: tabular-nums; }
 
-                      
         .bid-price { color:#ff2d55; }
         .offer-price { color:#007aff; }
 
-                       
         .rem-text { position:relative; z-index:2; color:#000; font-size:10px; line-height:16px; margin-right: 0; font-weight: 388; }
         .bar { position:absolute; right:0; top:0.5px; bottom:0.5px; margin:0; border:none; opacity:0.95; }
         .bid-bar { background:#ff5c78; }
         .offer-bar { background:#5aa7ff; }
         .mid-line { height:1px; background:#dbe2ea; }
 
-        #log-list {
-            list-style: none;
-            padding: 10px;
-            margin: 0;
-        }
-        #log-list li {
-            border-bottom: 1px solid #333; /* 로그 간 구분선 */
-            padding: 4px 0;
-            font-size: 13px;
-        }
-                   
-                    
+        #log-list { list-style: none; padding: 10px; margin: 0; }
+        #log-list li { border-bottom: 1px solid #333; padding: 4px 0; font-size: 13px; }
+        
+        /* 초고속 로딩 텍스트 스타일 정의 */
+        .loading-text { font-size: 16px; font-weight: bold; color: #475569; padding: 40px; text-align: center; width: 100%; }
     </style>
 </head>
 <body>
@@ -63,94 +51,36 @@
 <div class="top-control-bar">
     <div class="title-area">
         <h1>🚀 호가틱 전략</h1>
-        <span>포착 종목 수: {{ list_hoga|length }}</span>
+        <span id="stock-count">포착 종목 수: 계산 중...</span>
     </div>
 
-
-                    
     <div class="right-control-area">
-        <!-- 전체 선택 체크박스를 상단 오른쪽으로 배치 -->
         <label style="display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; user-select: none;">
             <input type="checkbox" id="check-all-stocks" style="width: 16px; height: 16px; cursor: pointer;"> 전체 선택
         </label>
 
         <button type="button" class="btn" onclick="openGroupModal()" style="background-color: #2563eb;">🌟 관심종목 추가</button>
 
-
-        <form action="" method="GET" style="display:flex; align-items:center; gap:15px; margin-right:15px; padding:5px 15px; border:1px solid #e2e8f0; border-radius:8px; background-color:#f8fafc;">
+        <div style="display:flex; align-items:center; gap:15px; margin-right:15px; padding:5px 15px; border:1px solid #e2e8f0; border-radius:8px; background-color:#f8fafc;">
             <label style="font-size:15px; cursor:pointer;">
-                <input type="radio" name="mode" value="buy" {% if mode == 'buy' %}checked{% endif %} onchange="this.form.submit()"> 매수 📈
+                <input type="radio" name="mode" value="buy" {% if mode == 'buy' %}checked{% endif %} onchange="loadHogaData(this.value)"> 매수 📈
             </label>
             <label style="font-size:15px; cursor:pointer;">
-                <input type="radio" name="mode" value="sell" {% if mode == 'sell' %}checked{% endif %} onchange="this.form.submit()"> 매도 📉
+                <input type="radio" name="mode" value="sell" {% if mode == 'sell' %}checked{% endif %} onchange="loadHogaData(this.value)"> 매도 📉
             </label>
             <label style="font-size:15px; cursor:pointer;">
-                <input type="radio" name="mode" value="etc" {% if mode == 'etc' %}checked{% endif %} onchange="this.form.submit()"> 나머지
+                <input type="radio" name="mode" value="etc" {% if mode == 'etc' %}checked{% endif %} onchange="loadHogaData(this.value)"> 나머지
             </label>
-        </form>
+        </div>
 
         <button class="btn" onclick="startHogaWindow('{% url 'hoga_stream' %}')" style="padding: 8px 16px; background: #2563eb; color: white; cursor: pointer;">📊 호가틱 수집</button>
-
-
-
-                    
         <a href="{% url 'index' %}" class="btn">➔ 메인으로</a>
     </div>
 </div>
-                    
 
-<div class="hoga-grid" style="padding-left:30px;">
-{% for item in list_hoga %}
-<div class="hoga-card">
-    <div class="card-head">
-        <!-- 카드 내 체크박스를 맨 왼쪽으로 배치 -->
-        <div style="display:flex; align-items:center; gap:5px; font-weight:700;">
-            <input type="checkbox" class="stock-item-checkbox" data-code="{{ item.code }}">
-            <span style="font-size:15px; font-weight:700;">{{ forloop.counter }}.</span>
-            <span>{{ item.name }}</span>
-        </div>
-    </div>
-
-<div class="hoga-wrap">
-    <!-- 1. 매도(Offer) 10부터 1까지 (큰 금액이 위로) -->
-    <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem10 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem10|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer10|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem9 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem9|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer9|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem8 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem8|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer8|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem7 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem7|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer7|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem6 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem6|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer6|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem5 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem5|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer5|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem4 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem4|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer4|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem3 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem3|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer3|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem2 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem2|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer2|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar offer-bar" style="width:{% widthratio item.offer_rem1 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.offer_rem1|intcomma }}</span></div><div class="price-cell offer-price" style="background-color: #f8fbff;">{{ item.offer1|intcomma }}</div></div>
-    
-    <div class="mid-line"></div>
-
-    <!-- 2. 매수(Bid) 1부터 10까지 -->
-    <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem1 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem1|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid1|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem2 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem2|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid2|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem3 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem3|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid3|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem4 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem4|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid4|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem5 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem5|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid5|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem6 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem6|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid6|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem7 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem7|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid7|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem8 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem8|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid8|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem9 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem9|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid9|intcomma }}</div></div>
-    <div class="hoga-row"><div class="rem-cell"><div class="bar bid-bar" style="width:{% widthratio item.bid_rem10 item.max_rem 100 %}%"></div><span class="rem-text">{{ item.bid_rem10|intcomma }}</span></div><div class="price-cell bid-price" style="background-color: #fff8f9;">{{ item.bid10|intcomma }}</div></div>
+<div class="hoga-grid" id="hoga-grid" style="padding-left:30px;">
+    <div class="loading-text">데이터를 불러오는 중입니다... 🔄</div>
 </div>
-</div>
-{% endfor %}
-</div>
-
-
-
-
-
-
-
-
-
-
 
 <div id="groupModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
     <div style="background:#fff; padding:20px; border-radius:8px; width:300px; box-shadow:0 4px 6px rgba(0,0,0,0.1);">
@@ -163,35 +93,165 @@
     </div>
 </div>
 
-
-
-                    
 <script>
-    document.getElementById('check-all-stocks').addEventListener('change', function() {
-        const isChecked = this.checked;
-        document.querySelectorAll('.stock-item-checkbox').forEach(cb => {
-            cb.checked = isChecked;
-        });
+    // 💡 무한 스크롤 및 요청 중지 엔진 설정을 위한 전역 변수
+    let currentMode = "{{ mode|default:'buy' }}";
+    let currentFilteredData = []; 
+    let currentDisplayIndex = 0;  
+    const PAGE_SIZE = 40; // 한 번에 노출 시킬 카드 개수 단위 (가장 최적의 성능)
+    
+    // 🔥 하던 작업 중지를 제어하는 핵심 브라우저 API 선언
+    let hogaAbortController = null;
+
+    // 초기 구동
+    document.addEventListener("DOMContentLoaded", function() {
+        loadHogaData(currentMode);
+
+        // 전체 선택 기능 (중복 바인딩 및 꼬임 제거형)
+        const checkAll = document.getElementById('check-all-stocks');
+        if (checkAll) {
+            checkAll.addEventListener('change', function() {
+                const isChecked = this.checked;
+                document.querySelectorAll('.stock-item-checkbox').forEach(cb => {
+                    cb.checked = isChecked;
+                });
+            });
+        }
     });
-</script>
 
+    // 🚀 비동기 fetch 및 Abort 컨트롤러 핵심 함수
+    function loadHogaData(mode) {
+        currentMode = mode;
+        const grid = document.getElementById('hoga-grid');
+        grid.innerHTML = '<div class="loading-text">데이터를 불러오는 중입니다... 🔄</div>';
+        
+        // 상단 전체 체크박스 초기화
+        document.getElementById('check-all-stocks').checked = false;
 
+        // 🔥 [작업 중지 로직] 이전 요청이 아직 처리 중이면 즉시 중단(Abort)시킵니다.
+        if (hogaAbortController) {
+            hogaAbortController.abort();
+        }
+        
+        // 이번 요청을 통제할 새로운 AbortController를 할당합니다.
+        hogaAbortController = new AbortController();
+        const { signal } = hogaAbortController;
 
-<script>
+        // 장고 백엔드의 JSON 전용 API 주소를 비동기로 호출합니다 (signal 주입 필수)
+        fetch(`/api/st-hoga-data/?mode=${mode}`, { signal: signal })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('stock-count').innerText = `포착 종목 수: ${data.length}`;
+                
+                if(data.length === 0) {
+                    grid.innerHTML = '<div class="loading-text">포착된 종목이 없습니다. 📭</div>';
+                    return;
+                }
+
+                // 2,500건 데이터를 전역 캐시에 담고 인덱스 인수를 0으로 리셋합니다
+                currentFilteredData = data;
+                currentDisplayIndex = 0;
+                grid.innerHTML = ''; 
+
+                // 대량 중 우선 상위 40개만 초고속 렌더링 실행
+                renderNextChunk();
+            })
+            .catch(err => {
+                // 🔥 라디오 버튼 이동으로 일부러 중단한 경우는 에러 팝업을 띄우지 않고 자연스레 넘깁니다
+                if (err.name === 'AbortError') {
+                    console.log(`[중단 성공] 이전 ${mode} 모드 데이터 처리가 완전히 취소되었습니다.`);
+                    return;
+                }
+                grid.innerHTML = '<div class="loading-text" style="color:#ef4444;">데이터를 불러오는 중 오류가 발생했습니다. ❌</div>';
+                console.error(err);
+            });
+    }
+
+    // 💡 메모리를 분할해서 HTML 카드를 자연스럽게 이어붙이는 함수
+    function renderNextChunk() {
+        const grid = document.getElementById('hoga-grid');
+        const nextChunk = currentFilteredData.slice(currentDisplayIndex, currentDisplayIndex + PAGE_SIZE);
+        
+        if (nextChunk.length === 0) return; // 더 그릴 대상이 없으면 리턴
+
+        let htmlBuffer = [];
+        
+        nextChunk.forEach((item) => {
+            const maxRem = item.max_rem || 1;
+            const globalCount = currentDisplayIndex + 1; // 누적 정밀 인덱스 순번 표기
+            
+            let cardHtml = `
+            <div class="hoga-card">
+                <div class="card-head">
+                    <div style="display:flex; align-items:center; gap:5px; font-weight:700;">
+                        <input type="checkbox" class="stock-item-checkbox" data-code="${item.code}">
+                        <span style="font-size:15px; font-weight:700;">${globalCount}.</span>
+                        <span>${item.name}</span>
+                    </div>
+                </div>
+                <div class="hoga-wrap">
+            `;
+            
+            // 매도 호가 10 -> 1 루프 빌드
+            for(let i=10; i>=1; i--) {
+                const rem = item[`offer_rem${i}`] || 0;
+                const price = item[`offer${i}`] || 0;
+                const widthRatio = (rem / maxRem) * 100;
+                cardHtml += `
+                    <div class="hoga-row">
+                        <div class="rem-cell">
+                            <div class="bar offer-bar" style="width:${widthRatio}%"></div>
+                            <span class="rem-text">${rem.toLocaleString()}</span>
+                        </div>
+                        <div class="price-cell offer-price" style="background-color: #f8fbff;">${price.toLocaleString()}</div>
+                    </div>`;
+            }
+            
+            cardHtml += `<div class="mid-line"></div>`;
+            
+            // 매수 호가 1 -> 10 루프 빌드
+            for(let i=1; i<=10; i++) {
+                const rem = item[`bid_rem${i}`] || 0;
+                const price = item[`bid${i}`] || 0;
+                const widthRatio = (rem / maxRem) * 100;
+                cardHtml += `
+                    <div class="hoga-row">
+                        <div class="rem-cell">
+                            <div class="bar bid-bar" style="width:${widthRatio}%"></div>
+                            <span class="rem-text">${rem.toLocaleString()}</span>
+                        </div>
+                        <div class="price-cell bid-price" style="background-color: #fff8f9;">${price.toLocaleString()}</div>
+                    </div>`;
+            }
+            
+            cardHtml += `</div></div>`;
+            htmlBuffer.push(cardHtml);
+            currentDisplayIndex++;
+        });
+        
+        // 기존 뷰 하단 영역에 노드를 차곡차곡 이어 붙입니다
+        grid.insertAdjacentHTML('beforeend', htmlBuffer.join(''));
+    }
+
+    // 💡 사용자가 스크롤을 끝자락 근처까지 내리면 40개씩 추가 렌더링을 격발시킵니다
+    window.addEventListener('scroll', () => {
+        if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 120) {
+            renderNextChunk();
+        }
+    });
+
+    // 관심그룹 모달 제어 함수
     function openGroupModal() { 
-        // 1. 체크된 종목이 있는지 먼저 확인
         const selectedStocks = Array.from(document.querySelectorAll('.stock-item-checkbox:checked'))
                                     .map(cb => cb.dataset.code);
         
         if (selectedStocks.length === 0) {
             alert("선택된 종목이 없습니다. 관심종목으로 추가할 종목을 먼저 체크해주세요.");
-            return; // 모달을 띄우지 않고 종료
+            return; 
         }
 
-        // 2. 종목이 있을 때만 모달 열기
         document.getElementById('groupModal').style.display = 'flex';
         
-        // 텍스트 블록 씌우기
         const inputField = document.getElementById('groupName');
         inputField.focus();
         inputField.select(); 
@@ -217,120 +277,79 @@
             },
             body: JSON.stringify({ group_name: groupName, codes: selectedStocks })
         })
-
-
-        
         .then(res => res.json())
-
-
-
-
         .then(data => {
-            // 1. 성공 케이스 (서버가 success: true를 보내거나 status: 'success'일 때)
             if(data.status === 'success' || data.success === true) {
                 closeGroupModal();
-            } 
-            // 2. 실패 케이스
-            else {
-                // message가 있으면 출력하고, 없으면 기본 실패 문구 출력
+                alert("관심그룹 등록 성공!");
+            } else {
                 alert(data.message || "오류가 발생하여 실패했습니다.");
             }
         })
         .catch(err => {
             alert("서버와 통신하는 중 문제가 발생했습니다.");
         });
-
-
-
     }
 
-    // 전체 선택 기능 (원본 유지)
-    document.getElementById('check-all-stocks').addEventListener('change', function() {
-        const isChecked = this.checked;
-        document.querySelectorAll('.stock-item-checkbox').forEach(cb => {
-            cb.checked = isChecked;
-        });
-    });
-</script>
+    // 수집 로그 새 창 제어 기능 
+    function startHogaWindow(url) {
+        const newWin = window.open("", "_blank", "width=600,height=600");
+        
+        newWin.document.write(`
+            <html>
+            <body style="background:#1e1e1e; color:#e0e0e0; font-family:monospace; padding:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="color:#fff; margin:0;">📊 수집 로그</h3>
+                    <button id="stopBtn" style="background:#ef4444; color:white; border:none; padding:5px 10px; cursor:pointer;">🛑 중지</button>
+                </div>
+                <ul id="log-list" style="list-style:none; padding:0; margin-top:15px;"></ul>
+            </body></html>
+        `);
 
+        newWin.document.getElementById('stopBtn').onclick = () => {
+            stopHoga();
+        };
 
+        fetch(url)
+        .then(response => {
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder('utf-8');
+            const logList = newWin.document.getElementById('log-list');
 
-
-
-
-
-<script>
-function startHogaWindow(url) {
-    // 1. 새 창 열기
-    const newWin = window.open("", "_blank", "width=600,height=600");
-    
-    // 2. HTML 뼈대 구성 (눈이 편한 스타일)
-    newWin.document.write(`
-        <html>
-        <body style="background:#1e1e1e; color:#e0e0e0; font-family:monospace; padding:15px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="color:#fff; margin:0;">📊 수집 로그</h3>
-                <button id="stopBtn" style="background:#ef4444; color:white; border:none; padding:5px 10px; cursor:pointer;">🛑 중지</button>
-            </div>
-            <ul id="log-list" style="list-style:none; padding:0; margin-top:15px;"></ul>
-        </body></html>
-    `);
-
-    // 중지 버튼 이벤트 설정
-    newWin.document.getElementById('stopBtn').onclick = () => {
-        fetch("{% url 'stop_hoga' %}", { method: 'POST' });
-    };
-
-    // 3. 실시간 스트리밍 읽기
-    fetch(url)
-    .then(response => {
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        const logList = newWin.document.getElementById('log-list');
-
-        function read() {
-            reader.read().then(({done, value}) => {
-                if (done) return;
-                
-                // 텍스트 디코딩
-                const chunk = decoder.decode(value, {stream: true});
-                
-                // 줄 단위로 분리 (데이터 스트림 처리)
-                chunk.split('\n').forEach(line => {
-                    const clean = line.replace(/^data: /, '').trim();
-                    if(clean) {
-                        const li = newWin.document.createElement('li');
-                        li.textContent = clean;
-                        // 디자인 요소: 색상 구분
-                        if(clean.includes('✅')) li.style.color = '#81c784';
-                        if(clean.includes('❌')) li.style.color = '#e57373';
-                        li.style.padding = "5px 0";
-                        li.style.borderBottom = "1px solid #333";
-                        
-                        logList.prepend(li); // 최신이 맨 위로
-                    }
-                });
-                read(); // 계속 다음 청크 읽기
-            });
-        }
-        read();
-    });
-}
-</script>
-
-
-
-
-
-<script>
-function stopHoga() {
-    fetch("{% url 'stop_hoga' %}", { method: 'POST' });
-}
-</script>
-
-
-
-
+            function read() {
+                // 부모 창 종료 시 스트림 리더 차단 예외 처리 추가
+                if (newWin.closed) {
+                    reader.cancel();
+                    return;
+                }
+                reader.read().then(({done, value}) => {
+                    if (done) return;
                     
+                    const chunk = decoder.decode(value, {stream: true});
+                    
+                    chunk.split('\n').forEach(line => {
+                        const clean = line.replace(/^data: /, '').trim();
+                        if(clean) {
+                            const li = newWin.document.createElement('li');
+                            li.textContent = clean;
+                            if(clean.includes('✅')) li.style.color = '#81c784';
+                            if(clean.includes('❌')) li.style.color = '#e57373';
+                            li.style.padding = "5px 0";
+                            li.style.borderBottom = "1px solid #333";
+                            
+                            logList.prepend(li);
+                        }
+                    });
+                    read();
+                });
+            }
+            read();
+        });
+    }
+
+    function stopHoga() {
+        fetch("{% url 'stop_hoga' %}", { method: 'POST' });
+    }
+</script>
 </body>
 </html>

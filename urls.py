@@ -44,6 +44,7 @@ urlpatterns = [
     path('strategy/', views.strategy_view, name='strategy'),
     path('st_macd/', views.st_macd_view, name='st_macd'),
     path('st_hoga/', views.st_hoga_view, name='st_hoga'),
+    path('api/st-hoga-data/', views.st_hoga_data_api, name='st_hoga_data_api'),
     path('hoga_stream/', views.hoga_stream_view, name='hoga_stream'),
     path('stop_hoga/', views.stop_hoga_view, name='stop_hoga'),
     

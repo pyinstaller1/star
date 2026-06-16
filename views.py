@@ -1135,22 +1135,20 @@ def st_hoga_view8(request):
 
 
 
-
 def st_hoga_view(request):
     mode = request.GET.get('mode', 'buy')
+    return render(request, 'strategy/st_hoga.html', {'mode': mode})
 
-    # 1. DB에서 max_rem과 updated_at 문자열까지 한방에 완벽하게 계산해서 가져옴
+# 🔥 2. 새로 추가할 비동기 데이터 API 뷰 (에러가 발생한 주소입니다)
+def st_hoga_data_api(request):
+    mode = request.GET.get('mode', 'buy')
+    
+    # 이전에 수정한 DuckDB 초고속 조회 함수 실행
     list_hoga = select_st_hoga(mode)
-
-    # 2. 파이썬 루프 연산 "완전히 제거" -> 속도 극대화
-    return render(request, 'strategy/st_hoga.html', {
-        'list_hoga': list_hoga,
-        'mode': mode,
-    })
-
-
-
-
+    
+    # 2,500개의 데이터를 파이썬 루프 없이 통째로 초고속 JSON 전송
+    # safe=False를 해주어야 리스트 형태의 데이터를 보낼 수 있습니다.
+    return JsonResponse(list_hoga, safe=False)
 
 
 
