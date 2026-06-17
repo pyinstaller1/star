@@ -28,9 +28,13 @@
             pointer-events: none;
         }
         .node-base:hover {
-            box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
-            filter: brightness(0.95);
-        }
+    transform: translate(-50%, -50%) scale(1.04);
+    border-color: var(--parent-color);
+    box-shadow:
+        0 0 12px var(--parent-color),
+        0 0 24px var(--parent-color) !important;
+}
+                                
 
         /* 중심 노드 */
         .center-node { 
@@ -457,7 +461,8 @@ const flashColor =
     (n.id * 360 / nodes.length) +
     ', 85%, 65%)';
 
-s.style.setProperty('--flash-color', flashColor);
+    s.style.setProperty('--flash-color', flashColor);
+    s.style.setProperty('--parent-color', flashColor);
     
                     
                     s.classList.add('active', 'bounce-sub-active');
