@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>정보 연계 및 건강관리 시스템</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background: #f0f4f8; overflow: hidden; }
+        
+        .mode-selector { position: absolute; top: 15px; left: 15px; z-index: 5000; }
+        .mode-selector select { padding: 6px 12px; font-size: 13px; color: #475569; border: 1px solid #cbd5e1; background: rgba(255,255,255,0.9); border-radius: 6px; cursor: pointer; outline: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        
+        #left-pane { width: 75%; height: 100vh; float: left; position: relative; background: #fff; border-right: 1px solid #ccc; overflow: auto; }
+        #pane-content { position: relative; width: 1423px; height: 1500px; background: #fafafa; } 
+        #right-pane { width: 25%; height: 100vh; float: left; padding: 16px; background: #fff; overflow-y: auto; box-shadow: -4px 0 20px rgba(0,0,0,0.02); }
+        
+        /* ------------------ 마인드맵 컴포넌트 기본 디자인 ------------------ */
+        .node-base {
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            cursor: pointer;
+            white-space: nowrap;
+            transform: translate(-50%, -50%);
+            opacity: 0;
+            pointer-events: none;
+        }
+        .node-base:hover {
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
+            filter: brightness(0.95);
+        }
+
+        /* 중심 노드 */
+        .center-node { 
+            width: 120px; height: 70px; border-radius: 26px; color: #fff; font-weight: bold; z-index: 2000; font-size: 16px; 
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1); opacity: 1; pointer-events: auto;
+            transition: left 0.5s cubic-bezier(0.25, 1, 0.5, 1), top 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+
+
+
+        
+        /* 마스터 노드 (알약) */
+        .main-circle { 
+            min-width: 120px; height: 50px; padding: 0 20px; border-radius: 25px; color: #1e293b; font-weight: bold; z-index: 1500; font-size: 14px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid rgba(0,0,0,0.03); 
+        }
+
+
+                                
+        
+        /* 서브 노드 (미니 알약) */
+        .sub-circle { 
+            min-width: 95px; height: 38px; padding: 0 14px; border-radius: 19px; color: #475569; font-weight: bold; z-index: 3000; font-size: 12px; 
+            background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+        }
+
+        .node-base.active, .line-effect.active {
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+        .node-base.active {
+            pointer-events: auto !important;
+        }
+
+        /* 탄성 애니메이션 (안정적인 1.08배 고정) */
+        .bounce-main-active {
+            animation: bounce-main-keyframes 1.4s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+        }
+        .bounce-main-first {
+            animation: bounce-main-first-keyframes 1.4s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+        }
+        .bounce-sub-active {
+            animation: bounce-sub-keyframes 1.25s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+        }
+        .bounce-line-active {
+            animation: bounce-line-keyframes 1.25s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+        }
+
+        @keyframes bounce-main-first-keyframes {
+            0%   { left: var(--sx); top: var(--sy); }
+            30%  { left: calc(var(--sx) + (var(--ex) - var(--sx)) * 1.006); top: calc(var(--sy) + (var(--ey) - var(--sy)) * 1.006); }
+            55%  { left: calc(var(--sx) + (var(--ex) - var(--sx)) * 0.997); top: calc(var(--sy) + (var(--ey) - var(--sy)) * 0.997); }
+            100% { left: var(--ex); top: var(--ey); }
+        }
+
+        @keyframes bounce-main-keyframes {
+            0%   { left: var(--sx); top: var(--sy); }
+            30%  { left: calc(var(--sx) + (var(--ex) - var(--sx)) * 1.015); top: calc(var(--sy) + (var(--ey) - var(--sy)) * 1.015); } 
+            55%  { left: calc(var(--sx) + (var(--ex) - var(--sx)) * 0.992); top: calc(var(--sy) + (var(--ey) - var(--sy)) * 0.992); } 
+            78%  { left: calc(var(--sx) + (var(--ex) - var(--sx)) * 1.003); top: calc(var(--sy) + (var(--ey) - var(--sy)) * 1.003); } 
+            100% { left: var(--ex); top: var(--ey); }
+        }
+
+        @keyframes bounce-sub-keyframes {
+            0%   { left: var(--sx); top: var(--sy); }
+            35%  { left: calc(var(--sx) + (var(--ex) - var(--sx)) * 1.08); top: calc(var(--sy) + (var(--ey) - var(--sy)) * 1.08); } 
+            58%  { left: calc(var(--sx) + (var(--ex) - var(--sx)) * 0.97); top: calc(var(--sy) + (var(--ey) - var(--sy)) * 0.97); } 
+            78%  { left: calc(var(--sx) + (var(--ex) - var(--sx)) * 1.01); top: calc(var(--sy) + (var(--ey) - var(--sy)) * 1.01); } 
+            100% { left: var(--ex); top: var(--ey); }
+        }
+
+        @keyframes bounce-sub-keyframes {
+            0%   { left: var(--sx); top: var(--sy); }
+            35%  { left: calc(var(--sx) + (var(--ex) - var(--sx)) * 1.08); top: calc(var(--sy) + (var(--ey) - var(--sy)) * 1.08); } 
+            58%  { left: calc(var(--sx) + (var(--ex) - var(--sx)) * 0.97); top: calc(var(--sy) + (var(--ey) - var(--sy)) * 0.97); } 
+            78%  { left: calc(var(--sx) + (var(--ex) - var(--sx)) * 1.01); top: calc(var(--sy) + (var(--ey) - var(--sy)) * 1.01); } 
+            100% { left: var(--ex); top: var(--ey); }
+        }
+           
+
+        @keyframes bounce-line-keyframes {
+            0%   { width: 0px; }
+            35%  { width: calc(var(--length) * 1.08); } 
+            58%  { width: calc(var(--length) * 0.97); } 
+            78%  { width: calc(var(--length) * 1.01); } 
+            100% { width: var(--length); }
+        }
+
+        .node-smooth-move {
+            transition: left 0.45s cubic-bezier(0.25, 1, 0.5, 1), top 0.45s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+        }
+        .line-smooth-move {
+            transition: left 0.45s cubic-bezier(0.25, 1, 0.5, 1), top 0.45s cubic-bezier(0.25, 1, 0.5, 1), width 0.45s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+        }
+
+        .line-effect { 
+            position: absolute; height: 1.5px; background: #cbd5e1; z-index: 100; pointer-events: none; transform-origin: left center; 
+            width: 0px; opacity: 1;
+        }
+        .sub-line { border-top: 1.5px dashed #cbd5e1; background: none; }
+
+        .dash-table { width: 100%; border-collapse: collapse; margin-top: 12px; border: 1px solid #e2e8f0; table-layout: fixed; }
+        .dash-table th, .dash-table td { border: 1px solid #e2e8f0; padding: 8px 6px; font-size: 12.5px; text-align: left; line-height: 1.35; }
+        .dash-table th { background: #f8fafc; text-align: center; color: #475569; font-weight: 600; }
+        .col-num { width: 32px; text-align: center !important; background: #f8fafc; font-weight: bold; color: #94a3b8; }
+        h4 { font-size: 14px; color: #1e293b; margin-top: 8px; }
+    </style>
+</head>
+<body>
+
+<div class="mode-selector">
+    <select id="mode-select" onchange="changeMode(this.value)">
+        <option value="linkage" selected>대외실시간</option>
+        <option value="general">건강일반</option>
+        <option value="collection">통합징수</option>
+        <option value="health">장기요양</option>
+    </select>
+</div>
+
+<div id="left-pane">
+    <div id="pane-content"></div>
+</div>
+
+<div id="right-pane">
+    <h3 id="dash-title" style="margin-top:0; border-bottom: 2px solid #333; padding-bottom: 6px; font-size: 16px;">정보 연계 대시보드</h3>
+    <div id="info" style="color: #666; line-height: 1.5; font-size: 13px;">노드를 클릭하여 세부 업무를 확인하세요.</div>
+</div>
+
+<script>
+    var container = document.getElementById('left-pane');
+    var pane = document.getElementById('pane-content');
+    var nodes = [];
+    
+    // 💡 1800x1400 캔버스의 황금 분할 중심 좌표
+    var CANVAS_W = 700; 
+    var CANVAS_H = 1500;
+    var CENTER_X = 650;
+    var CENTER_Y = 787; 
+    var currentMode = "linkage";
+    var activeMasterId = null;
+
+    var allData = {
+        "general": {
+            "center": "건강일반", "title": "건강일반 대시보드", "color": "linear-gradient(135deg, #2ecc71, #27ae60)",
+            "master": {
+                "자격관리": ["증번호관리", "직장자격", "지역자격", "건강보험증", "자격현황"],
+                "급여관리": ["부당이득", "요양비", "급여관리일반"],
+                "급여보장": ["부당이득", "요양비", "급여관리일반"],
+                "의료급여": ["급여일수", "연장승인", "의료급여일반"],
+                "건강관리": ["건강일반", "건강검진", "검진현황"]
+            }
+        },
+        "collection": {
+            "center": "통합징수", "title": "통합징수 대시보드", "color": "linear-gradient(135deg, #9b59b6, #8e44ad)",
+            "master": {
+                "고지업무": ["정기고지", "추가고지", "디지털고지"],
+                "체납관리": ["독촉장", "압류절차", "체납일반"],
+                "수납관리": ["가상계좌", "카드납부", "이체"],
+                "타기관이체": ["계좌번호", "연금이체", "근복이체"],
+                "징수일반": ["계좌번호", "연금이체", "근복이체"]
+            }
+        },
+        "health": {
+            "center": "장기요양", "title": "장기요양 대시보드", "color": "linear-gradient(135deg, #3498db, #2980b9)",
+            "master": {
+                "요양기관": ["기관현황", "기관평가", "수가가감산", "기관업종", "요양기관"],
+                "심사청구": ["심사", "청구", "일반"],
+                "재가급여": ["재가현황", "급여일반", "보장구"]
+            }
+        },
+        "linkage": {
+            "center": "국민건강\n보험",
+            "title": "정보 연계 대시보드", "color": "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+            "master": {
+                "4대사회보험": ["국민연금", "근로복지공단"],
+                "공공기관": ["건강보험 심사평가원", "공무원 연금공단", "국가평생 교육진흥원", "별정우체국 연금관리단", "사립학교 교직원연금 공단", "사회보장 정보원", "소상공인 진흥공단", "양육비이행 관리원", "중앙 치매센터", "한국 고용정보원", "한국교육 학술정보원", "한국무역 보험공사", "한국 부동산원", "한국사회 보장정보원", "한국산업 기술기획 평가원", "한국산업 기술진흥원", "한국의약품 안전관리원", "한국자산 관리공사", "한국자활 복지개발원", "한국 장학재단", "한국지역 정보개발원", "한국토지 주택공사", "한국 환경공단", "한국환경 산업기술원"],
+                "금융기관": ["국민은행", "금융감독원", "금융결제원", "금융정보 분석원", "기술보증 기금", "여신금융 협회", "주택도시 보증공사", "한국 신용정보원"],
+                "민간기관": ["더존다스"],
+                "의료기관": ["국립암센터", "일산병원"],
+                "중앙행정기관": ["감사원", "과학기술 정보통신부", "국가 데이터처", "국가보훈부", "국가정보원", "국방부", "국토교통부", "기획재정부", "농림축산 식품부", "법무부", "보건복지부", "식품의약품 안전처", "인사혁신처", "재정경제부", "해양수산부", "행정안전부"],
+                "지자체": ["보건소"]
+            }
+        }
+    };
+
+    var subNodeDetails_01 = { "증번호관리": ["지역가입자 증번호관리", "직장가입자 증번호관리", "증번호 현황"], "DEFAULT": ["건강일반 상세 내역 정보가 없습니다."] };
+    var subNodeDetails_02 = { "정기고지": ["매월 보험료 산정 및 고지서 출력", "전자고지 신청자 SMS 발송"], "DEFAULT": ["통합징수 상세 내역 정보가 없습니다."] };
+    var subNodeDetails_03 = { "기관현황": ["장기요양 등급판정 조사", "현장 방문 스케줄링"], "DEFAULT": ["장기요양 상세 내역 정보가 없습니다."] };
+    var subNodeDetails_linkage = { "감사원": ["감사결과", "감사담당자 교육", "감사담당자명부", "감사원 첨부파일(공개문) 연계", "감사원 첨부파일(실지감사결과) 연계", "감사원 첨부파일(실지감사계획) 연계", "감사원 첨부파일(일상감사접수) 연계", "감사원 첨부파일(일상감사조치) 연계", "감사원 첨부파일(적극행정면책) 연계", "감사원 첨부파일(조치이행결과) 연계", "감사원 첨부파일(지적사항) 연계", "실지감사계획", "연간감사계획", "일상감사", "자체감사기구현황", "적극행정면책", "조치이행"], "DEFAULT": ["대외실시간 연계 업무 내역 정보가 없습니다."] };
+
+    function changeMode(mode) {
+        currentMode = mode;
+        activeMasterId = null;
+        init();
+    }
+
+    function init() {
+        pane.innerHTML = '';
+        nodes = [];
+        var modeData = allData[currentMode];
+        var cx = CENTER_X, cy = CENTER_Y; 
+
+        var center = document.createElement('div');
+        center.className = 'node-base center-node'; 
+        center.id = 'center-node';
+        center.innerHTML = modeData.center.replace("\n", "<br>");
+        center.style.background = modeData.color;
+        center.style.left = cx + 'px'; center.style.top = cy + 'px';
+        center.onclick = function() {
+            activeMasterId = null;
+            updatePositions(false);
+            container.scrollTo({ left: cx - container.offsetWidth/2, top: cy - container.offsetHeight/2, behavior: 'smooth' });
+        };
+        pane.appendChild(center);
+
+        var idx = 0, count = 0;
+        for (var k in modeData.master) count++;
+        for (var key in modeData.master) {
+            var angle = (idx * (360 / count)) * (Math.PI / 180);
+            var node = { id: idx, title: key, subList: modeData.master[key], angle: angle, color: 'hsl(' + (idx * 360 / count) + ", 85%, 94%)" };
+            nodes.push(node);
+
+            var l = document.createElement('div'); l.className = 'line-effect'; l.id = 'L-' + idx; pane.appendChild(l);
+            var m = document.createElement('div'); m.className = 'node-base main-circle'; m.id = 'M-' + idx;
+            m.innerText = node.title; m.style.backgroundColor = node.color;
+            m.style.left = cx + 'px'; m.style.top = cy + 'px';
+            
+            (function(id) { m.onclick = function(e) { e.stopPropagation(); handleToggle(id); }; })(idx);
+            pane.appendChild(m);
+
+            for (var j = 0; j < node.subList.length; j++) {
+                var sl = document.createElement('div'); sl.className = 'line-effect sub-line'; sl.id = 'SL-' + idx + '-' + j; pane.appendChild(sl);
+                var s = document.createElement('div'); s.className = 'node-base sub-circle'; s.id = 'S-' + idx + '-' + j;
+                s.innerText = node.subList[j];
+                s.style.left = cx + 'px'; s.style.top = cy + 'px';
+                
+                (function(cat, name) { s.onclick = function(e) { e.stopPropagation(); updateDashboard(cat, name); }; })(node.title, node.subList[j]);
+                pane.appendChild(s);
+            }
+            idx++;
+        }
+
+        nodes.forEach(function(n) {
+            var l = document.getElementById('L-' + n.id);
+            l.style.left = cx + 'px'; l.style.top = cy + 'px';
+            l.style.transform = 'rotate(' + n.angle + 'rad)';
+        });
+
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                updatePositions(true); 
+            });
+        });
+
+        container.scrollLeft = cx - container.offsetWidth/2;
+        container.scrollTop = cy - container.offsetHeight/2;
+    }
+
+    function handleToggle(id) {
+        activeMasterId = (activeMasterId === id) ? null : id;
+        updatePositions(false); 
+    }
+
+    function updatePositions(isInitialOrCombo) {
+        var baseCx = CENTER_X, baseCy = CENTER_Y;
+        var centerNode = document.getElementById('center-node');
+        
+        var targetNode = nodes.find(function(n) { return n.id === activeMasterId; });
+        var hasBigSub = targetNode && targetNode.subList.length > 8;
+
+        var cx = baseCx;
+        var cy = baseCy;
+        if (hasBigSub) {
+            // 다른 노드가 뒤로 비켜주는 오버 무빙도 균형감 있게 90px로 압축
+            cx = baseCx - Math.cos(targetNode.angle) * 90;
+            cy = baseCy - Math.sin(targetNode.angle) * 90;
+        }
+        centerNode.style.left = cx + 'px';
+        centerNode.style.top = cy + 'px';
+        
+        nodes.forEach(function(n) {
+            var m = document.getElementById('M-' + n.id);
+            var l = document.getElementById('L-' + n.id);
+            var isExpanded = (activeMasterId === n.id);
+            var subCount = n.subList.length;
+
+            var r = 293; 
+            if (activeMasterId !== null) {
+                if (isExpanded) {
+                    // 💡 [황금 비율 지정] 클릭 시 다른 노드 영역 침범을 '물리적'으로 막는 고정선 길이 560px 세팅
+                    r = (subCount > 8) ? 560 : 360; 
+                }
+            }
+            
+            var tx = cx + Math.cos(n.angle) * r;
+            var ty = cy + Math.sin(n.angle) * r;
+
+            m.classList.remove('bounce-main-active', 'bounce-main-first', 'node-smooth-move');
+            l.classList.remove('line-smooth-move');
+            
+            l.style.left = cx + 'px'; 
+            l.style.top = cy + 'px';
+            l.style.transform = 'rotate(' + n.angle + 'rad)';
+            l.classList.add('active');
+
+            if (isInitialOrCombo) {
+                m.style.setProperty('--sx', cx + 'px');
+                m.style.setProperty('--sy', cy + 'px');
+                m.style.setProperty('--ex', tx + 'px');
+                m.style.setProperty('--ey', ty + 'px');
+                
+                l.style.width = r + 'px';
+                l.classList.add('line-smooth-move');
+                
+                void m.offsetWidth; 
+                m.classList.add('active', 'bounce-main-first');
+            } else if (activeMasterId !== null && isExpanded) {
+                m.style.setProperty('--sx', cx + 'px');
+                m.style.setProperty('--sy', cy + 'px');
+                m.style.setProperty('--ex', tx + 'px');
+                m.style.setProperty('--ey', ty + 'px');
+                
+                l.style.width = r + 'px';
+                l.classList.add('line-smooth-move');
+                
+                void m.offsetWidth; 
+                m.classList.add('active', 'bounce-main-active');
+            } else {
+                m.style.left = tx + 'px';
+                m.style.top = ty + 'px';
+                m.classList.add('active', 'node-smooth-move');
+                
+                l.style.width = r + 'px';
+                l.classList.add('line-smooth-move');
+            }
+
+            if (isExpanded) {
+                var scrollX = tx + Math.cos(n.angle) * ((subCount > 8) ? 60 : 0);
+                var scrollY = ty + Math.sin(n.angle) * ((subCount > 8) ? 60 : 0);
+                container.scrollTo({ left: scrollX - container.offsetWidth/2, top: scrollY - container.offsetHeight/2, behavior: 'smooth' });
+            }
+
+            for (var j = 0; j < n.subList.length; j++) {
+                var s = document.getElementById('S-' + n.id + '-' + j);
+                var sl = document.getElementById('SL-' + n.id + '-' + j);
+
+                if (isExpanded && !isInitialOrCombo) {
+
+
+    s.style.display = 'flex';
+    sl.style.display = 'block';
+                    
+                    s.classList.remove('bounce-sub-active', 'node-smooth-move');
+                    sl.classList.remove('bounce-line-active', 'line-smooth-move');
+                    
+                    var subAngle;
+                    var subRadius = 140;
+
+                    if (subCount > 8) {
+                        subAngle = (j * (360 / subCount)) * (Math.PI / 180);
+                        // 💡 [황금 비율 지정] 자식 노드들의 레이어를 촘촘하면서 정돈된 (160, 270, 380) 등간격 배치 고정
+                        // 마스터 선이 560px로 길어졌기 때문에, 이 반경 안에서는 타 노드를 절대로 역침범하지 않습니다.
+                        if (j % 3 === 0) subRadius = 138;      
+                        else if (j % 3 === 1) subRadius = 250; 
+                        else subRadius = 317;                  
+                    } else if (subCount >= 5 && subCount <= 10) {
+                        // 💡 [개선] 5~8개 노드 전용: 각도를 100도로 더 넓히고 반지름을 240으로 고정하여 뭉침 방지
+                        var spreadAngle = 150;
+                        var baseAngleDeg = n.angle * (180 / Math.PI);
+                        var subAngleDeg = baseAngleDeg - (spreadAngle / 2) + (j * (spreadAngle / (subCount - 1)));
+                        subAngle = subAngleDeg * (Math.PI / 180);
+                        subRadius = 280;
+                    } else {
+                        var spreadAngle = 85;
+                        var baseAngleDeg = n.angle * (180 / Math.PI);
+                        var subAngleDeg = baseAngleDeg - (spreadAngle / 2) + (j * (spreadAngle / (subCount > 1 ? subCount - 1 : 1)));
+                        subAngle = subAngleDeg * (Math.PI / 180);
+                        subRadius = 150;
+                    }
+
+                    var stx = tx + Math.cos(subAngle) * subRadius;
+                    var sty = ty + Math.sin(subAngle) * subRadius;
+
+                    sl.style.left = tx + 'px'; sl.style.top = ty + 'px';
+                    sl.style.transform = 'rotate(' + subAngle + 'rad)';
+                    sl.style.setProperty('--length', subRadius + 'px');
+                    sl.classList.add('active');
+
+                    s.style.setProperty('--sx', tx + 'px');
+                    s.style.setProperty('--sy', ty + 'px');
+                    s.style.setProperty('--ex', stx + 'px');
+                    s.style.setProperty('--ey', sty + 'px');
+                    
+                    void s.offsetWidth;
+                    void sl.offsetWidth;
+                    
+                    s.classList.add('active', 'bounce-sub-active');
+                    sl.classList.add('bounce-line-active');
+
+                } else {
+
+    s.classList.remove('bounce-sub-active', 'node-smooth-move');
+    sl.classList.remove('bounce-line-active', 'line-smooth-move');
+
+    s.style.display = 'none';
+    sl.style.display = 'none';
+
+    s.style.transition = "none";
+    s.style.opacity = "0";
+    s.style.pointerEvents = "none";
+
+    s.style.left = tx + 'px';
+    s.style.top = ty + 'px';
+
+    sl.classList.remove('active');
+    sl.style.width = '0px';
+    sl.style.opacity = "0";
+
+    void s.offsetWidth;
+
+    s.style.transition = "";
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                
+            }
+        });
+    }
+
+    function updateDashboard(cat, name) {
+        var searchName = name.replace(/\n/g, "").replace(/\s+/g, "");
+        var cleanName = name.replace(/\n/g, " ");
+        var html = "<h4>[" + cat + "] " + cleanName + "</h4>";
+        html += "<table class='dash-table'><colgroup><col style='width:32px;'><col></colgroup>";
+        html += "<thead><tr><th class='col-num'></th><th>상세 내역</th></tr></thead><tbody>";
+
+        var source = (currentMode === "general") ? subNodeDetails_01 : 
+                     (currentMode === "collection") ? subNodeDetails_02 : 
+                     (currentMode === "health") ? subNodeDetails_03 : subNodeDetails_linkage;
+
+        var tasks = source[searchName] || source["DEFAULT"];
+        for (var i = 0; i < tasks.length; i++) {
+            html += "<tr><td class='col-num'>" + (i + 1) + "</td><td>" + tasks[i] + "</td></tr>";
+        }
+        html += "</tbody></table>";
+        document.getElementById('info').innerHTML = html;
+    }
+
+    window.onload = function() { init(); };
+</script>
+</body>
+</html>
