@@ -4,82 +4,202 @@
 <head>
     <meta charset="UTF-8">
     <title>호가창 대시보드</title>
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" />
-    <style>
-        /* 사용자님 원본 스타일 100% 유지 */
-        body { margin:0; padding-top:80px; background:#f8fafc; font-family:'Pretendard',sans-serif; color:#111827; }
 
+    <script src="{% static 'chart.js' %}"></script>
+    <script src="{% static 'lightweight-charts.standalone.production.js' %}"></script>
+    <link rel="stylesheet" type="text/css" href="{% static 'pretendard/pretendard-subset.css' %}">
+    
+    <style>
+        /* 1. 기본 전체 구조 설정 */
+        * {
+            box-sizing: border-box;
+        }
+        body { 
+            margin:0; 
+            background:#f8fafc; 
+            font-family:'Pretendard',sans-serif; 
+            color:#111827; 
+            height: 100vh;
+            overflow: hidden; /* 브라우저 창 자체의 스크롤을 막아 레이아웃 고정 */
+        }
+
+        /* 메인 레이아웃 프레임: 동서 분할 */
+        .dashboard-layout {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* ========================================================
+           ◀ 서쪽 영역: 1430px 딱 고정 (호가창 감시판)
+        ======================================================== */
+        .west-side {
+            width: 1430px;        /* ★ 사용자님이 지정하신 1430px 절대 고정 크기 */
+            flex-shrink: 0;       /* 화면 해상도가 작아져도 1430px 이하로 절대 줄어들지 않음 */
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            border-right: 2px solid #e2e8f0;
+            background-color: #f8fafc;
+        }
+
+        /* 서쪽 내부에 고정되는 상단 컨트롤 바 */
         .top-control-bar {
-            position: fixed; top: 0; left: 0; right: 0; height: 70px; background-color: #ffffff;
-            border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between;
-            align-items: center; padding: 0 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); z-index: 1000;
+            height: 70px; 
+            background-color: #ffffff;
+            border-bottom: 1px solid #e2e8f0; 
+            display: flex; 
+            justify-content: space-between;
+            align-items: center; 
+            padding: 0 24px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02); 
+            z-index: 10;
+            flex-shrink: 0;
         }
         .title-area h1 { margin: 0; font-size: 18px; font-weight: 700; }
         .title-area span { font-size: 12px; color: #64748b; }
-
-        .right-control-area { display: flex; align-items: center; gap: 20px; } 
+        .right-control-area { display: flex; align-items: center; gap: 20px; }
         .btn { padding: 8px 16px; border-radius: 8px; font-size: 14px; font-weight: 700; border: none; cursor: pointer; text-decoration: none; background-color: #64748b; color: white; }
 
-        .hoga-grid { display: flex; flex-wrap: wrap; justify-content: flex-start; gap: 35px; padding: 5px; }
-               
-        .hoga-card { width: 190px; flex: 0 0 190px; background: #fff; border: 1px solid #dbe2ea; border-radius: 7px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+        /* 서쪽 내부의 호가 카드가 스크롤되는 바디 구역 */
+        .west-scroll-body {
+            flex: 1;
+            overflow-y: auto;    /* 100개 넘어가면 이 안에서만 남북으로 스크롤 */
+            padding: 20px 24px;
+        }
+
+        /* 원본 그리드 속성 그대로 유지 */
+        .hoga-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+            gap: 12px; 
+            padding: 5px 0; 
+        }
+        
+        /* 호가 카드 스타일 원본 복원 */
+        .hoga-card { 
+            background: #fff; 
+            border: 1px solid #dbe2ea; 
+            border-radius: 7px; 
+            overflow: hidden; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06); 
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .hoga-card:hover {
+            border-color: #2563eb;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+        }
+        /* 종목 클릭 시 하이라이트 효과 */
+        .hoga-card.active-target {
+            border-color: #2563eb;
+            background-color: #f0f7ff;
+            outline: 2px solid #2563eb;
+        }
+
         .card-head { height:25px; display:flex; align-items:center; justify-content:space-between; padding:0 5px; border-bottom:1px solid #edf1f5; font-size:15px; }
         .hoga-row { position:relative; display:flex; align-items:stretch; height:16px; margin:0; padding:0; line-height:16px; font-size:11px; }
-                     
-        .rem-cell { position:relative; width: 135px; overflow:hidden; display:flex; align-items:center; justify-content:flex-end; padding-right:1px; background:#fff; }
-                    
+        .rem-cell { position:relative; flex: 1; overflow:hidden; display:flex; align-items:center; justify-content:flex-end; padding-right:1px; background:#fff; }
         .price-cell { width: 55px; padding-right:2px; text-align:right; letter-spacing:-0.5px; background:#f8fafc; line-height:16px; z-index:2; font-weight: 510; font-variant-numeric: tabular-nums; }
-
         .bid-price { color:#ff2d55; }
         .offer-price { color:#007aff; }
-
         .rem-text { position:relative; z-index:2; color:#000; font-size:10px; line-height:16px; margin-right: 0; font-weight: 388; }
         .bar { position:absolute; right:0; top:0.5px; bottom:0.5px; margin:0; border:none; opacity:0.95; }
         .bid-bar { background:#ff5c78; }
         .offer-bar { background:#5aa7ff; }
         .mid-line { height:1px; background:#dbe2ea; }
+        .loading-text { font-size: 16px; font-weight: bold; color: #475569; padding: 40px; text-align: center; width: 100%; grid-column: span 5; }
 
+
+        /* ========================================================
+           ▶ 동쪽 영역: 나머지 전체 차지 (1줄 대형 분석창)
+        ======================================================== */
+        .east-side {
+            flex: 1;              /* ★ 1430px을 제외한 우측 남은 공간을 혼자 통째로 독차지 */
+            height: 100%;
+            background-color: #ffffff;
+            padding: 24px;
+            overflow-y: auto;     /* 7단계 차트가 세로로 길어지면 여기서 자체 스크롤 */
+            display: flex;
+            flex-direction: column;
+        }
+
+        .empty-placeholder {
+            margin: auto;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 15px;
+            line-height: 1.7;
+        }
+        .empty-placeholder .icon { font-size: 44px; display: block; margin-bottom: 15px; }
+        .chart-section { margin-bottom: 25px; }
+        .chart-section h4 { margin: 0 0 8px 0; font-size: 13px; color: #334155; font-weight: 700; }
+
+        /* ★ [핵심 패치] 트레이딩뷰 로고 엘리먼트를 추적하여 영구적으로 화면에서 소멸시키는 CSS */
+        div[id^="chart-"] table tr td div[style*="z-index: 5"],
+        div[id^="chart-"] div[style*="z-index: 5"],
+        div[id^="chart-"] span[style*="z-index: 5"] {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0 !important;
+        }
+
+        /* 공통로그 팝업 전용 원본 스타일 유지 */
         #log-list { list-style: none; padding: 10px; margin: 0; }
         #log-list li { border-bottom: 1px solid #333; padding: 4px 0; font-size: 13px; }
-        
-        /* 초고속 로딩 텍스트 스타일 정의 */
-        .loading-text { font-size: 16px; font-weight: bold; color: #475569; padding: 40px; text-align: center; width: 100%; }
     </style>
 </head>
 <body>
 
-<div class="top-control-bar">
-    <div class="title-area">
-        <h1>🚀 호가틱 전략</h1>
-        <span id="stock-count">포착 종목 수: 계산 중...</span>
-    </div>
+<div class="dashboard-layout">
 
-    <div class="right-control-area">
-        <label style="display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; user-select: none;">
-            <input type="checkbox" id="check-all-stocks" style="width: 16px; height: 16px; cursor: pointer;"> 전체 선택
-        </label>
+    <div class="west-side">
+        <div class="top-control-bar">
+            <div class="title-area">
+                <h1>🚀 호가틱 전략</h1>
+                <span id="stock-count">포착 종목 수: 계산 중...</span>
+            </div>
 
-        <button type="button" class="btn" onclick="openGroupModal()" style="background-color: #2563eb;">🌟 관심종목 추가</button>
+            <div class="right-control-area">
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; cursor: pointer; user-select: none;">
+                    <input type="checkbox" id="check-all-stocks" style="width: 16px; height: 16px; cursor: pointer;"> 전체 선택
+                </label>
 
-        <div style="display:flex; align-items:center; gap:15px; margin-right:15px; padding:5px 15px; border:1px solid #e2e8f0; border-radius:8px; background-color:#f8fafc;">
-            <label style="font-size:15px; cursor:pointer;">
-                <input type="radio" name="mode" value="buy" {% if mode == 'buy' %}checked{% endif %} onchange="loadHogaData(this.value)"> 매수 📈
-            </label>
-            <label style="font-size:15px; cursor:pointer;">
-                <input type="radio" name="mode" value="sell" {% if mode == 'sell' %}checked{% endif %} onchange="loadHogaData(this.value)"> 매도 📉
-            </label>
-            <label style="font-size:15px; cursor:pointer;">
-                <input type="radio" name="mode" value="etc" {% if mode == 'etc' %}checked{% endif %} onchange="loadHogaData(this.value)"> 나머지
-            </label>
+                <button type="button" class="btn" onclick="openGroupModal()" style="background-color: #2563eb;">🌟 관심종목 추가</button>
+
+                <div style="display:flex; align-items:center; gap:15px; margin-right:15px; padding:5px 15px; border:1px solid #e2e8f0; border-radius:8px; background-color:#f8fafc;">
+                    <label style="font-size:15px; cursor:pointer;">
+                        <input type="radio" name="mode" value="buy" {% if mode == 'buy' %}checked{% endif %} onchange="loadHogaData(this.value)"> 매수 📈
+                    </label>
+                    <label style="font-size:15px; cursor:pointer;">
+                        <input type="radio" name="mode" value="sell" {% if mode == 'sell' %}checked{% endif %} onchange="loadHogaData(this.value)"> 매도 📉
+                    </label>
+                    <label style="font-size:15px; cursor:pointer;">
+                        <input type="radio" name="mode" value="etc" {% if mode == 'etc' %}checked{% endif %} onchange="loadHogaData(this.value)"> 나머지
+                    </label>
+                </div>
+
+                <button class="btn" onclick="startHogaWindow('{% url 'hoga_stream' %}')" style="padding: 8px 16px; background: #2563eb; color: white; cursor: pointer;">📊 호가틱 수집</button>
+                <a href="{% url 'index' %}" class="btn">➔ 메인으로</a>
+            </div>
         </div>
 
-        <button class="btn" onclick="startHogaWindow('{% url 'hoga_stream' %}')" style="padding: 8px 16px; background: #2563eb; color: white; cursor: pointer;">📊 호가틱 수집</button>
-        <a href="{% url 'index' %}" class="btn">➔ 메인으로</a>
+        <div class="west-scroll-body" id="west-scroll-container">
+            <div class="hoga-grid" id="hoga-grid">
+                <div class="loading-text">데이터를 불러오는 중입니다... 🔄</div>
+            </div>
+        </div>
     </div>
-</div>
 
-<div class="hoga-grid" id="hoga-grid" style="padding-left:30px;">
-    <div class="loading-text">데이터를 불러오는 중입니다... 🔄</div>
+    <div class="east-side" id="east-analysis-panel">
+        <div class="empty-placeholder">
+            <span class="icon">📊</span>
+            왼쪽 화면에서 <strong>종목을 선택하시면</strong><br>
+            이곳에 웅장한 차트 분석 세트가 1줄로 표시됩니다.
+        </div>
+    </div>
+
 </div>
 
 <div id="groupModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000; justify-content:center; align-items:center;">
@@ -94,20 +214,15 @@
 </div>
 
 <script>
-    // 💡 무한 스크롤 및 요청 중지 엔진 설정을 위한 전역 변수
     let currentMode = "{{ mode|default:'buy' }}";
     let currentFilteredData = []; 
     let currentDisplayIndex = 0;  
-    const PAGE_SIZE = 40; // 한 번에 노출 시킬 카드 개수 단위 (가장 최적의 성능)
-    
-    // 🔥 하던 작업 중지를 제어하는 핵심 브라우저 API 선언
+    const PAGE_SIZE = 40; 
     let hogaAbortController = null;
 
-    // 초기 구동
     document.addEventListener("DOMContentLoaded", function() {
         loadHogaData(currentMode);
 
-        // 전체 선택 기능 (중복 바인딩 및 꼬임 제거형)
         const checkAll = document.getElementById('check-all-stocks');
         if (checkAll) {
             checkAll.addEventListener('change', function() {
@@ -117,74 +232,59 @@
                 });
             });
         }
+
+        const westContainer = document.getElementById('west-scroll-container');
+        westContainer.addEventListener('scroll', () => {
+            if ((westContainer.clientHeight + westContainer.scrollTop) >= westContainer.scrollHeight - 120) {
+                renderNextChunk();
+            }
+        });
     });
 
-    // 🚀 비동기 fetch 및 Abort 컨트롤러 핵심 함수
     function loadHogaData(mode) {
         currentMode = mode;
         const grid = document.getElementById('hoga-grid');
         grid.innerHTML = '<div class="loading-text">데이터를 불러오는 중입니다... 🔄</div>';
-        
-        // 상단 전체 체크박스 초기화
         document.getElementById('check-all-stocks').checked = false;
 
-        // 🔥 [작업 중지 로직] 이전 요청이 아직 처리 중이면 즉시 중단(Abort)시킵니다.
-        if (hogaAbortController) {
-            hogaAbortController.abort();
-        }
-        
-        // 이번 요청을 통제할 새로운 AbortController를 할당합니다.
+        if (hogaAbortController) { hogaAbortController.abort(); }
         hogaAbortController = new AbortController();
         const { signal } = hogaAbortController;
 
-        // 장고 백엔드의 JSON 전용 API 주소를 비동기로 호출합니다 (signal 주입 필수)
         fetch(`/api/st-hoga-data/?mode=${mode}`, { signal: signal })
             .then(res => res.json())
             .then(data => {
                 document.getElementById('stock-count').innerText = `포착 종목 수: ${data.length}`;
-                
                 if(data.length === 0) {
                     grid.innerHTML = '<div class="loading-text">포착된 종목이 없습니다. 📭</div>';
                     return;
                 }
-
-                // 2,500건 데이터를 전역 캐시에 담고 인덱스 인수를 0으로 리셋합니다
                 currentFilteredData = data;
                 currentDisplayIndex = 0;
                 grid.innerHTML = ''; 
-
-                // 대량 중 우선 상위 40개만 초고속 렌더링 실행
                 renderNextChunk();
             })
             .catch(err => {
-                // 🔥 라디오 버튼 이동으로 일부러 중단한 경우는 에러 팝업을 띄우지 않고 자연스레 넘깁니다
-                if (err.name === 'AbortError') {
-                    console.log(`[중단 성공] 이전 ${mode} 모드 데이터 처리가 완전히 취소되었습니다.`);
-                    return;
-                }
+                if (err.name === 'AbortError') return;
                 grid.innerHTML = '<div class="loading-text" style="color:#ef4444;">데이터를 불러오는 중 오류가 발생했습니다. ❌</div>';
-                console.error(err);
             });
     }
 
-    // 💡 메모리를 분할해서 HTML 카드를 자연스럽게 이어붙이는 함수
     function renderNextChunk() {
         const grid = document.getElementById('hoga-grid');
         const nextChunk = currentFilteredData.slice(currentDisplayIndex, currentDisplayIndex + PAGE_SIZE);
-        
-        if (nextChunk.length === 0) return; // 더 그릴 대상이 없으면 리턴
+        if (nextChunk.length === 0) return; 
 
         let htmlBuffer = [];
-        
         nextChunk.forEach((item) => {
             const maxRem = item.max_rem || 1;
-            const globalCount = currentDisplayIndex + 1; // 누적 정밀 인덱스 순번 표기
+            const globalCount = currentDisplayIndex + 1; 
             
             let cardHtml = `
-            <div class="hoga-card">
+            <div class="hoga-card" onclick="selectStockCard(this, '${item.code}', '${item.name}')">
                 <div class="card-head">
                     <div style="display:flex; align-items:center; gap:5px; font-weight:700;">
-                        <input type="checkbox" class="stock-item-checkbox" data-code="${item.code}">
+                        <input type="checkbox" class="stock-item-checkbox" data-code="${item.code}" onclick="event.stopPropagation();">
                         <span style="font-size:15px; font-weight:700;">${globalCount}.</span>
                         <span>${item.name}</span>
                     </div>
@@ -192,7 +292,6 @@
                 <div class="hoga-wrap">
             `;
             
-            // 매도 호가 10 -> 1 루프 빌드
             for(let i=10; i>=1; i--) {
                 const rem = item[`offer_rem${i}`] || 0;
                 const price = item[`offer${i}`] || 0;
@@ -206,10 +305,7 @@
                         <div class="price-cell offer-price" style="background-color: #f8fbff;">${price.toLocaleString()}</div>
                     </div>`;
             }
-            
             cardHtml += `<div class="mid-line"></div>`;
-            
-            // 매수 호가 1 -> 10 루프 빌드
             for(let i=1; i<=10; i++) {
                 const rem = item[`bid_rem${i}`] || 0;
                 const price = item[`bid${i}`] || 0;
@@ -223,120 +319,311 @@
                         <div class="price-cell bid-price" style="background-color: #fff8f9;">${price.toLocaleString()}</div>
                     </div>`;
             }
-            
             cardHtml += `</div></div>`;
             htmlBuffer.push(cardHtml);
             currentDisplayIndex++;
         });
-        
-        // 기존 뷰 하단 영역에 노드를 차곡차곡 이어 붙입니다
         grid.insertAdjacentHTML('beforeend', htmlBuffer.join(''));
     }
 
-    // 💡 사용자가 스크롤을 끝자락 근처까지 내리면 40개씩 추가 렌더링을 격발시킵니다
-    window.addEventListener('scroll', () => {
-        if ((window.innerHeight + window.scrollY) >= document.documentElement.scrollHeight - 120) {
-            renderNextChunk();
-        }
-    });
+    function selectStockCard(cardElement, stockCode, stockName) {
+        document.querySelectorAll('.hoga-card').forEach(el => el.classList.remove('active-target'));
+        cardElement.classList.add('active-target');
 
-    // 관심그룹 모달 제어 함수
-    function openGroupModal() { 
-        const selectedStocks = Array.from(document.querySelectorAll('.stock-item-checkbox:checked'))
-                                    .map(cb => cb.dataset.code);
+        const eastPanel = document.getElementById('east-analysis-panel');
         
-        if (selectedStocks.length === 0) {
-            alert("선택된 종목이 없습니다. 관심종목으로 추가할 종목을 먼저 체크해주세요.");
-            return; 
+        eastPanel.innerHTML = `
+            <div style="border-bottom: 2px solid #f1f5f9; padding-bottom: 12px; margin-bottom: 20px;">
+                <h2 style="margin: 0 0 8px 0; font-size: 18px; color: #1e293b;">
+                    ${stockName} <span style="font-size: 13px; color: #64748b; font-weight: normal;">(${stockCode})</span>
+                </h2>
+                <table style="width: 100%; font-size: 11px; border-collapse: collapse; color: #475569;">
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 4px 0; font-weight: 600;">시가총액</td>
+                        <td style="text-align: right; color: #0f172a;" id="meta-marcap">계산중...</td>
+                        <td style="padding: 4px 0; font-weight: 600; padding-left: 15px;">EPS</td>
+                        <td style="text-align: right; color: #0f172a;" id="meta-eps">- 원</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 4px 0; font-weight: 600;">PER / PBR</td>
+                        <td style="text-align: right; color: #0f172a;" id="meta-per-pbr">-배 / -배</td>
+                        <td style="padding: 4px 0; font-weight: 600; padding-left: 15px;">배당수익률</td>
+                        <td style="text-align: right; color: #0f172a;" id="meta-div">- %</td>
+                    </tr>
+                </table>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 25px;">
+                <div class="chart-section">
+                    <h4>📊 기술적 분석 (일봉 캔들)</h4>
+                    <div id="chart-candle" style="height: 220px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#94a3b8;">데이터 수집 중... 🔄</div>
+                </div>
+                <div class="chart-section">
+                    <h4>📈 RSI (상대강도지수)</h4>
+                    <div id="chart-rsi" style="height: 90px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#94a3b8;">[대기]</div>
+                </div>
+                <div class="chart-section">
+                    <h4>📉 MACD 오실레이터</h4>
+                    <div id="chart-macd" style="height: 100px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#94a3b8;">[대기]</div>
+                </div>
+                <div class="chart-section">
+                    <h4>🦅 외국인 누적 순매수 수급</h4>
+                    <div id="chart-supply" style="height: 130px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#94a3b8;">[대기]</div>
+                </div>
+                <div class="chart-section">
+                    <h4>🏦 실적 추이 (매출액 / 영업이익)</h4>
+                    <div id="chart-finance-profit" style="height: 180px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#94a3b8;">[대기]</div>
+                </div>
+                <div class="chart-section">
+                    <h4>⚖️ 재무 건전성 (총자산 / 총부채)</h4>
+                    <div id="chart-finance-asset" style="height: 160px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#94a3b8;">[대기]</div>
+                </div>
+                <div class="chart-section">
+                    <h4>💸 현금흐름 (영업활동)</h4>
+                    <div id="chart-finance-cash" style="height: 150px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; display:flex; align-items:center; justify-content:center; font-size:12px; color:#94a3b8;">[대기]</div>
+                </div>
+            </div>
+        `;
+
+        const cardCheck = cardElement.querySelector('.stock-item-checkbox');
+        if (cardCheck) {
+            document.getElementById('meta-marcap').innerText = cardElement.dataset.cap ? cardElement.dataset.cap + " 억" : "- 억";
         }
 
-        document.getElementById('groupModal').style.display = 'flex';
-        
-        const inputField = document.getElementById('groupName');
-        inputField.focus();
-        inputField.select(); 
+        fetch(`/api/ilbong-chart/?code=${stockCode}`)
+            .then(res => res.json())
+            .then(chartData => {
+                if (!chartData || !Array.isArray(chartData) || chartData.length === 0) {
+                    document.getElementById('chart-candle').innerText = "일봉 데이터가 없습니다. 📭";
+                    return;
+                }
+
+                const cleanData = chartData
+                    .filter(item => item && item.time && item.close !== undefined)
+                    .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+                if (cleanData.length === 0) {
+                    document.getElementById('chart-candle').innerText = "유효한 데이터 부족 ⚠️";
+                    return;
+                }
+
+                const slicedData = cleanData.length > 70 ? cleanData.slice(-70) : cleanData;
+                renderTradingViewCandle(slicedData);
+            })
+            .catch(err => {
+                console.error("일봉 통신 오류:", err);
+                document.getElementById('chart-candle').innerText = "데이터 로드 실패 ❌";
+            });
     }
-    
-    function closeGroupModal() { document.getElementById('groupModal').style.display = 'none'; }
 
+    // ★ v5.1.0 완벽 호환 일봉 캔들 렌더러
+    function renderTradingViewCandle(data) {
+        const container = document.getElementById('chart-candle');
+        container.innerHTML = ''; 
+
+        const chart = LightweightCharts.createChart(container, {
+            width: container.clientWidth,
+            height: 220,
+            layout: { 
+                background: { type: LightweightCharts.ColorType.Solid, color: '#ffffff' }, 
+                textColor: '#475569', 
+                fontSize: 10,
+                attributionLogo: false
+            },
+            grid: { 
+                vertLines: { color: '#f1f5f9' }, 
+                horzLines: { color: '#f1f5f9' } 
+            },
+
+
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+                vertLine: {
+                    visible: true, style: 1
+                },
+                horzLine: {
+                    visible: false   // 🔥 이게 핵심 (가로 점선 제거)
+                }
+            },
+
+
+
+
+
+
+
+            rightPriceScale: {
+                borderColor: '#e2e8f0',
+                autoScale: true,
+                scaleMargins: {
+                    top: 0,
+                    bottom: 0.05
+                }
+                
+            },
+
+
+
+
+
+            timeScale: { 
+                borderColor: '#e2e8f0', 
+                timeVisible: false,
+                rightOffset: 2,
+                barSpacing: 12
+
+
+
+                
+            },
+        });
+
+        const candlestickSeries = chart.addSeries(LightweightCharts.CandlestickSeries, {
+            upColor: '#ef4444', 
+            downColor: '#2563eb',
+            borderUpColor: '#ef4444', 
+            borderDownColor: '#2563eb',
+            wickUpColor: '#ef4444', 
+            wickDownColor: '#2563eb',
+            // 가격 정수형 및 천단위 쉼표 포맷 고정
+            priceFormat: {
+                type: 'price',
+                precision: 0,
+                minMove: 1,
+            },
+            priceLineVisible: false,
+        });
+
+        candlestickSeries.setData(data);
+
+
+
+
+
+
+
+
+
+
+
+
+const volumeSeries = chart.addSeries(
+    LightweightCharts.HistogramSeries,
+    {
+        priceFormat: { type: 'volume' },
+        priceScaleId: 'volume',
+        priceLineVisible: false,
+        lastValueVisible: false
+    }
+);
+
+// 🔥 캔들 priceScale (기본)
+chart.priceScale('right').applyOptions({
+    scaleMargins: {
+        top: 0.05,
+        bottom: 0.25
+    }
+});
+
+// 🔥 거래량 priceScale 따로 생성
+chart.priceScale('volume').applyOptions({
+    scaleMargins: {
+        top: 0.75,
+        bottom: 0
+    }
+});
+
+volumeSeries.setData(
+    data.map(d => ({
+        time: d.time,
+        value: d.volume || 0,
+        color: d.close >= d.open ? '#ef4444' : '#2563eb'
+    }))
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        
+        chart.timeScale().fitContent();
+
+        const resizeObserver = new ResizeObserver(entries => {
+            for (let entry of entries) {
+                if (document.getElementById('chart-candle')) {
+                    const { width } = entry.contentRect;
+                    chart.resize(width, 220);
+                }
+            }
+        });
+        resizeObserver.observe(container);
+    }
+
+    function openGroupModal() { 
+        const selectedStocks = Array.from(document.querySelectorAll('.stock-item-checkbox:checked')).map(cb => cb.dataset.code);
+        if (selectedStocks.length === 0) { alert("선택된 종목이 없습니다."); return; }
+        document.getElementById('groupModal').style.display = 'flex';
+    }
+    function closeGroupModal() { document.getElementById('groupModal').style.display = 'none'; }
     function sendGwansim() {
         const groupName = document.getElementById('groupName').value;
-        const selectedStocks = Array.from(document.querySelectorAll('.stock-item-checkbox:checked'))
-                                    .map(cb => cb.dataset.code);
-
-        if (!groupName) {
-            alert("그룹명을 입력해주세요.");
-            return;
-        }
-
+        const selectedStocks = Array.from(document.querySelectorAll('.stock-item-checkbox:checked')).map(cb => cb.dataset.code);
+        if (!groupName) { alert("그룹명을 입력해주세요."); return; }
         fetch("{% url 'add_gwansim_group_st' %}", {
             method: "POST",
-            headers: { 
-                "Content-Type": "application/json", 
-                "X-CSRFToken": "{{ csrf_token }}" 
-            },
+            headers: { "Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token }}" },
             body: JSON.stringify({ group_name: groupName, codes: selectedStocks })
         })
         .then(res => res.json())
-        .then(data => {
-            if(data.status === 'success' || data.success === true) {
-                closeGroupModal();
-                alert("관심그룹 등록 성공!");
-            } else {
-                alert(data.message || "오류가 발생하여 실패했습니다.");
-            }
-        })
-        .catch(err => {
-            alert("서버와 통신하는 중 문제가 발생했습니다.");
-        });
+        .then(data => { if(data.status === 'success' || data.success === true) { closeGroupModal(); alert("관심그룹 등록 성공!"); } })
+        .catch(err => { alert("서버 통신 실패"); });
     }
-
-    // 수집 로그 새 창 제어 기능 
     function startHogaWindow(url) {
         const newWin = window.open("", "_blank", "width=600,height=600");
-        
-        newWin.document.write(`
-            <html>
-            <body style="background:#1e1e1e; color:#e0e0e0; font-family:monospace; padding:15px;">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <h3 style="color:#fff; margin:0;">📊 수집 로그</h3>
-                    <button id="stopBtn" style="background:#ef4444; color:white; border:none; padding:5px 10px; cursor:pointer;">🛑 중지</button>
-                </div>
-                <ul id="log-list" style="list-style:none; padding:0; margin-top:15px;"></ul>
-            </body></html>
-        `);
-
-        newWin.document.getElementById('stopBtn').onclick = () => {
-            stopHoga();
-        };
-
-        fetch(url)
-        .then(response => {
+        newWin.document.write(`<html><body style="background:#1e1e1e; color:#e0e0e0; padding:15px;"><div style="display:flex; justify-content:between;"><h3 style="color:#fff; margin:0;">📊 수집 로그</h3><button id="stopBtn" style="background:#ef4444; color:white; border:none; padding:5px 10px; cursor:pointer;">🛑 중지</button></div><ul id="log-list" style="list-style:none; padding:0; margin-top:15px;"></ul></body></html>`);
+        newWin.document.getElementById('stopBtn').onclick = () => { stopHoga(); };
+        fetch(url).then(response => {
             const reader = response.body.getReader();
             const decoder = new TextDecoder('utf-8');
             const logList = newWin.document.getElementById('log-list');
-
             function read() {
-                // 부모 창 종료 시 스트림 리더 차단 예외 처리 추가
-                if (newWin.closed) {
-                    reader.cancel();
-                    return;
-                }
+                if (newWin.closed) { reader.cancel(); return; }
                 reader.read().then(({done, value}) => {
                     if (done) return;
-                    
                     const chunk = decoder.decode(value, {stream: true});
-                    
                     chunk.split('\n').forEach(line => {
                         const clean = line.replace(/^data: /, '').trim();
                         if(clean) {
-                            const li = newWin.document.createElement('li');
-                            li.textContent = clean;
+                            const li = newWin.document.createElement('li'); li.textContent = clean;
                             if(clean.includes('✅')) li.style.color = '#81c784';
                             if(clean.includes('❌')) li.style.color = '#e57373';
-                            li.style.padding = "5px 0";
-                            li.style.borderBottom = "1px solid #333";
-                            
                             logList.prepend(li);
                         }
                     });
@@ -346,10 +633,7 @@
             read();
         });
     }
-
-    function stopHoga() {
-        fetch("{% url 'stop_hoga' %}", { method: 'POST' });
-    }
+    function stopHoga() { fetch("{% url 'stop_hoga' %}", { method: 'POST' }); }
 </script>
 </body>
 </html>
