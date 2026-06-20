@@ -1,0 +1,142 @@
+
+
+
+
+                  "공공기관": ["건강보험 심사평가원", "공무원 연금공단", "국가평생 교육진흥원",
+                  "금융기관": ["국민은행", "금융감독원", "금융결제원",
+
+
+
+
+
+
+
+
+        var center = document.createElement('div');
+        center.className = 'node-base center-node'; 
+        center.id = 'center-node';
+        center.innerHTML = modeData.center.replace("\n", "<br>");
+        center.style.background = modeData.color;
+        center.style.left = cx + 'px'; center.style.top = cy + 'px';
+
+건보의 div 태그를 만듭니다.
+div 태그의 id, class 를 정의 (이 속성의 자세한 내용이 css 에 적혀있습니다.)
+style 속성의 배경색, x좌표, y좌표를 지정
+크롬 화면 크기 => 화면 중심 위치 계산
+
+
+
+
+
+        for (var key in modeData.master) {
+            var angle = (idx * (360 / count)) * (Math.PI / 180);
+            var node = { id: idx, title: key, subList: modeData.master[key], angle: angle, color: 'hsl(' + (idx * 360 / count) + ", 85%, 94%)" };
+            nodes.push(node);
+
+            var l = document.createElement('div'); l.className = 'line-effect'; l.id = 'L-' + idx; pane.appendChild(l);
+            var m = document.createElement('div'); m.className = 'node-base main-circle'; m.id = 'M-' + idx;
+            m.innerText = node.title;
+            m.style.backgroundColor = node.color;
+            m.style.left = cx + 'px';
+            m.style.top = cy + 'px';
+
+angle: 각도 50도 씩    360/7=50  (50, 100, 150)
+(파이 / 180)를 곱해서 라디안 값으로 변환합니다.
+고등학교 삼각함수에서는 이렇지만,  대학 수학에는 (파이/180)를 곱 (라디언)
+
+cos(0도) = 1
+cos(60도) = 0.5
+cos(90도) = 0
+cos(180도) = -1
+
+sin(0도) = 0
+sin(30도) = 0.5
+sin(90도) = 1
+sin(180도) = 0
+sin(270도) = -1
+
+
+
+선의 <div> 태그: class, id의 속성은 css에 정의
+공공기관, 금융기관 노드의 <div> 태그: class, id의 속성은 css에 정의, 배경색, xy 좌표는 style 속성
+(css에 애니메이션 등 자세한 정의)
+
+            m.style.left = cx + 'px';
+            m.style.top = cy + 'px';
+
+            var tx = cx + Math.cos(n.angle) * r;
+            var ty = cy + Math.sin(n.angle) * r;
+
+4대사회보험:    cx + 1*r
+                   cy + 0*r
+
+공공기관:    cx + 0.8*r       cos(50도)
+               cy + 0.6*r       sin(50도)
+
+금융기관:    cx + -0.1*r       cos(100도)
+               cy + 0.9*r       sin(100도)
+
+
+cx, cy: 건보의 x, y 좌표
+tx, ty: 타겟의 x, y 좌표
+
+
+
+
+
+
+
+
+
+
+            for (var j = 0; j < node.subList.length; j++) {
+                var sl = document.createElement('div');
+                sl.className = 'line-effect sub-line';
+                sl.id = 'SL-' + idx + '-' + j;
+                pane.appendChild(sl);
+
+                var s = document.createElement('div');
+                s.className = 'node-base sub-circle';
+                s.id = 'S-' + idx + '-' + j;
+                s.innerText = node.subList[j];
+                s.style.left = cx + 'px';
+                s.style.top = cy + 'px';
+                
+                (function(cat, name) { s.onclick = function(e) { e.stopPropagation(); updateDashboard(cat, name); }; })(node.title, node.subList[j]);
+                pane.appendChild(s);
+            }
+
+
+선의 class, id 속성   (css에 애니메이션 등 자세한 정의)
+서브 노드의 class, id 속성 (공공기관 노드에서 출발)
+                s.style.left = cx + 'px';
+                s.style.top = cy + 'px';
+
+공공기관: 360/24 = 15도
+            심평원 => 공무원연금 15도씩 증가
+            선길이 3단
+
+금융기관: 150도의 부채꼴,    150/8 = 18도
+          18도씩 증가
+          국민은행 => 금융감독원
+
+
+
+
+
+
+
+
+go('u')   검색
+ ├─ 검색창(s)
+ ├─ 검색결과(l)
+ ├─ 전체보기(toggleAll)
+ ├─ 상세보기(viewOne)
+ └─ AI팝업(showAI)
+
+go('a')   등록
+ ├─ t-single
+ └─ t-bulk
+
+
+
