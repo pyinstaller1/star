@@ -259,7 +259,7 @@
         <div style="display: flex; gap: 20px;">
             <div style="width: 510px;">
                 <div style="font-weight:bold; margin-bottom:5px;">📊 매출/영업이익 (분기)</div>
-                <table id="quarter-table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
+                <table id="quarter-table" border="1" style="width:510px; border-collapse:collapse; font-size:12px; border:1px solid lightgray;">
                     <thead><tr id="quarter-head" style="background:#f4f4f4;"></tr></thead>
                     <tbody id="quarter-body"></tbody>
                 </table>
@@ -309,7 +309,7 @@
                         <tbody id="quarter_eps_body"></tbody>
                     </table>
 
-                    <div style="height:180px; margin-top:0px;"><canvas id="quarter_eps_chart"></canvas></div>
+                    <div style="height:131px; margin-top:0px;"><canvas id="quarter_eps_chart"></canvas></div>
                 </div>
 
                 <div style="width: 510px;">
@@ -318,7 +318,7 @@
                         <thead><tr id="epsqoq_head" style="background:#f4f4f4;"></tr></thead>
                         <tbody id="epsqoq_body"></tbody></table>
 
-                    <div style="height:180px; margin-top:0px;"><canvas id="epsqoq_chart"></canvas></div>
+                    <div style="height:131px; margin-top:0px;"><canvas id="epsqoq_chart"></canvas></div>
                 </div>
             </div>
 
@@ -346,12 +346,12 @@
 
         <div>
             <div style="font-weight:bold; margin-bottom:5px;">📊 영업이익률 / ROE</div>
-            <table id="roe_table" border="1" style="width: 360px; border-collapse:collapse; font-size:11px;">
+            <table id="roe_table" border="1" style="width: 400px; border-collapse:collapse; font-size:11px;">
                 <thead><tr id="roe_head"></tr></thead>
                 <tbody id="roe_body"></tbody>
             </table>
 
-            <div style="width: 360px; height:180px;"><canvas id="roe_chart"></canvas></div>                    
+            <div style="width: 410px; height:180px;"><canvas id="roe_chart"></canvas></div>                    
         </div>
 
 
@@ -365,16 +365,12 @@
 
                     <!-- 1층 -->
                     <tr>
-                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;">업종</td>
-                        <td id="fin-sector" style="padding:4px 6px;border:1px solid #e2e8f0;font-size:12px;">-</td>
+                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;width:21px;">업종</td>
+                        <td id="fin-sector" style="padding:4px 6px;border:1px solid #e2e8f0;font-size:12px;width:128px;">-</td>
 
-                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;">시총</td>
-                        <td id="fin-cap" style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;font-size:12px;">-</td>
-
-                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;">RSI</td>
-                        <td id="fin-rsi" style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;font-size:12px;">-</td>
-
-                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;">배당</td>
+                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;width:22px;">시총</td>
+                        <td id="fin-cap" style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;font-size:12px;width:70px;">-</td>
+                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;width:23px;">배당</td>
                         <td id="fin-div" style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;font-size:12px;">-</td>
                     </tr>
 
@@ -389,8 +385,6 @@
                         <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;">PER</td>
                         <td id="fin-per" style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;font-size:12px;">-</td>
 
-                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;">PBR</td>
-                        <td id="fin-pbr" style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;font-size:12px;">-</td>
                     </tr>
 
                 </table>
@@ -436,6 +430,7 @@ function getFin(stockName, stockCode) {
 
             const qData = result.data.filter(i => i.구분 === '분기');
             const yData = result.data.filter(i => i.구분 === '연도');
+
 
             // 표 그리기
             showSales('quarter', qData);
@@ -486,7 +481,7 @@ function showSales(type, data) {
     const fields = [{ key: '매출', label: '매출' }, { key: '영업이익', label: '영익' }];
 
     // 1. 헤더 초기화 및 채우기
-    head.innerHTML = '<th style="height:15px; padding:2px; font-weight:normal; font-size:11px;">(억)</th>';
+    head.innerHTML = '<th style="height:20px; padding:2px; font-weight:normal; font-size:11px;">(억)</th>';
     data.forEach((d, index) => {
         const isEstimate = index >= (data.length - 3);
         let th = document.createElement('th');
@@ -497,7 +492,28 @@ function showSales(type, data) {
             th.style.color = '#777';
             th.style.backgroundColor = '#eeeeee';
         }
-        th.innerText = d.기간; // (E) 표기 포함
+        // th.innerText = d.기간; // (E) 표기 포함
+
+
+
+
+        let raw = d.기간;
+
+        // (E) 제거
+        let clean = raw.replace('(E)', '').trim();
+
+        // 2025/03 → 25/03
+        let parts = clean.split('/');
+        let year = parts[0] ? parts[0].slice(2) : '';
+        let month = parts[1] || '';
+
+        th.innerText = year + '/' + month + (raw.includes('(E)') ? '(E)' : '');
+
+
+
+
+
+        
         head.appendChild(th);
     });
 
@@ -505,7 +521,7 @@ function showSales(type, data) {
     body.innerHTML = '';
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="height:15px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:20px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
         
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
@@ -530,93 +546,106 @@ function showSales(type, data) {
 }
                            
 function showSalesChart(canvasId, data) {
+
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-    // if (window[canvasId + 'Obj']) window[canvasId + 'Obj'].destroy();
-
-
     const chartKey = canvasId + 'Obj';
 
+    // 🔥 무조건 재생성
     if (window[chartKey]) {
-        const chart = window[chartKey];
-
-        chart.data.labels = data.map(d => d.기간);
-
-        chart.data.datasets[0].data = data.map(d => d.매출);
-        chart.data.datasets[1].data = data.map(d => d.영업이익);
-
-        chart.update('none');
-        return;
+        window[chartKey].destroy();
     }
 
-
-
-    
-    // 배경색을 칠하는 커스텀 플러그인 정의
     const backgroundPlugin = {
         id: 'customCanvasBackgroundColor',
         beforeDraw: (chart) => {
             const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
             const meta = chart.getDatasetMeta(0);
             const dataset = meta.data;
-            const threshold = dataset.length - 3; // 뒤에서 3번째부터 회색
+            const threshold = dataset.length - 3;
 
             ctx.save();
-            ctx.fillStyle = '#eeeeee'; // 짙은 회색 배경 적용
-            
+            ctx.fillStyle = '#eeeeee';
+
             for (let i = threshold; i < dataset.length; i++) {
                 const start = x.getPixelForValue(i - 0.5);
                 const end = x.getPixelForValue(i + 0.5);
                 ctx.fillRect(start, top, end - start, bottom - top);
             }
+
             ctx.restore();
         }
     };
 
-    window[canvasId + 'Obj'] = new Chart(ctx, {
+    window[chartKey] = new Chart(ctx, {
         type: 'bar',
+        plugins: [backgroundPlugin],
+
         data: {
-            labels: data.map(d => d.기간),
+            labels: data.map(d => {
+
+                let raw = d.기간;
+
+                let isE = raw.includes('(E)');
+                let clean = raw.replace('(E)', '').trim();
+
+                let parts = clean.split('/');
+                let year = parts[0];
+                let month = parts[1];
+
+                // 👉 2025 → 25 변환 (그대로 inline)
+                if (year.length === 4) {
+                    year = year.slice(2);
+                }
+
+                return year + '/' + month + (isE ? '(E)' : '');
+            }),
+
             datasets: [
-                { 
-                    label: '매출', 
-                    data: data.map(d => d.매출), 
-                    backgroundColor: '#475569' 
+                {
+                    label: '매출',
+                    data: data.map(d => d.매출),
+                    backgroundColor: '#475569'
                 },
-                { 
-                    label: '영업이익 (억원)', 
-                    data: data.map(d => d.영업이익), 
-                    backgroundColor: '#ef4444' 
+                {
+                    label: '영업이익 (억원)',
+                    data: data.map(d => d.영업이익),
+                    backgroundColor: '#ef4444'
                 }
             ]
         },
-        plugins: [backgroundPlugin], // 플러그인 적용
+
         options: {
             animation: false,
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { 
-                legend: { 
-                    labels: { 
-                        font: { size: 12 }, 
-                        color: '#000000' 
-                    } 
-                } 
+
+            plugins: {
+                legend: {
+                    labels: {
+                        font: { size: 14 },
+                        color: '#000000'
+                    }
+                }
             },
+
             scales: {
-                x: { 
-                    ticks: { 
-                        font: { size: 11 }, 
+                x: {
+                    ticks: {
+                        font: { size: 14 },
                         color: '#000000',
-                        autoSkip: false, 
-                        maxRotation: 0, 
+                        autoSkip: false,
+                        maxRotation: 0,
                         minRotation: 0
-                    } 
+                    }
                 },
-                y: { 
-                    ticks: { font: { size: 9 } } 
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        font: { size: 9 }
+                    }
                 }
             }
         }
@@ -625,21 +654,45 @@ function showSalesChart(canvasId, data) {
 
 
 
-
-
 function showQoq(type, data) {
 
     const head = document.getElementById(type + '-head');
     const body = document.getElementById(type + '-body');
 
-    head.innerHTML = '<th style="height:15px; padding:1px;font-weight:normal;font-size:11px;">(%)</th>';
+    head.innerHTML = '<th style="height:20px; padding:1px;font-weight:normal;font-size:11px;">(%)</th>';
 
     data.forEach((d, index) => {
         const isEstimate = index >= data.length - 3;
 
-        head.innerHTML += `<th style="padding:1px;font-size:11px;height:auto;border:1px solid lightgray;color:${isEstimate ? '#777' : '#000'};background:${isEstimate ? '#eeeeee' : '#f4f4f4'};">${d.기간}</th>`;
+        let raw = d.기간.replace('(E)', '').trim();
+        let parts = raw.split('/');
+        let year = parts[0] ? parts[0].slice(2) : '';
+        let month = parts[1] || '';
+
+        let label = year + '/' + month + (d.기간.includes('(E)') ? '(E)' : '');
+
+        head.innerHTML += `<th style="padding:1px;font-size:11px;height:auto;border:1px solid lightgray;color:${isEstimate ? '#777' : '#000'};background:${isEstimate ? '#eeeeee' : '#f4f4f4'};">
+            ${label}
+        </th>`;
     });
-        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     body.innerHTML = '';
 
@@ -649,7 +702,7 @@ function showQoq(type, data) {
     ].forEach(([key,label]) => {
 
         let tr = `<tr>
-            <td style="height:15px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${label}</td>`;
+            <td style="height:20px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${label}</td>`;
 
 
 
@@ -679,6 +732,8 @@ function showQoq(type, data) {
 
 function showQoqChart(canvasId, data) {
 
+    
+
     const ctx =
         document.getElementById(canvasId)
         .getContext('2d');
@@ -686,6 +741,9 @@ function showQoqChart(canvasId, data) {
     if (window[canvasId + 'Obj']) {
         window[canvasId + 'Obj'].destroy();
     }
+
+
+
 
 
     const backgroundPlugin = {
@@ -716,7 +774,16 @@ function showQoqChart(canvasId, data) {
             plugins: [backgroundPlugin],
 
         data: {
-            labels: data.map(d => d.기간),
+            labels: data.map(d => {
+                let raw = d.기간.replace('(E)', '').trim();
+                let parts = raw.split('/');
+                let year = parts[0] ? parts[0].slice(2) : '';
+                let month = parts[1] || '';
+                return year + '/' + month + (d.기간.includes('(E)') ? '(E)' : '');
+            }),
+
+
+            
             datasets: [
                 {
                     label:'매출QOQ',
@@ -739,7 +806,7 @@ function showQoqChart(canvasId, data) {
             plugins:{
                 legend:{
                     labels:{
-                        font:{ size:12 },
+                        font:{ size:14 },
                         color:'#000000'
                     }
                 }
@@ -747,7 +814,7 @@ function showQoqChart(canvasId, data) {
             scales:{
                 x:{
                     ticks:{
-                        font:{ size:11 },
+                        font:{ size:14 },
                         color:'#000000',
                         autoSkip:false,
                         maxRotation:0,
@@ -808,14 +875,27 @@ function showAsset(type, data) {
     const body = document.getElementById(type + '_body');
 
     // 1. 헤더 생성 (뒤 3개 열 회색 처리)
-    head.innerHTML = '<th style="height:15px; padding:2px; font-weight:normal; font-size:11px;">(억)</th>';
+    head.innerHTML = '<th style="height:20px; padding:2px; font-weight:normal; font-size:11px;">(억)</th>';
     data.forEach((d, index) => {
-        const isEstimate = index >= (data.length - 3); // 뒤 3개 열 확인
+        const isEstimate = index >= data.length - 3;
+
+        let raw = d.기간.replace('(E)', '').trim();
+        let parts = raw.split('/');
+        let year = parts[0] ? parts[0].slice(2) : '';
+        let month = parts[1] || '';
+
+        let label = year + '/' + month + (d.기간.includes('(E)') ? '(E)' : '');
+
         let th = document.createElement('th');
-        th.style.cssText = `padding:2px; text-align:center; border:1px solid lightgray; font-size:11px; 
-                            background: ${isEstimate ? '#eeeeee' : '#f4f4f4'}; 
-                            color: ${isEstimate ? '#777' : '#000'};`;
-        th.innerText = d.기간;
+        th.style.cssText = `
+            padding:2px;
+            text-align:center;
+            border:1px solid lightgray;
+            font-size:12px;
+            background:${isEstimate ? '#eeeeee' : '#f4f4f4'};
+            color:${isEstimate ? '#777' : '#000'};
+        `;
+        th.innerText = label;
         head.appendChild(th);
     });
 
@@ -825,12 +905,12 @@ function showAsset(type, data) {
     
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="height:15px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:20px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:14px;">${field.label}</td>`;
         
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3); // 뒤 3개 열 확인
             let td = document.createElement('td');
-            td.style.cssText = `padding:1px; text-align:right; border:1px solid lightgray; font-size:11px;
+            td.style.cssText = `padding:1px; text-align:right; border:1px solid lightgray; font-size:12px;
                                 ${isEstimate ? 'background:#eeeeee; color:#777;' : ''}`;
             td.innerText = (d[field.key] ?? 0).toLocaleString();
             tr.appendChild(td);
@@ -841,43 +921,40 @@ function showAsset(type, data) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function showAssetChart(canvasId, data) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
-    
     const ctx = canvas.getContext('2d');
-    // if (window[canvasId + 'Obj']) window[canvasId + 'Obj'].destroy();
-
-
     const chartKey = canvasId + 'Obj';
 
-    if (window[chartKey]) {
-        const chart = window[chartKey];
+    if (window[chartKey]) window[chartKey].destroy();
 
-        chart.data.labels = data.map(d => d.기간);
-
-        chart.data.datasets[0].data = data.map(d => d.자산);
-        chart.data.datasets[1].data = data.map(d => d.부채);
-
-        chart.update('none');
-        return;
-    }
-
-
-    
-
-    // 배경색을 칠하는 커스텀 플러그인 정의
     const backgroundPlugin = {
         id: 'customCanvasBackgroundColor',
         beforeDraw: (chart) => {
             const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
             const meta = chart.getDatasetMeta(0);
             const dataset = meta.data;
-            const threshold = dataset.length - 3; // 뒤에서 3번째부터 회색
-
+            const threshold = dataset.length - 3;
             ctx.save();
-            ctx.fillStyle = '#eeeeee'; // 연한 회색 배경
-            
+            ctx.fillStyle = '#eeeeee';
             for (let i = threshold; i < dataset.length; i++) {
                 const start = x.getPixelForValue(i - 0.5);
                 const end = x.getPixelForValue(i + 0.5);
@@ -887,30 +964,54 @@ function showAssetChart(canvasId, data) {
         }
     };
 
-    window[canvasId + 'Obj'] = new Chart(ctx, {
+    window[chartKey] = new Chart(ctx, {
         type: 'bar',
+        plugins: [backgroundPlugin],
         data: {
-            labels: data.map(d => d.기간),
+            labels: data.map(d => {
+                let raw = d.기간;
+                let isE = raw.includes('(E)');
+                let clean = raw.replace('(E)', '').trim();
+                let parts = clean.split('/');
+                let year = parts[0];
+                let month = parts[1];
+                if (year && year.length === 4) year = year.slice(2);
+                return year + '/' + month + (isE ? '(E)' : '');
+            }),
             datasets: [
                 { label: '자산', data: data.map(d => d.자산), backgroundColor: '#1e40af' },
                 { label: '부채', data: data.map(d => d.부채), backgroundColor: '#fbbf24' }
             ]
         },
-        plugins: [backgroundPlugin], // 플러그인 적용
         options: {
             animation: false,
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { 
-                legend: { labels: { font: { size: 12 }, color: '#000000' } } 
-            },
+            plugins: { legend: { labels: { font: { size: 14 }, color: '#000000' } } },
             scales: {
-                x: { ticks: { font: { size: 10 }, color: '#000000', autoSkip: false, maxRotation: 0, minRotation: 0 } },
+                x: { ticks: { font: { size: 14 }, color: '#000000', autoSkip: false, maxRotation: 0, minRotation: 0 } },
                 y: { ticks: { font: { size: 9 } } }
             }
         }
     });
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 function showCF(type, data) {
@@ -923,19 +1024,37 @@ function showCF(type, data) {
         { key: 'FCF', label: 'FCF' }
     ];
 
-    head.innerHTML = '<th style="height:15px; padding:2px; font-weight:normal;  font-size:11px;">(억)</th>';
+    head.innerHTML = '<th style="height:20px; padding:2px; font-weight:normal;  font-size:11px;">(억)</th>';
+
     data.forEach((d, index) => {
+
         const isEstimate = index >= (data.length - 3);
+
+        let raw = d.기간.replace('(E)', '').trim();
+        let parts = raw.split('/');
+        let year = parts[0] ? parts[0].slice(2) : '';
+        let month = parts[1] || '';
+
+        let label = year + '/' + month + (d.기간.includes('(E)') ? '(E)' : '');
+
         let th = document.createElement('th');
-        th.style.cssText = `padding:1px; text-align:center; border:1px solid lightgray; font-size:11px; background:${isEstimate ? '#eeeeee' : '#f4f4f4'};`;
-        th.innerText = d.기간;
+        th.style.cssText = `
+            padding:1px;
+            text-align:center;
+            border:1px solid lightgray;
+            font-size:11px;
+            background:${isEstimate ? '#eeeeee' : '#f4f4f4'};
+            color:${isEstimate ? '#777' : '#000'};
+        `;
+
+        th.innerText = label;
         head.appendChild(th);
     });
-
+    
     body.innerHTML = '';
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="height:15px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:20px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
         
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
@@ -957,61 +1076,19 @@ function showCFChart(canvasId, data) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    // if (window[canvasId + 'Obj']) window[canvasId + 'Obj'].destroy();
-
     const chartKey = canvasId + 'Obj';
 
-    if (window[chartKey]) {
-        const chart = window[chartKey];
+    if (window[chartKey]) window[chartKey].destroy();
 
-        chart.data.labels = data.map(d => d.기간);
-
-        chart.data.datasets[0].data = data.map(d => d.영업현금흐름 ?? 0);
-        chart.data.datasets[1].data = data.map(d => d.투자현금흐름 ?? 0);
-        chart.data.datasets[2].data = data.map(d => d.재무현금흐름 ?? 0);
-        chart.data.datasets[3].data = data.map(d => d.FCF ?? 0);
-
-        chart.update('none');
-        return;
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-    // 회색 배경을 위한 커스텀 플러그인
     const backgroundPlugin = {
         id: 'cfBackgroundPlugin',
         beforeDraw: (chart) => {
             const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
             const meta = chart.getDatasetMeta(0);
             const dataset = meta.data;
-            if (!dataset || dataset.length < 3) return;
-            
-            const threshold = dataset.length - 3; // 뒤에서 3개
-
+            const threshold = dataset.length - 3;
             ctx.save();
-            ctx.fillStyle = '#eeeeee'; 
-            
+            ctx.fillStyle = '#eeeeee';
             for (let i = threshold; i < dataset.length; i++) {
                 const start = x.getPixelForValue(i - 0.5);
                 const end = x.getPixelForValue(i + 0.5);
@@ -1021,35 +1098,39 @@ function showCFChart(canvasId, data) {
         }
     };
 
-    window[canvasId + 'Obj'] = new Chart(ctx, {
+    window[chartKey] = new Chart(ctx, {
         type: 'bar',
+        plugins: [backgroundPlugin],
         data: {
-            labels: data.map(d => d.기간),
+            labels: data.map(d => {
+                let raw = d.기간;
+                let isE = raw.includes('(E)');
+                let clean = raw.replace('(E)', '').trim();
+                let parts = clean.split('/');
+                let year = parts[0];
+                let month = parts[1];
+                if (year && year.length === 4) year = year.slice(2);
+                return year + '/' + month + (isE ? '(E)' : '');
+            }),
             datasets: [
-                { label: '영업', data: data.map(d => d.영업현금흐름 ?? 0), backgroundColor: '#3b82f6', order: 1 },
-                { label: '투자', data: data.map(d => d.투자현금흐름 ?? 0), backgroundColor: '#ef4444', order: 1 },
-                { label: '재무', data: data.map(d => d.재무현금흐름 ?? 0), backgroundColor: '#f59e0b', order: 1 },
-                { label: 'FCF', data: data.map(d => d.FCF ?? 0), type: 'line', borderColor: '#10b981', borderWidth: 2, fill: false, order: 0, tension: 0 }
-
-                
+                { label: '영업', data: data.map(d => d.영업현금흐름 ?? 0), backgroundColor: '#3b82f6' },
+                { label: '투자', data: data.map(d => d.투자현금흐름 ?? 0), backgroundColor: '#ef4444' },
+                { label: '재무', data: data.map(d => d.재무현금흐름 ?? 0), backgroundColor: '#f59e0b' },
+                { label: 'FCF', data: data.map(d => d.FCF ?? 0), type: 'line', borderColor: '#10b981', borderWidth: 2, fill: false, tension: 0 }
             ]
         },
-        plugins: [backgroundPlugin], // [중요] 플러그인 적용
         options: {
             animation: false,
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { 
-                legend: { labels: { font: { size: 12 }, color: '#000000' } }
-            },
+            plugins: { legend: { labels: { font: { size: 14 }, color: '#000000' } } },
             scales: {
-                y: { beginAtZero: true, ticks: { font: { size: 9 }, color: '#000000' } },
-                x: { stacked: false, ticks: { font: { size: 9 }, color: '#000000' } }
+                x: { ticks: { font: { size: 14 }, color: '#000000', autoSkip: false, maxRotation: 0, minRotation: 0 } },
+                y: { ticks: { font: { size: 9 } } }
             }
         }
     });
 }
-
 
 
 
@@ -1062,11 +1143,19 @@ function showEps(type, data) {
     const head = document.getElementById(type + '_head');
     const body = document.getElementById(type + '_body');
 
-    head.innerHTML = '<th style="height:15px; padding:2px;font-weight:normal;font-size:11px;">(원)</th>';
+    head.innerHTML = '<th style="height:20px; padding:2px;font-weight:normal;font-size:11px;">(원)</th>';
+
 
     data.forEach((d, index) => {
 
         const isEstimate = index >= data.length - 3;
+
+        let raw = d.기간.replace('(E)', '').trim();
+        let parts = raw.split('/');
+        let year = parts[0] ? parts[0].slice(2) : '';
+        let month = parts[1] || '';
+
+        let label = year + '/' + month + (d.기간.includes('(E)') ? '(E)' : '');
 
         head.innerHTML += `
             <th style="
@@ -1076,15 +1165,17 @@ function showEps(type, data) {
                 color:${isEstimate ? '#777' : '#000'};
                 background:${isEstimate ? '#eeeeee' : '#f4f4f4'};
             ">
-                ${d.기간}
+                ${label}
             </th>`;
     });
+
+
 
     body.innerHTML = '';
 
     let tr = `
         <tr>
-            <td style="height:15px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">EPS</td>`;
+            <td style="height:20px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">EPS</td>`;
 
     data.forEach((d, index) => {
 
@@ -1114,45 +1205,33 @@ function showEps(type, data) {
 
 
 
-function showEpsChart(canvasId, data) {
 
+
+function showEpsChart(canvasId, data) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-
     const chartKey = canvasId + 'Obj';
 
-    if (window[chartKey]) {
-
-        const chart = window[chartKey];
-
-        chart.data.labels = data.map(d => d.기간);
-        chart.data.datasets[0].data = data.map(d => d.EPS ?? 0);
-
-        chart.update('none');
-        return;
-    }
+    if (window[chartKey]) window[chartKey].destroy();
 
     const backgroundPlugin = {
         id: 'epsBackgroundPlugin',
         beforeDraw: (chart) => {
-
             const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
             const meta = chart.getDatasetMeta(0);
+            const dataset = meta.data;
+            if (!dataset.length) return;
 
-            if (!meta.data.length) return;
-
-            const threshold = meta.data.length - 3;
+            const threshold = dataset.length - 3;
 
             ctx.save();
             ctx.fillStyle = '#eeeeee';
 
-            for (let i = threshold; i < meta.data.length; i++) {
-
+            for (let i = threshold; i < dataset.length; i++) {
                 const start = x.getPixelForValue(i - 0.5);
                 const end = x.getPixelForValue(i + 0.5);
-
                 ctx.fillRect(start, top, end - start, bottom - top);
             }
 
@@ -1162,54 +1241,38 @@ function showEpsChart(canvasId, data) {
 
     window[chartKey] = new Chart(ctx, {
         type: 'bar',
-
         plugins: [backgroundPlugin],
-
         data: {
-            labels: data.map(d => d.기간),
-
+            labels: data.map(d => {
+                let raw = d.기간;
+                let isE = raw.includes('(E)');
+                let clean = raw.replace('(E)', '').trim();
+                let parts = clean.split('/');
+                let year = parts[0];
+                let month = parts[1];
+                if (year && year.length === 4) year = year.slice(2);
+                return year + '/' + month + (isE ? '(E)' : '');
+            }),
             datasets: [{
                 label: 'EPS',
                 data: data.map(d => d.EPS ?? 0),
                 backgroundColor: '#8b5cf6'
             }]
         },
-
         options: {
             animation: false,
             responsive: true,
             maintainAspectRatio: false,
-
             plugins: {
-                legend: {
-                    labels: {
-                        font: { size: 12 },
-                        color: '#000000'
-                    }
-                }
+                legend: { display: false }
             },
-
             scales: {
-                x: {
-                    ticks: {
-                        font: { size: 11 },
-                        color: '#000000',
-                        autoSkip: false,
-                        maxRotation: 0,
-                        minRotation: 0
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        font: { size: 9 }
-                    }
-                }
+                x: { ticks: { font: { size: 14 }, color: '#000000', autoSkip: false, maxRotation: 0, minRotation: 0 } },
+                y: { beginAtZero: true, ticks: { font: { size: 12 } } }
             }
         }
     });
 }
-
 
 
 
@@ -1222,11 +1285,19 @@ function showEpsQoq(type, data) {
     const head = document.getElementById(type + '_head');
     const body = document.getElementById(type + '_body');
 
-    head.innerHTML = '<th style="height:15px; padding:1px;font-weight:normal;font-size:11px;">(%)</th>';
+    head.innerHTML = '<th style="height:20px; padding:1px;font-weight:normal;font-size:11px;">(%)</th>';
+
 
     data.forEach((d, index) => {
 
         const isEstimate = index >= data.length - 3;
+
+        let raw = d.기간.replace('(E)', '').trim();
+        let parts = raw.split('/');
+        let year = parts[0] ? parts[0].slice(2) : '';
+        let month = parts[1] || '';
+
+        let label = year + '/' + month + (d.기간.includes('(E)') ? '(E)' : '');
 
         head.innerHTML += `
             <th style="
@@ -1236,15 +1307,18 @@ function showEpsQoq(type, data) {
                 color:${isEstimate ? '#777' : '#000'};
                 background:${isEstimate ? '#eeeeee' : '#f4f4f4'};
             ">
-                ${d.기간}
+                ${label}
             </th>`;
     });
+
+
+
 
     body.innerHTML = '';
 
     let tr = `
         <tr>
-            <td style="height:15px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">
+            <td style="height:20px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">
                 QOQ
             </td>`;
 
@@ -1273,46 +1347,31 @@ function showEpsQoq(type, data) {
 }
 
 
-
 function showEpsQoqChart(canvasId, data) {
-
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
-
     const chartKey = canvasId + 'Obj';
 
-    if (window[chartKey]) {
-
-        const chart = window[chartKey];
-
-        chart.data.labels = data.map(d => d.기간);
-        chart.data.datasets[0].data = data.map(d => d.EPSQOQ);
-
-        chart.update('none');
-        return;
-    }
+    if (window[chartKey]) window[chartKey].destroy();
 
     const backgroundPlugin = {
         id: 'epsQoqBackgroundPlugin',
         beforeDraw: (chart) => {
-
             const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
             const meta = chart.getDatasetMeta(0);
+            const dataset = meta.data;
+            if (!dataset.length) return;
 
-            if (!meta.data.length) return;
-
-            const threshold = meta.data.length - 3;
+            const threshold = dataset.length - 3;
 
             ctx.save();
             ctx.fillStyle = '#eeeeee';
 
-            for (let i = threshold; i < meta.data.length; i++) {
-
+            for (let i = threshold; i < dataset.length; i++) {
                 const start = x.getPixelForValue(i - 0.5);
                 const end = x.getPixelForValue(i + 0.5);
-
                 ctx.fillRect(start, top, end - start, bottom - top);
             }
 
@@ -1322,55 +1381,38 @@ function showEpsQoqChart(canvasId, data) {
 
     window[chartKey] = new Chart(ctx, {
         type: 'bar',
-
         plugins: [backgroundPlugin],
-
         data: {
-            labels: data.map(d => d.기간),
-
+            labels: data.map(d => {
+                let raw = d.기간;
+                let isE = raw.includes('(E)');
+                let clean = raw.replace('(E)', '').trim();
+                let parts = clean.split('/');
+                let year = parts[0];
+                let month = parts[1];
+                if (year && year.length === 4) year = year.slice(2);
+                return year + '/' + month + (isE ? '(E)' : '');
+            }),
             datasets: [{
                 label: 'EPS 성장률 (QOQ)',
-                data: data.map(d => d.EPSQOQ),
+                data: data.map(d => d.EPSQOQ ?? 0),
                 backgroundColor: '#06b6d4'
             }]
         },
-
         options: {
             animation: false,
             responsive: true,
             maintainAspectRatio: false,
-
             plugins: {
-                legend: {
-                    labels: {
-                        font: { size: 12 },
-                        color: '#000000'
-                    }
-                }
+                legend: { display: false }
             },
-
             scales: {
-                x: {
-                    ticks: {
-                        font: { size: 11 },
-                        color: '#000000',
-                        autoSkip: false,
-                        maxRotation: 0,
-                        minRotation: 0
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        font: { size: 9 }
-                    }
-                }
+                x: { ticks: { font: { size: 14 }, color: '#000000', autoSkip: false, maxRotation: 0, minRotation: 0 } },
+                y: { beginAtZero: true, ticks: { font: { size: 12 } } }
             }
         }
     });
 }
-
-
 
 
 
@@ -1385,19 +1427,25 @@ function showRoe(type, data) {
     const head = document.getElementById('roe_head');
     const body = document.getElementById('roe_body');
 
-    head.innerHTML = '<th style="height:15px;padding:0;font-size:11px; font-weight:normal; border:1px solid lightgray;">(%)</th>';
+    head.innerHTML = '<th style="height:20px;padding:0;font-size:11px; font-weight:normal; border:1px solid lightgray;">(%)</th>';
 
     data.forEach(d => {
 
         const isE = d.기간.includes('E');
 
-        const clean = d.기간.replace('(E)', '').trim();
-        const parts = clean.split('/');
+        let raw = d.기간.replace('(E)', '').trim();
+        let parts = raw.split('/');
+        let year = parts[0] ? parts[0].slice(2) : '';
+        let month = parts[1] || '';
 
-        let month = parts.length === 2 ? String(Number(parts[1])) : clean;
+        let label = year + '/' + month + (isE ? '(E)' : '');
 
-        head.innerHTML += `<th style="height:15px;padding:0;font-size:11px;border:1px solid lightgray;background:${isE?'#eeeeee':'#f4f4f4'};color:${isE?'#777':'#000'};">${month}${isE?'(E)':''}</th>`;
+        head.innerHTML += `<th style="height:20px;padding:0;font-size:11px;border:1px solid lightgray;background:${isE?'#eeeeee':'#f4f4f4'};color:${isE?'#777':'#000'};">${label}</th>`;
     });
+
+
+
+    
 
     const fields = [
         { key: '영업이익률', label: '영익률' },
@@ -1409,13 +1457,13 @@ function showRoe(type, data) {
     fields.forEach(f => {
 
         let tr = `<tr>
-            <td style="height:15px;padding:0;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${f.label}</td>`;
+            <td style="height:20px;padding:0;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${f.label}</td>`;
 
         data.forEach(d => {
 
             const isE = d.기간.includes('E');
 
-            tr += `<td style="height:15px;padding:0;text-align:right;border:1px solid lightgray;font-size:11px;background:${isE?'#eeeeee':''};color:${isE?'#777':'#000'};">${d[f.key]!=null?d[f.key].toFixed(1)+'%&nbsp;':'-'}</td>`;
+            tr += `<td style="height:20px;padding:0;text-align:right;border:1px solid lightgray;font-size:11px;background:${isE?'#eeeeee':''};color:${isE?'#777':'#000'};">${d[f.key]!=null?d[f.key].toFixed(1)+'%&nbsp;':'-'}</td>`;
         });
 
         tr += '</tr>';
@@ -1424,47 +1472,27 @@ function showRoe(type, data) {
 }
 
 function showRoeChart(canvasId, data) {
-
     const ctx = document.getElementById(canvasId).getContext('2d');
     const chartKey = canvasId + 'Obj';
 
-    const labels = data.map(d => {
-        let p = d.기간;
-        let isE = p.includes('E');
-        let clean = p.replace('(E)', '').replace('E', '').trim();
-        let parts = clean.split('/');
-        let year = parts[0] ? String(parts[0]).slice(2) : '';
-        let month = parts[1] ? String(Number(parts[1])) : '';
-        let label = (month === '3') ? `${year}.${month}` : month;
-        return isE ? `${label}(E)` : label;
-    });
-
-    if (window[chartKey]) {
-        const chart = window[chartKey];
-        chart.data.labels = labels;
-        chart.data.datasets[0].data = data.map(d => d.영업이익률);
-        chart.data.datasets[1].data = data.map(d => d.ROE);
-        chart.update('none');
-        return;
-    }
+    if (window[chartKey]) window[chartKey].destroy();
 
     const backgroundPlugin = {
-        id: 'customCanvasBackgroundColor',
+        id: 'roeBackgroundPlugin',
         beforeDraw: (chart) => {
             const { ctx, chartArea:{top,bottom}, scales:{x} } = chart;
             const meta = chart.getDatasetMeta(0);
             const dataset = meta.data;
+            if (!dataset.length) return;
+
             const threshold = dataset.length - 3;
 
             ctx.save();
             ctx.fillStyle = '#eeeeee';
 
-            for(let i=threshold;i<dataset.length;i++){
+            for (let i = threshold; i < dataset.length; i++) {
                 const start = x.getPixelForValue(i - 0.5);
-                const end = (i === dataset.length - 1)
-                    ? x.getPixelForValue(i)
-                    : x.getPixelForValue(i + 0.5);
-
+                const end = x.getPixelForValue(i + 0.5);
                 ctx.fillRect(start, top, end - start, bottom - top);
             }
 
@@ -1472,25 +1500,57 @@ function showRoeChart(canvasId, data) {
         }
     };
 
+    const labels = data.map(d => {
+        let raw = d.기간;
+        let isE = raw.includes('(E)');
+        let clean = raw.replace('(E)', '').trim();
+        let parts = clean.split('/');
+        let year = parts[0];
+        let month = parts[1];
+        if (year && year.length === 4) year = year.slice(2);
+        return year + '/' + month + (isE ? '(E)' : '');
+    });
+
     window[chartKey] = new Chart(ctx, {
-        type:'line',
-        plugins:[backgroundPlugin],
-        data:{
-            labels:labels,
-            datasets:[
-                {label:'영업이익률',data:data.map(d=>d.영업이익률),borderColor:'#ef4444',borderWidth:2,pointRadius:2,tension:0.3,fill:false},
-                {label:'ROE',data:data.map(d=>d.ROE),borderColor:'#3b82f6',borderWidth:2,pointRadius:2,tension:0.3,fill:false}
+        type: 'line',
+        plugins: [backgroundPlugin],
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '영업이익률',
+                    data: data.map(d => d.영업이익률 ?? 0),
+                    borderColor: '#ef4444',
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    tension: 0.3,
+                    fill: false
+                },
+                {
+                    label: 'ROE',
+                    data: data.map(d => d.ROE ?? 0),
+                    borderColor: '#3b82f6',
+                    borderWidth: 2,
+                    pointRadius: 2,
+                    tension: 0.3,
+                    fill: false
+                }
             ]
         },
-        options:{
-            animation:false,
-            responsive:true,
-            maintainAspectRatio:false,
-            layout:{padding:{top:0}},
-            plugins:{legend:{position:'top',align:'center',labels:{boxWidth:7,boxHeight:7,padding:5,font:{size:10}}}},
-            scales:{
-                x:{ticks:{autoSkip:false,maxRotation:0,minRotation:0,font:{size:9}}},
-                y:{beginAtZero:true,ticks:{font:{size:9}}}
+        options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    align: 'center',
+                    labels: { boxWidth: 7, boxHeight: 7, font: { size: 10 } }
+                }
+            },
+            scales: {
+                x: { ticks: { font: { size: 12 }, color: '#000000', autoSkip: false, maxRotation: 0, minRotation: 0 } },
+                y: { beginAtZero: true, ticks: { font: { size: 12 } } }
             }
         }
     });
@@ -1501,6 +1561,7 @@ function showEtc(data) {
     const latest = data[data.length - 4];
 
     // ===== RSI =====
+    /*
     const rsi = latest?.RSI ?? null;
     const rsiEl = document.getElementById('fin-rsi');
 
@@ -1511,6 +1572,7 @@ function showEtc(data) {
         else if (rsi <= 30) rsiEl.style.color = '#2563eb';
         else rsiEl.style.color = '#334155';
     }
+    */
 
     // ===== 부채 3단 =====
     const debt3 = data.slice(data.length - 6, data.length - 3)
@@ -1530,13 +1592,13 @@ function showEtc(data) {
 
     // ===== PER / PBR =====
     const perEl = document.getElementById('fin-per');
-    const pbrEl = document.getElementById('fin-pbr');
+    // const pbrEl = document.getElementById('fin-pbr');
 
     const per = latest?.PER ?? null;
-    const pbr = latest?.PBR ?? null;
+    // const pbr = latest?.PBR ?? null;
 
     perEl.innerText = per ?? '-';
-    pbrEl.innerText = pbr ?? '-';
+    // pbrEl.innerText = pbr ?? '-';
 
     if (per != null) {
         if (per > 20) perEl.style.color = '#d60000';
@@ -1544,11 +1606,13 @@ function showEtc(data) {
         else perEl.style.color = '#334155';
     }
 
+    /*
     if (pbr != null) {
         if (pbr > 2) pbrEl.style.color = '#d60000';
         else if (pbr < 1) pbrEl.style.color = '#16a34a';
         else pbrEl.style.color = '#334155';
     }
+    */
 }
 
 

@@ -2709,110 +2709,148 @@ document.getElementById('toggleFlow').addEventListener('change', (e) => {
 <script>
 /* ------------------ 재무표/차트 관련 함수 추가 ------------------ */
 
+
 function showSales(type, data) {
+    const fmt = p => {
+        const s = String(p).trim();
+        const isE = s.includes('(E)');
+        const clean = s.replace('(E)','').trim();
+        const x = clean.split('/');
+        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '') + (isE ? '(E)' : '');
+    };
+
     const head = document.getElementById(type + '-head');
     const body = document.getElementById(type + '-body');
-    const fields = [{ key: '매출', label: '매출' }, { key: '영업이익', label: '영익' }];
 
-    head.innerHTML = '<th style="height:15px; padding:0px; font-weight:normal; font-size:11px ">(억)</th>';
+    const fields = [
+        { key: '매출', label: '매출' },
+        { key: '영업이익', label: '영익' }
+    ];
+
+    head.innerHTML = '<th style="height:15px; padding:0px; font-weight:normal; font-size:11px">(억)</th>';
+
     data.forEach((d, index) => {
         const isEstimate = index >= (data.length - 3);
         let th = document.createElement('th');
-        th.style.padding = '0px';
-        th.style.fontSize = '11px';
-        th.style.border = '1px solid lightgray';
-        if (isEstimate) { th.style.color = '#777'; th.style.backgroundColor = '#eeeeee'; }
-        th.innerText = d.기간;
+        th.style.cssText = `padding:0px;font-size:11px;border:1px solid lightgray;background:${isEstimate ? '#eee' : '#f4f4f4'};color:${isEstimate ? '#777' : '#000'};`;
+        th.innerText = fmt(d.기간);
         head.appendChild(th);
     });
 
     body.innerHTML = '';
+
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="height:15px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:15px;padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${field.label}</td>`;
+
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
             let td = document.createElement('td');
-            td.style.padding = '1px';
-            td.style.textAlign = 'right';
-            td.style.fontSize = '11px';
-            td.style.border = '1px solid lightgray';
-            if (isEstimate) { td.style.color = '#777'; td.style.backgroundColor = '#eeeeee'; }
-            else if (field.key === '영업이익' && d[field.key] < 0) { td.style.color = 'red'; }
+
+            td.style.cssText =
+                `padding:1px;text-align:right;border:1px solid lightgray;font-size:11px;` +
+                (isEstimate ? 'background:#eee;color:#777;' : '') +
+                (field.key === '영업이익' && d[field.key] < 0 ? 'color:red;' : '');
+
             td.innerText = (d[field.key] ?? 0).toLocaleString();
             tr.appendChild(td);
         });
+
         body.appendChild(tr);
     });
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
 function showSalesChart(canvasId, data) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
+    const canvas = document.getElementById(canvasId); if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // 이전 차트 객체 있으면 destroy 제거 → 그냥 update 처리
+    const fmt = p => { const s = String(p).replace('(E)','').trim(); const x = s.split('/'); return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || ''); };
+
     if (window[canvasId + 'Obj']) {
-        window[canvasId + 'Obj'].data.labels = data.map(d => d.기간);
-        window[canvasId + 'Obj'].data.datasets[0].data = data.map(d => d.매출);
-        window[canvasId + 'Obj'].data.datasets[1].data = data.map(d => d.영업이익);
-        window[canvasId + 'Obj'].update();
-        return;
+        const c = window[canvasId + 'Obj'];
+        c.data.labels = data.map(d => fmt(d.기간));
+        c.data.datasets[0].data = data.map(d => d.매출);
+        c.data.datasets[1].data = data.map(d => d.영업이익);
+        c.update(); return;
     }
 
-    // 회색 배경 플러그인 (뒤 3개는 회색)
-    const backgroundPlugin = {
-        id: 'customCanvasBackgroundColor',
-        beforeDraw: chart => {
-            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-            const dataset = chart.getDatasetMeta(0).data;
-            const threshold = dataset.length - 3;
-            ctx.save();
-            ctx.fillStyle = '#eeeeee';
-            for (let i = threshold; i < dataset.length; i++) {
-                const start = x.getPixelForValue(i - 0.5);
-                const end = x.getPixelForValue(i + 0.5);
-                ctx.fillRect(start, top, end - start, bottom - top);
-            }
-            ctx.restore();
-        }
-    };
+    const bg = { id:'bg', beforeDraw: chart => { const {ctx, chartArea:{top,bottom}, scales:{x}} = chart; const ds = chart.getDatasetMeta(0).data; const t = ds.length-3; ctx.save(); ctx.fillStyle='#eee'; for(let i=t;i<ds.length;i++){ const s=x.getPixelForValue(i-0.5); const e=x.getPixelForValue(i+0.5); ctx.fillRect(s,top,e-s,bottom-top);} ctx.restore(); } };
 
     window[canvasId + 'Obj'] = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: data.map(d => d.기간),
-            datasets: [
-                { label: '매출', data: data.map(d => d.매출), backgroundColor: '#475569' },
-                { label: '영업이익', data: data.map(d => d.영업이익), backgroundColor: '#ef4444' }
-            ]
-        },
-        plugins: [backgroundPlugin],
-        options: { animation: false, responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 12 }, color: '#000' } } }, scales: { x: { ticks: { font: { size: 11 }, color: '#000', autoSkip: false, maxRotation: 0, minRotation: 0 } }, y: { ticks: { font: { size: 9 } } } } }
+        type:'bar',
+        data:{ labels:data.map(d=>fmt(d.기간)), datasets:[{label:'매출',data:data.map(d=>d.매출),backgroundColor:'#475569'},{label:'영업이익',data:data.map(d=>d.영업이익),backgroundColor:'#ef4444'}] },
+        plugins:[bg],
+        options:{ animation:false, responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{font:{size:14},color:'#000'}}}, scales:{x:{ticks:{font:{size:14},color:'#000',autoSkip:false,maxRotation:0,minRotation:0}},y:{ticks:{font:{size:9}}}} }
     });
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 function showAsset(type, data) {
+    const fmt = p => {
+        const s = String(p).trim();
+        const isE = s.includes('(E)');
+        const clean = s.replace('(E)','').trim();
+        const x = clean.split('/');
+        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '') + (isE ? '(E)' : '');
+    };
+
     const head = document.getElementById(type + '_head');
     const body = document.getElementById(type + '_body');
+
     head.innerHTML = '<th style="height:15px; padding:0px; font-weight:normal; font-size:11px">(억)</th>';
+
     data.forEach((d, index) => {
         const isEstimate = index >= (data.length - 3);
         let th = document.createElement('th');
-        th.style.cssText = `padding:0px; text-align:center; border:1px solid lightgray; font-size:11px; background: ${isEstimate ? '#eeeeee' : '#f4f4f4'}; color: ${isEstimate ? '#777' : '#000'};`;
-        th.innerText = d.기간;
+        th.style.cssText = `padding:0px;text-align:center;border:1px solid lightgray;font-size:11px;background:${isEstimate ? '#eee' : '#f4f4f4'};color:${isEstimate ? '#777' : '#000'};`;
+        th.innerText = fmt(d.기간);
         head.appendChild(th);
     });
 
     body.innerHTML = '';
     const fields = [{ key: '자산', label: '자산' }, { key: '부채', label: '부채' }];
+
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="height:15px; padding:0px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:15px;padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${field.label}</td>`;
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
             let td = document.createElement('td');
-            td.style.cssText = `padding:0px; text-align:right; border:1px solid lightgray; font-size:11px; ${isEstimate ? 'background:#eeeeee; color:#777;' : ''}`;
+            td.style.cssText = `padding:1px;text-align:right;border:1px solid lightgray;font-size:11px;background:${isEstimate ? '#eee' : ''};color:${d[field.key] < 0 ? 'red' : ''};`;
             td.innerText = (d[field.key] ?? 0).toLocaleString();
             tr.appendChild(td);
         });
@@ -2820,33 +2858,35 @@ function showAsset(type, data) {
     });
 }
 
+
+
+                    
+
 function showAssetChart(canvasId, data) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
+    const canvas = document.getElementById(canvasId); if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // 기존 차트 있으면 update만
+    const fmt = p => { const s = String(p).replace('(E)','').trim(); const x = s.split('/'); return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || ''); };
+
     if (window[canvasId + 'Obj']) {
-        window[canvasId + 'Obj'].data.labels = data.map(d => d.기간);
-        window[canvasId + 'Obj'].data.datasets[0].data = data.map(d => d.자산);
-        window[canvasId + 'Obj'].data.datasets[1].data = data.map(d => d.부채);
-        window[canvasId + 'Obj'].update();
-        return;
+        const c = window[canvasId + 'Obj'];
+        c.data.labels = data.map(d => fmt(d.기간));
+        c.data.datasets[0].data = data.map(d => d.자산);
+        c.data.datasets[1].data = data.map(d => d.부채);
+        c.update(); return;
     }
 
-    // 뒤 3개 회색 배경
-    const backgroundPlugin = {
-        id: 'customCanvasBackgroundColor',
+    const bg = {
+        id: 'bg',
         beforeDraw: chart => {
-            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-            const dataset = chart.getDatasetMeta(0).data;
-            const threshold = dataset.length - 3;
-            ctx.save();
-            ctx.fillStyle = '#eeeeee';
-            for (let i = threshold; i < dataset.length; i++) {
-                const start = x.getPixelForValue(i - 0.5);
-                const end = x.getPixelForValue(i + 0.5);
-                ctx.fillRect(start, top, end - start, bottom - top);
+            const { ctx, chartArea:{top,bottom}, scales:{x} } = chart;
+            const ds = chart.getDatasetMeta(0).data;
+            const t = ds.length - 3;
+            ctx.save(); ctx.fillStyle = '#eee';
+            for (let i=t;i<ds.length;i++){
+                const s = x.getPixelForValue(i-0.5);
+                const e = x.getPixelForValue(i+0.5);
+                ctx.fillRect(s, top, e-s, bottom-top);
             }
             ctx.restore();
         }
@@ -2855,20 +2895,46 @@ function showAssetChart(canvasId, data) {
     window[canvasId + 'Obj'] = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: data.map(d => d.기간),
+            labels: data.map(d => fmt(d.기간)),
             datasets: [
                 { label: '자산', data: data.map(d => d.자산), backgroundColor: '#1e40af' },
                 { label: '부채', data: data.map(d => d.부채), backgroundColor: '#fbbf24' }
             ]
         },
-        plugins: [backgroundPlugin],
-        options: { animation: false, responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 12 }, color: '#000' } } }, scales: { x: { ticks: { font: { size: 11 }, color: '#000', autoSkip: false, maxRotation: 0, minRotation: 0 } }, y: { ticks: { font: { size: 9 } } } } }
+        plugins: [bg],
+        options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { font: { size: 14 }, color: '#000' } }
+            },
+            scales: {
+                x: { ticks: { font: { size: 14 }, color: '#000', autoSkip: false, maxRotation: 0, minRotation: 0 } },
+                y: { ticks: { font: { size: 9 } } }
+            }
+        }
     });
 }
 
+
+
+
+
+
+                    
 function showCF(type, data) {
+    const fmt = p => {
+        const s = String(p).trim();
+        const isE = s.includes('(E)');
+        const clean = s.replace('(E)','').trim();
+        const x = clean.split('/');
+        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '') + (isE ? '(E)' : '');
+    };
+
     const head = document.getElementById(type + '_cash_head');
     const body = document.getElementById(type + '_cash_body');
+
     const fields = [
         { key: '영업현금흐름', label: '영업' },
         { key: '투자현금흐름', label: '투자' },
@@ -2876,66 +2942,76 @@ function showCF(type, data) {
         { key: 'FCF', label: 'FCF' }
     ];
 
-    head.innerHTML = '<th style="height:15px; padding:0px; font-weight:normal; font-size:11px;">(억)</th>';
+    head.innerHTML = '<th style="height:15px;padding:0px;font-weight:normal;font-size:11px">(억)</th>';
+
     data.forEach((d, index) => {
         const isEstimate = index >= (data.length - 3);
         let th = document.createElement('th');
-        th.style.cssText = `padding:0px; text-align:center; border:1px solid lightgray; font-size:11px; background:${isEstimate ? '#eeeeee' : '#f4f4f4'};`;
-        th.innerText = d.기간;
+        th.style.cssText =
+            `padding:0px;text-align:center;border:1px solid lightgray;font-size:11px;` +
+            (isEstimate ? 'background:#eee;color:#777;' : 'background:#f4f4f4;');
+        th.innerText = fmt(d.기간);
         head.appendChild(th);
     });
 
     body.innerHTML = '';
+
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="height:15px; padding:0px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:15px;padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${field.label}</td>`;
+
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
             let td = document.createElement('td');
-            td.style.cssText = `padding:0px; text-align:right; border:1px solid lightgray; font-size:11px; background:${isEstimate ? '#eeeeee' : ''};`;
+
             let val = d[field.key] ?? 0;
+
+            td.style.cssText =
+                `padding:1px;text-align:right;border:1px solid lightgray;font-size:11px;` +
+                (isEstimate ? 'background:#eee;' : '') +
+                (val < 0 ? 'color:red;' : '');
+
             td.innerText = val.toLocaleString();
-            if (val < 0) td.style.color = 'red';
             tr.appendChild(td);
         });
+
         body.appendChild(tr);
     });
 }
 
+
+
+
+
+
 function showCFChart(canvasId, data) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
+    const canvas = document.getElementById(canvasId); if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    // 기존 차트 있으면 데이터만 교체
+    const fmt = p => { const s = String(p).replace('(E)','').trim(); const x = s.split('/'); return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || ''); };
+
     if (window[canvasId + 'Obj']) {
-        window[canvasId + 'Obj'].data.labels = data.map(d => d.기간);
-        window[canvasId + 'Obj'].data.datasets[0].data = data.map(d => d.영업현금흐름 ?? 0);
-        window[canvasId + 'Obj'].data.datasets[1].data = data.map(d => d.투자현금흐름 ?? 0);
-        window[canvasId + 'Obj'].data.datasets[2].data = data.map(d => d.재무현금흐름 ?? 0);
-        window[canvasId + 'Obj'].data.datasets[3].data = data.map(d => d.FCF ?? 0);
-        window[canvasId + 'Obj'].update();
-        return;
+        const c = window[canvasId + 'Obj'];
+        c.data.labels = data.map(d => fmt(d.기간));
+        c.data.datasets[0].data = data.map(d => d.영업현금흐름 ?? 0);
+        c.data.datasets[1].data = data.map(d => d.투자현금흐름 ?? 0);
+        c.data.datasets[2].data = data.map(d => d.재무현금흐름 ?? 0);
+        c.data.datasets[3].data = data.map(d => d.FCF ?? 0);
+        c.update(); return;
     }
 
-    const backgroundPlugin = {
-        id: 'cfBackgroundPlugin',
+    const bg = {
+        id: 'bg',
         beforeDraw: chart => {
-            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-            const dataset = chart.getDatasetMeta(0).data;
-            if (!dataset || dataset.length < 3) return;
-
-            const threshold = dataset.length - 3;
-
-            ctx.save();
-            ctx.fillStyle = '#eeeeee';
-
-            for (let i = threshold; i < dataset.length; i++) {
-                const start = x.getPixelForValue(i - 0.5);
-                const end = x.getPixelForValue(i + 0.5);
-                ctx.fillRect(start, top, end - start, bottom - top);
+            const { ctx, chartArea:{top,bottom}, scales:{x} } = chart;
+            const ds = chart.getDatasetMeta(0).data;
+            const t = ds.length - 3;
+            ctx.save(); ctx.fillStyle = '#eee';
+            for (let i=t;i<ds.length;i++){
+                const s = x.getPixelForValue(i-0.5);
+                const e = x.getPixelForValue(i+0.5);
+                ctx.fillRect(s, top, e-s, bottom-top);
             }
-
             ctx.restore();
         }
     };
@@ -2943,18 +3019,38 @@ function showCFChart(canvasId, data) {
     window[canvasId + 'Obj'] = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: data.map(d => d.기간),
+            labels: data.map(d => fmt(d.기간)),
             datasets: [
-                { label: '영업', data: data.map(d => d.영업현금흐름 ?? 0), backgroundColor: '#3b82f6', order: 1 },
-                { label: '투자', data: data.map(d => d.투자현금흐름 ?? 0), backgroundColor: '#ef4444', order: 1 },
-                { label: '재무', data: data.map(d => d.재무현금흐름 ?? 0), backgroundColor: '#f59e0b', order: 1 },
-                { label: 'FCF', data: data.map(d => d.FCF ?? 0), type: 'line', borderColor: '#10b981', borderWidth: 2, fill: false, order: 0, tension: 0 }
+                { label: '영업', data: data.map(d => d.영업현금흐름 ?? 0), backgroundColor: '#3b82f6' },
+                { label: '투자', data: data.map(d => d.투자현금흐름 ?? 0), backgroundColor: '#ef4444' },
+                { label: '재무', data: data.map(d => d.재무현금흐름 ?? 0), backgroundColor: '#f59e0b' },
+                { label: 'FCF', data: data.map(d => d.FCF ?? 0), type: 'line', borderColor: '#10b981', borderWidth: 2, fill: false }
             ]
         },
-        plugins: [backgroundPlugin],
-        options: { animation: false, responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { font: { size: 12 }, color: '#000' } } }, scales: { y: { beginAtZero: true, ticks: { font: { size: 9 }, color: '#000' } }, x: { stacked: false, ticks: { font: { size: 9 }, color: '#000' } } } }
+        plugins: [bg],
+        options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { labels: { font: { size: 14 }, color: '#000' } }
+            },
+            scales: {
+                x: { ticks: { font: { size: 14 }, color: '#000', autoSkip: false, maxRotation: 0, minRotation: 0 } },
+                y: { ticks: { font: { size: 9 } } }
+            }
+        }
     });
 }
+
+
+
+
+
+
+
+
+                    
 </script>
 
 
