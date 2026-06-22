@@ -1,0 +1,814 @@
+<style>
+.east-side {
+    flex: 1;
+    height: 100%;
+    background-color: #ffffff;
+    padding: 3px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.empty-placeholder {
+    margin: auto;
+    text-align: center;
+    color: #94a3b8;
+    font-size: 15px;
+    line-height: 1.7;
+}
+
+.empty-placeholder .icon {
+    font-size: 44px;
+    display: block;
+    margin-bottom: 15px;
+}
+
+.chart-section {
+    margin-bottom: 25px;
+}
+
+.chart-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 13px;
+    color: #334155;
+    font-weight: 700;
+}
+
+
+
+
+
+div[id^="chart-"] table tr td div[style*="z-index: 5"],
+div[id^="chart-"] div[style*="z-index: 5"],
+div[id^="chart-"] span[style*="z-index: 5"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    height: 0 !important;
+}
+</style>
+
+
+
+<div class="east-side">
+
+    <div id="east-analysis-panel" style="height:100%;">
+
+        <div class="empty-placeholder" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <span class="icon">📊</span>
+            왼쪽 화면에서 <strong>종목을 선택하시면</strong><br>
+            이곳에 웅장한 차트 분석 세트가 1줄로 표시됩니다.
+        </div>
+
+    </div>
+
+</div>
+
+<template id="east-template">
+
+    <div>
+        <h2 id="east-stock-title" style="margin:0 0 8px 0;font-size:27px;color:#1e293b;">
+            종목명
+            <span id="east-stock-code" style="font-size:18px;color:#64748b;font-weight:normal;">
+                (000000)
+            </span>
+        </h2>
+
+
+        <table style="width:100%;font-size:12px;border-collapse:collapse;color:#0f172a;font-weight:500;margin-bottom:8px;table-layout:fixed;border:1px solid #dbe4ee;">
+
+            <tr>
+                <td style="padding:4px 6px;font-weight:600;border:1px solid #dbe4ee;background:#f8fafc; width:35px;">업종</td>
+                <td id="fin-sector" style="border:1px solid #dbe4ee;padding:4px 6px; width:140px;">-</td>
+
+                <td style="padding:4px 6px;font-weight:600;border:1px solid #dbe4ee;background:#f8fafc; width:35px;">시총</td>
+                <td id="fin-cap" style="border:1px solid #dbe4ee;padding:4px 6px;text-align:right;  font-size:12px; width:88px;">-</td>
+
+                <td style="padding:4px 6px;font-weight:600;border:1px solid #dbe4ee;background:#f8fafc; width:35px;">RSI</td>
+                <td id="fin-rsi" style="border:1px solid #dbe4ee;padding:4px 6px;text-align:right;">-</td>
+
+                <td style="padding:4px 6px;font-weight:600;border:1px solid #dbe4ee;background:#f8fafc; width:35px;">배당</td>
+                <td id="fin-div" style="border:1px solid #dbe4ee;padding:4px 6px;text-align:right; width:58px;">-</td>
+            </tr>
+
+            <tr>
+                <td style="padding:4px 6px;font-weight:600;border:1px solid #dbe4ee;background:#f8fafc;">부채</td>
+                <td id="fin-debt" style="border:1px solid #dbe4ee;padding:4px 6px;text-align:left;">-</td>
+
+                <td style="padding:4px 6px;font-weight:600;border:1px solid #dbe4ee;background:#f8fafc;">EPS</td>
+                <td id="fin-eps" style="border:1px solid #dbe4ee;padding:4px 6px;text-align:right;">-</td>
+
+                <td style="padding:4px 6px;font-weight:600;border:1px solid #dbe4ee;background:#f8fafc;">PER</td>
+                <td id="fin-per" style="border:1px solid #dbe4ee;padding:4px 6px;text-align:right;">-</td>
+
+                <td style="padding:4px 6px;font-weight:600;border:1px solid #dbe4ee;background:#f8fafc;">PBR</td>
+                <td id="fin-pbr" style="border:1px solid #dbe4ee;padding:4px 6px;text-align:right;">-</td>
+            </tr>
+
+        </table>
+
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:25px;">
+
+        <div class="chart-section">
+            <div id="chart-candle" style="height:220px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8;">데이터 수집 중... 🔄</div>
+            <div id="chart-macd" style="height:80px;margin-top:-8px;"></div>
+            <div id="chart-supply" style="height:120px;margin-top:-8px;"></div>
+            
+        </div>
+
+
+
+
+
+
+
+
+        <div class="chart-section">
+            <h4>🏦 실적 추이 (매출액 / 영업이익)</h4>
+            <div id="chart-finance-profit" style="height:180px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8;">[대기]</div>
+        </div>
+
+        <div class="chart-section">
+            <h4>⚖️ 재무 건전성 (총자산 / 총부채)</h4>
+            <div id="chart-finance-asset" style="height:160px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8;">[대기]</div>
+        </div>
+
+        <div class="chart-section">
+            <h4>💸 현금흐름 (영업활동)</h4>
+            <div id="chart-finance-cash" style="height:150px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8;">[대기]</div>
+        </div>
+
+    </div>
+
+</template>
+
+
+
+
+
+
+
+
+<script>
+
+function selectStockCard(cardElement, stockCode, stockName) {
+
+    document.querySelectorAll('.hoga-card')
+        .forEach(el => el.classList.remove('active-target'));
+
+    cardElement.classList.add('active-target');
+
+    const eastPanel = document.getElementById('east-analysis-panel');
+    const template = document.getElementById('east-template');
+
+    eastPanel.innerHTML = template.innerHTML;
+
+    document.getElementById('east-stock-title').childNodes[0].nodeValue =
+        stockName + ' ';
+
+    document.getElementById('east-stock-code').innerText =
+        `(${stockCode})`;
+
+    const cardCheck = cardElement.querySelector('.stock-item-checkbox');
+
+
+    
+
+    if (cardCheck) {
+        document.getElementById('fin-cap').innerText =
+            cardElement.dataset.cap
+                ? cardElement.dataset.cap + " 억"
+                : "- 억";
+    }
+
+    fetch(`/api/ilbong-chart-st/?code=${stockCode}`)
+        .then(res => res.json())
+        .then(result => {
+
+            const chartData = result.chart;
+            const fin = result.fin;
+
+            document.getElementById('fin-sector').innerText = fin.업종 || '-';
+            document.getElementById('fin-rsi').innerText = fin.RSI || '-';
+            document.getElementById('fin-eps').innerText = (fin.EPS || 0).toLocaleString('ko-KR');
+            document.getElementById('fin-per').innerText = fin.PER || '-';
+            document.getElementById('fin-pbr').innerText = fin.PBR || '-';
+            document.getElementById('fin-div').innerText = `${fin.배당 || 0} %`;
+            document.getElementById('fin-cap').innerText = (fin.시가총액 || 0).toLocaleString('ko-KR') + ' 억';
+
+
+
+
+            document.getElementById('fin-debt').innerText =
+                (fin.부채비율3 || [])
+                    .map(v => v + '%')
+                    .join(' → ');
+
+
+            
+
+            
+            // document.getElementById('fin-debt').innerText = `${fin.부채비율 || 0} %`;
+
+
+
+
+
+            if (!chartData || !Array.isArray(chartData) || chartData.length === 0) {
+                document.getElementById('chart-candle').innerText =
+                    "일봉 데이터가 없습니다. 📭";
+                return;
+            }
+
+            const cleanData = chartData
+                .filter(item => item && item.time && item.close !== undefined)
+                .sort((a, b) => new Date(a.time) - new Date(b.time));
+
+            if (cleanData.length === 0) {
+                document.getElementById('chart-candle').innerText =
+                    "유효한 데이터 부족 ⚠️";
+                return;
+            }
+
+            renderTradingViewCandle(cleanData);
+
+        })
+        .catch(err => {
+            console.error("일봉 통신 오류:", err);
+
+            document.getElementById('chart-candle').innerText =
+                "데이터 로드 실패 ❌";
+        });
+}
+
+
+
+function renderTradingViewCandle(data) {
+
+
+    
+
+    const container = document.getElementById('chart-candle');
+
+    container.innerHTML = '';
+
+    const chart = LightweightCharts.createChart(container, {
+
+        width: container.clientWidth,
+        height: 220,
+
+        localization: {
+            locale: 'ko-KR',
+            dateFormat: 'MM/dd',
+            priceFormatter: (price) => Math.round(price).toLocaleString('ko-KR'),
+            timeFormatter: (time) => {
+                const d = new Date(time);
+                return `${d.getMonth() + 1}월 ${d.getDate()}일`;
+            }
+        },
+
+        layout: {
+            background: { type: LightweightCharts.ColorType.Solid, color: '#ffffff' },
+            textColor: '#475569',
+            fontSize: 10,
+            attributionLogo: false
+        },
+
+        grid: {
+            vertLines: { color: '#f1f5f9' },
+            horzLines: { color: '#f1f5f9' }
+        },
+
+        crosshair: {
+            mode: LightweightCharts.CrosshairMode.Normal,
+            vertLine: { visible: true, style: 1 },
+            horzLine: { visible: false }
+        },
+
+
+
+        rightPriceScale: {
+            borderColor: '#e2e8f0',
+            autoScale: true,
+            scaleMargins: { top: 0, bottom: 0.05 },
+            entireTextOnly: true,
+            minimumWidth: 51,
+        },
+
+
+
+
+        timeScale: {
+
+            // 1. 오른쪽 여백(미래 영역)을 제거
+            rightOffset: 0, 
+            
+            // 2. 가장 오른쪽 데이터(최신 봉)가 고정되도록 함
+            fixRightEdge: true,
+            
+            // 3. 차트가 오른쪽으로 무한정 이동하는 것을 방지
+            // 이 설정이 활성화되면 최신 봉이 항상 오른쪽 끝에 붙게 됩니다.
+            lockVisibleTimeRangeOnResize: true,
+            borderColor: '#e2e8f0',
+            timeVisible: true,
+            secondsVisible: false,
+            tickMarkFormatter: (time) => {
+                const date = new Date(time);
+                return `${date.getMonth() + 1}/${date.getDate()}`;
+            }
+        },
+
+
+        
+
+        handleScroll: {
+            mouseWheel: true,
+            pressedMouseMove: true,
+            horzTouchDrag: true,
+            vertTouchDrag: false
+        },
+
+        handleScale: {
+            mouseWheel: true,
+            pinch: true,
+            axisPressedMouseMove: true
+        }
+
+        
+    });
+
+
+
+
+
+    const maSettings = [
+        { key: 'ma5', color: '#FF9800', width: 1 },
+        { key: 'ma20', color: '#9C27B0', width: 1 },
+        { key: 'ma60', color: '#2196F3', width: 1 },
+        { key: 'ma120', color: '#F44336', width: 1 }
+    ];
+
+    maSettings.forEach(ma => {
+
+        const series = chart.addSeries(
+            LightweightCharts.LineSeries,
+            {
+                color: ma.color,
+                lineWidth: ma.width,
+                priceLineVisible: false,
+                lastValueVisible: false,
+                crosshairMarkerVisible: false
+            }
+        );
+
+        series.setData(
+            data
+                .filter(d => d[ma.key] != null)
+                .map(d => ({
+                    time: d.time,
+                    value: d[ma.key]
+                }))
+        );
+
+    });
+
+
+
+
+
+
+
+
+
+    
+
+
+    const volumeSeries =
+        chart.addSeries(
+            LightweightCharts.HistogramSeries,
+            {
+                priceFormat: { type: 'volume' },
+                priceScaleId: 'volume',
+                priceLineVisible: false,
+                lastValueVisible: false
+            }
+        );
+
+    chart.priceScale('right').applyOptions({
+        scaleMargins: {
+            top: 0.05,
+            bottom: 0.25
+        }
+    });
+
+    chart.priceScale('volume').applyOptions({
+        scaleMargins: {
+            top: 0.75,
+            bottom: 0
+        }
+    });
+
+    volumeSeries.setData(
+        data.map(d => ({
+            time: d.time,
+            value: d.volume || 0,
+            color: d.close >= d.open
+                ? '#ef4444'
+                : '#2563eb'
+        }))
+    );
+
+    chart.timeScale().fitContent();
+
+    const totalCount = data.length;
+
+    if (totalCount > 60) {
+        chart.timeScale().setVisibleLogicalRange({
+            from: totalCount - 60,
+            to: totalCount - 1
+        });
+    }
+    
+
+    const resizeObserver =
+        new ResizeObserver(entries => {
+
+            for (let entry of entries) {
+
+                if (document.getElementById('chart-candle')) {
+
+                    const { width } = entry.contentRect;
+
+                    chart.resize(width, 220);
+                }
+            }
+        });
+
+    resizeObserver.observe(container);
+
+
+
+
+
+    const candlestickSeries =
+        chart.addSeries(
+            LightweightCharts.CandlestickSeries,
+            {
+                upColor: '#ef4444',
+                downColor: '#2563eb',
+                borderUpColor: '#ef4444',
+                borderDownColor: '#2563eb',
+                wickUpColor: '#ef4444',
+                wickDownColor: '#2563eb',
+
+                priceFormat: {
+                    type: 'price',
+                    precision: 0,
+                    minMove: 1
+                },
+
+                priceLineVisible: false
+            }
+        );
+
+    candlestickSeries.setData(data);
+
+
+
+
+
+
+    const macdContainer = document.getElementById('chart-macd');
+
+    const macdChart = LightweightCharts.createChart(
+        macdContainer,
+        {
+            width: macdContainer.clientWidth,
+            height: 80,
+
+            localization: { priceFormatter: (price) => Math.round(price).toLocaleString('ko-KR') },
+
+            layout: {
+                background: {
+                    type: LightweightCharts.ColorType.Solid,
+                    color: '#ffffff'
+                },
+                textColor: '#64748b',
+                fontSize: 9,
+                attributionLogo: false
+            },
+
+            grid: {
+                vertLines: { visible: false },
+                horzLines: { visible: false }
+            },
+
+            rightPriceScale: {
+                visible: true,
+                minimumWidth: 51,
+                scaleMargins: { top: 0.15, bottom: 0.15 }
+            },
+
+            timeScale: {
+                visible: false
+            }
+        }
+    );
+
+
+
+    const macdHistSeries = macdChart.addSeries(
+        LightweightCharts.HistogramSeries,
+        {
+            priceLineVisible: false,
+            lastValueVisible: false
+        }
+    );
+
+    macdHistSeries.setData(
+        data
+            .filter(d => d.macd != null && d.macd9 != null)
+            .map(d => ({
+                time: d.time,
+                value: d.macd - d.macd9,
+                color:
+                    (d.macd - d.macd9) >= 0
+                    ? 'rgba(214,0,0,0.5)'
+                    : 'rgba(0,87,216,0.5)'
+            }))
+    );
+
+
+
+
+
+    const macd9Series = macdChart.addSeries(
+        LightweightCharts.LineSeries,
+        {
+            color: '#FF9800',
+            lineWidth: 1.5,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        }
+    );
+
+    macd9Series.setData(
+        data
+            .filter(d => d.macd9 != null)
+            .map(d => ({ time: d.time, value: d.macd9 }))
+    );
+
+
+
+
+
+
+    const macdSeries = macdChart.addSeries(
+        LightweightCharts.LineSeries,
+        {
+            color: '#1976D2',
+            lineWidth: 1.5,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        }
+    );
+
+    macdSeries.setData(
+        data
+            .filter(d => d.macd != null)
+            .map(d => ({ time: d.time, value: d.macd }))
+    );
+
+
+
+
+
+    chart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+
+        if (range) {
+            macdChart.timeScale().setVisibleLogicalRange(range);
+        }
+
+    });
+
+
+
+    const macdLabel = document.createElement('div');
+
+    macdLabel.innerHTML = 'MACD';
+
+    macdLabel.style.position = 'absolute';
+    macdLabel.style.left = '8px';
+    macdLabel.style.top = '4px';
+    macdLabel.style.fontSize = '21px';
+    macdLabel.style.fontWeight = 'bold';
+    macdLabel.style.color = '#1976D2';
+    macdLabel.style.pointerEvents = 'none';
+    macdLabel.style.zIndex = '10';
+
+    macdContainer.style.position = 'relative';
+    macdContainer.appendChild(macdLabel);
+
+
+
+
+
+
+
+    const supplyContainer = document.getElementById('chart-supply');
+
+    const supplyChart = LightweightCharts.createChart(
+        supplyContainer,
+        {
+            width: supplyContainer.clientWidth,
+            height: 120,
+
+            localization: {
+
+                priceFormatter: (price) => {
+                    const v = Math.round(price);
+                    if (Math.abs(v) >= 1000) { return Math.round(v / 1000).toLocaleString('ko-KR') + '천'; }
+                    return v.toLocaleString('ko-KR');
+                }
+
+                
+            },
+
+            layout: {
+                background: {
+                    type: LightweightCharts.ColorType.Solid,
+                    color: '#ffffff'
+                },
+                textColor: '#64748b',
+                fontSize: 9,
+                attributionLogo: false
+            },
+
+            rightPriceScale: {
+                minimumWidth: 51,
+                scaleMargins: {
+                    top: 0.05,
+                    bottom: 0.05
+                }
+            },
+
+            grid: {
+                vertLines: { visible:false },
+                horzLines: { visible:false }
+            },
+
+            timeScale: {
+                visible:false
+            }
+        }
+    );
+
+
+
+const flowLegend = document.createElement('div');
+
+flowLegend.innerHTML = `
+<span style="color:rgb(214,0,0);font-weight:bold;font-size:15px;">개인</span>
+<span style="margin-left:6px;color:rgb(40,140,240);font-weight:bold;font-size:15px;">외국인</span>
+<span style="margin-left:6px;color:rgb(235,185,40);font-weight:bold;font-size:15px;">기관</span>
+`;
+
+flowLegend.style.position = 'absolute';
+flowLegend.style.left = '8px';
+flowLegend.style.top = '4px';
+flowLegend.style.fontSize = '8px';
+flowLegend.style.zIndex = '10';
+flowLegend.style.pointerEvents = 'none';
+
+supplyContainer.style.position = 'relative';
+supplyContainer.appendChild(flowLegend);
+
+
+
+
+
+    
+const personalSeries = supplyChart.addSeries(
+    LightweightCharts.HistogramSeries,
+    {
+        priceLineVisible:false,
+        lastValueVisible:false
+    }
+);
+
+personalSeries.setData(
+    data
+        .filter(d => d.개인 != null)
+        .map(d => ({
+            time:d.time,
+            value:d.개인,
+            color:'rgb(235,90,90)'
+        }))
+);
+
+const foreignerSeries = supplyChart.addSeries(
+    LightweightCharts.HistogramSeries,
+    {
+        priceLineVisible:false,
+        lastValueVisible:false
+    }
+);
+
+foreignerSeries.setData(
+    data
+        .filter(d => d.외국인 != null)
+        .map(d => ({
+            time:d.time,
+            value:d.외국인,
+            color:'rgb(90,160,245)'
+        }))
+);
+
+
+
+const instituteSeries = supplyChart.addSeries(
+    LightweightCharts.HistogramSeries,
+    {
+        priceLineVisible:false,
+        lastValueVisible:false
+    }
+);
+
+instituteSeries.setData(
+    data
+        .filter(d => d.기관 != null)
+        .map(d => ({
+            time:d.time,
+            value:d.기관,
+            color:'rgb(245,205,90)'
+        }))
+);
+
+chart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+
+    if (range) {
+        macdChart.timeScale().setVisibleLogicalRange(range);
+        supplyChart.timeScale().setVisibleLogicalRange(range);
+    }
+
+});
+
+
+
+
+
+const zeroLineSeries = supplyChart.addSeries(
+    LightweightCharts.LineSeries,
+    {
+        color: '#000000',
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false
+    }
+);
+
+const zeroData = data.map(d => ({
+    time: d.time,
+    value: 0
+}));
+
+const lastDate = new Date(data[data.length - 1].time);
+lastDate.setDate(lastDate.getDate() + 30);
+
+zeroData.push({
+    time: lastDate.toISOString().slice(0, 10),
+    value: 0
+});
+
+zeroLineSeries.setData(zeroData);
+    
+}
+
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

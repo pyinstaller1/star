@@ -1,7 +1,7 @@
 ﻿from django.shortcuts import render, redirect
 from django.http import StreamingHttpResponse
 from django.http import JsonResponse
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_POST, require_GET
 from django.views.decorators.csrf import csrf_exempt
 from api.start_kospi import set_kospi, set_kospi_1day
 from api.ilbong import *
@@ -1137,9 +1137,19 @@ def st_hoga_view8(request):
 
 def st_hoga_view(request):
     mode = request.GET.get('mode', 'buy')
-    return render(request, 'strategy/st_hoga.html', {'mode': mode})
 
-# 🔥 2. 새로 추가할 비동기 데이터 API 뷰 (에러가 발생한 주소입니다)
+    return render(request, 'strategy/st_hoga.html', {
+        'mode': mode,
+        'strategy_title': '🚀 호가틱 전략',
+        'strategy_button_html': '''
+            <button class="btn" onclick="startHogaWindow('/hoga_stream/')" style="padding:8px 16px;background:#2563eb;color:white;cursor:pointer;">
+                📊 호가틱 수집
+            </button>
+        '''
+    })
+
+
+# 🔥 2. 새로 추가할 비동기 데이터 API 뷰
 def st_hoga_data_api(request):
     mode = request.GET.get('mode', 'buy')
     
@@ -1153,11 +1163,81 @@ def st_hoga_data_api(request):
 
 
 
+@require_GET
+def api_ilbong_chart_st(request):
+
+    stock_code = request.GET.get('code', '').strip()
+
+    if not stock_code:
+        return JsonResponse({'error': '종목코드가 누락되었습니다.'}, status=400)
+
+    list_ilbong = select_tb_ilbong(stock_code)
+    df_fin = select_naver_fin(stock_code)
 
 
+    fin = {}
 
+    if not df_fin.empty:
 
+        q_data = df_fin[
+            (df_fin['구분'] == '분기') &
+            (~df_fin['기간'].astype(str).str.contains(r'\(E\)', na=False))
+            ]
 
+        fin_row = q_data.iloc[-1]
+
+        fin = {
+            '업종': fin_row.get('업종', ''),
+            '시가총액': fin_row.get('시가총액', 0),
+            'EPS': fin_row.get('EPS', 0),
+            'PER': fin_row.get('PER', 0),
+            'PBR': fin_row.get('PBR', 0),
+            '배당': fin_row.get('배당', 0),
+            '부채비율3': q_data.tail(3)['부채비율'].round(0).fillna(0).tolist(),
+            'RSI': round(day_rsi, 1) if (day_rsi := list_ilbong[-1].get('rsi14')) is not None else 0
+        }
+
+    print(fin)
+
+    chart_result_list = []
+
+    for day in list_ilbong:
+
+        raw_date = str(day.get('date', '')).strip()
+
+        if len(raw_date) == 8 and raw_date.isdigit():
+            formatted_date = f"{raw_date[0:4]}-{raw_date[4:6]}-{raw_date[6:8]}"
+        else:
+            formatted_date = raw_date
+
+        chart_result_list.append({
+
+            'time': formatted_date,
+
+            'open': day.get('open', 0),
+            'high': day.get('high', 0),
+            'low': day.get('low', 0),
+            'close': day.get('close', 0),
+
+            'volume': day.get('volume', 0),
+
+            'ma5': day.get('ma5'),
+            'ma20': day.get('ma20'),
+            'ma60': day.get('ma60'),
+            'ma120': day.get('ma120'),
+
+            'macd': day.get('macd'),
+            'macd9': day.get('macd9'),
+
+            '개인': day.get('개인'),
+            '외국인': day.get('외국인'),
+            '기관': day.get('기관')
+        })
+
+    return JsonResponse({
+        'chart': chart_result_list,
+        'fin': fin
+    })
 
 
 
@@ -1358,57 +1438,126 @@ def get_naver_fin_view(request):
 
 
 def fin_view(request):
-
-    raw_groups=select_tb_gwansim_group()
-    groups_data=[]
+    raw_groups = select_tb_gwansim_group()
+    groups_data = []
 
     for g in raw_groups:
+        gid = g[0]
+        gname = g[1]
+        raw_stocks = select_tb_gwansim_stock(gid)
 
-        gid=g[0]
-        gname=g[1]
-        raw_stocks=select_tb_gwansim_stock(gid)
-
-        stocks_list=[]
-
+        stocks_list = []
         for s in raw_stocks:
-
             try:
-                price_val=str(s[2]).replace(',','') if s[2] else "0"
-                formatted_price=format(int(price_val),',')
+                price_val = str(s[2]).replace(',', '') if s[2] else "0"
+                formatted_price = format(int(price_val), ',')
             except:
-                formatted_price=s[2]
+                formatted_price = s[2]
 
             stocks_list.append({
-                'shcode':s[0],
-                'hname':s[1],
-                'price':formatted_price,
-                'rate':s[3],
-                'rsi':s[5],
-                'cap':s[4],
+                'shcode': s[0],
+                'hname': s[1],
+                'price': formatted_price,
+                'rate': s[3],
+                'rsi': s[5],
+                'cap': s[4],
             })
 
         groups_data.append({
-            'id':gid,
-            'name':gname,
-            'stocks':stocks_list,
-            'count':len(stocks_list)
+            'id': gid,
+            'name': gname,
+            'stocks': stocks_list,
+            'count': len(stocks_list)
         })
 
-    raw_kospi=select_tb_kospi()
+    raw_kospi = select_tb_kospi()
+    kospi = [{'code': s[0], 'name': s[1], 'cap': s[4]} for s in raw_kospi]
 
-    kospi=[{'code':s[0],'name':s[1],'cap':s[4]} for s in raw_kospi]
-
-    return render(request,'fin.html',{
-        'groups':groups_data,
-        'kospi':kospi
+    return render(request, 'fin.html', {
+        'groups': groups_data,
+        'kospi': kospi
     })
 
 
+# ========================================================
+# ★ 새롭게 추가하는 일봉 차트 데이터 전달 비동기 API 뷰
+# ========================================================
+from django.views.decorators.http import require_GET
 
+@require_GET
+def api_ilbong_chart(request):
+    """
+    특정 종목의 일봉(OHLCV) 데이터를 JSON으로 반환하는 API
+    """
+    try:
+        stock_code = request.GET.get('code', '').strip()
+        
+        if not stock_code:
+            return JsonResponse({'error': '종목코드가 누락되었습니다.'}, status=400)
+            
+        # 1. DB에서 데이터 가져오기 (유저님의 기존 함수 호출)
+        list_ilbong = get_ilbong_db(stock_code)
+        
+        if list_ilbong:
+            list_ilbong = list_ilbong[::-1]  # 과거 -> 현재 순서로 뒤집기
+        else:
+            list_ilbong = []
 
+        # ★ 최종 결과를 담을 '리스트' 변수명을 명확하게 지정
+        chart_result_list = []  
+        
+        for day in list_ilbong:
+            raw_date = day.get('date')
+            if not raw_date:
+                continue
+                
+            raw_date = str(raw_date).strip()
+            
+            # 'YYYYMMDD' -> 'YYYY-MM-DD' 포맷팅
+            if len(raw_date) == 8 and raw_date.isdigit():
+                formatted_date = f"{raw_date[0:4]}-{raw_date[4:6]}-{raw_date[6:8]}"
+            elif "-" in raw_date and len(raw_date.split("-")) == 3:
+                formatted_date = raw_date
+            else:
+                continue # 규격 외 불량 날짜 스킵
+                
+            try:
+                # 쉼표(,) 제거 및 부동소수점 변환
+                o = float(str(day.get('open', 0)).replace(',', ''))
+                h = float(str(day.get('high', 0)).replace(',', ''))
+                l = float(str(day.get('low', 0)).replace(',', ''))
+                c = float(str(day.get('close', 0)).replace(',', ''))
+                v = float(str(day.get('volume', 0)).replace(',', ''))
+                
+                # 시가나 종가가 0인 데이터(거래정지 등) 예외처리
+                if o == 0 or c == 0:
+                    continue
 
+                # ★ 개별 날짜 데이터를 담을 '딕셔너리' 변수 분리
+                day_data = {
+                    'time': formatted_date,
+                    'open': o,
+                    'high': h,
+                    'low': l,
+                    'close': c,
+                    'volume': v
+                }
+                
+                # 리스트에 정제된 딕셔너리 삽입
+                chart_result_list.append(day_data)
+                
+            except Exception:
+                continue
 
+        # 2. 확실하게 날짜 오름차순(과거->현재) 정렬 보장 (.sort 정상 작동)
+        chart_result_list.sort(key=lambda x: x['time'])
 
+        # 3. 정상 JSON 리스트 반환
+        return JsonResponse(chart_result_list, safe=False)
+
+    except Exception as e:
+        # 시스템 내부에서 예기치 못한 에러 발생 시 HTML 대신 JSON 에러 반환 (자바스크립트 오작동 방지)
+        return JsonResponse({'error': f'서버 내부 오류: {str(e)}'}, status=500)
 
 
 
@@ -1437,6 +1586,8 @@ def get_ilbong_main_view(request):
     base_date = f'{d.month}.{d.day}.({"월화수목금토일"[d.weekday()]}) 기준'
 
     list_fin = select_naver_fin(code).to_dict(orient='records')
+
+    print(list_fin)
 
     return JsonResponse({
         'list_ilbong': list_ilbong,

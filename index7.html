@@ -235,6 +235,44 @@
             <div id="analysis-title" style="font-size: 27px; font-weight: 800; margin-top: 20px; margin-bottom: 8px; color: #111;">종목을 선택하세요</div>
                             
 
+
+
+
+
+
+        <table style="width:100%;border-collapse:collapse;color:#0f172a;font-weight:500;margin-bottom:8px;table-layout:fixed;border:1px solid #cbd5e1;background:#ffffff;">
+
+            <tr>
+                <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;color:#334155;font-size:12px;width:21px;">업종</td>
+                <td id="fin-sector" style="border:1px solid #e2e8f0;padding:4px 6px;background:#ffffff;font-size:12px;width:110px;">-</td>
+
+                <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;color:#334155;font-size:12px;width:21px;">시총</td>
+                <td id="fin-cap" style="border:1px solid #e2e8f0;padding:4px 6px;text-align:right;font-size:12px;width:70px;background:#ffffff;">-</td>
+
+                <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;color:#334155;font-size:12px;width:21px;">배당</td>
+                <td id="fin-div" style="border:1px solid #e2e8f0;padding:4px 6px;text-align:right;font-size:12px;background:#ffffff;">-</td>
+            </tr>
+
+            <tr>
+                <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;">부채</td>
+                <td id="fin-debt" style="border:1px solid #e2e8f0;padding:4px 6px;text-align:right;font-size:12px;background:#ffffff;">-</td>
+
+                <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;">EPS</td>
+                <td id="fin-eps" style="border:1px solid #e2e8f0;padding:4px 6px;text-align:right;font-size:12px;background:#ffffff;">-</td>
+
+                <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;">PER</td>
+                <td id="fin-per" style="border:1px solid #e2e8f0;padding:4px 6px;text-align:right;font-size:12px;background:#ffffff;">-</td>
+
+            </tr>
+
+        </table>
+
+
+
+
+
+
+
             
             <!-- 2. 차트 종합 점수 -->
             <div style="margin-bottom: 12px; padding: 6px 10px; background: #fff; border: 1px solid #ddd; border-radius: 6px;">
@@ -621,12 +659,6 @@ let kospiData = [];
 
 
 
-console.log(document.querySelector('#quarter-body td').offsetHeight)
-
-
-console.log(document.querySelector('#qoq-body td').offsetHeight)
-
-
 LightweightCharts.version()
 
 
@@ -966,11 +998,54 @@ function selectAndCentral(code, name) {
 
 
 
+            console.log(data.list_fin)
+
             renderIlbongChart(list_ilbong);
 
-
+            // const qData = data.list_fin.filter(i => i.구분 === '분기' && !i.기간.includes('(E)'));
 
             const qData = data.list_fin.filter(i => i.구분 === '분기');
+
+            const fin = qData[qData.length - 4];
+
+            
+
+            const debtText = qData
+                .slice(-6, -3)
+                .map(d => d.부채비율)
+                .filter(v => v != null)
+                .map(v => Math.round(v) + '%')
+                .join(' → ');
+
+
+            
+
+
+            document.getElementById('fin-sector').innerText = fin.업종 || '-';
+            document.getElementById('fin-cap').innerText = fin.시가총액 || '-';
+            document.getElementById('fin-eps').innerText = (fin.EPS || 0).toLocaleString('ko-KR');
+            document.getElementById('fin-per').innerText = fin.PER || '-';
+            // document.getElementById('fin-pbr').innerText = fin.PBR || '-';
+            document.getElementById('fin-div').innerText = `${fin.배당 || 0}%`;
+            // document.getElementById('fin-debt').innerText = `${fin.부채비율 || 0}%`;
+            document.getElementById('fin-debt').innerText = debtText;
+            // document.getElementById('fin-rsi').innerText = list_ilbong.length ? Number(list_ilbong[list_ilbong.length - 1].rsi14 || 0).toFixed(1): '-';
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
 
 
             showSales('quarter', qData);
@@ -2106,26 +2181,7 @@ macdHistSeries.setData(
 
 
 
-macdSeries = macdChart.addSeries(
-    LightweightCharts.LineSeries,
-    {
-        color:'#1976D2',
-        lineWidth:1.5,
-        priceLineVisible:false,
-        lastValueVisible:false,
-        crosshairMarkerVisible:false
-    }
-);
 
-macdSeries.setData(
-    chartData
-        .filter(d => d.macd != null)
-        .map(d => ({
-            time:d.time,
-            value:d.macd
-        }))
-);
-    
 
 macd9Series = macdChart.addSeries(
     LightweightCharts.LineSeries,
@@ -2148,6 +2204,26 @@ macd9Series.setData(
 );
 
 
+macdSeries = macdChart.addSeries(
+    LightweightCharts.LineSeries,
+    {
+        color:'#1976D2',
+        lineWidth:1.5,
+        priceLineVisible:false,
+        lastValueVisible:false,
+        crosshairMarkerVisible:false
+    }
+);
+
+macdSeries.setData(
+    chartData
+        .filter(d => d.macd != null)
+        .map(d => ({
+            time:d.time,
+            value:d.macd
+        }))
+);
+    
 
 document.getElementById('macd-container').style.height = document.getElementById('toggleMACD').checked ? '80px' : '0px';
 
@@ -2247,7 +2323,7 @@ foreignerSeries.setData(
     const flowZeroLine = flowChart.addSeries(
         LightweightCharts.LineSeries,
         {
-            color: 'rgba(120,120,120,0.7)',
+            color: '#000000',
             lineWidth: 1,
             lineStyle: 0, // 점선
             priceLineVisible: false,
@@ -2256,10 +2332,20 @@ foreignerSeries.setData(
         }
     );
 
+
+
+
+    const lastTime = baseTimes[baseTimes.length - 1];
+
     flowZeroLine.setData([
         { time: baseTimes[0], value: 0 },
-        { time: baseTimes[baseTimes.length - 1], value: 0 }
+        { time: lastTime, value: 0 },
+        { time: lastTime + 86400, value: 0 }   // 하루 추가
     ]);
+
+
+
+    
 
 
 
