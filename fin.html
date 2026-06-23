@@ -271,7 +271,7 @@
         <h2 id="stock-title" style="font-size: 24px; margin: 0 0 10px 0;"></h2>
         
         <div style="display: flex; gap: 20px;">
-            <div style="width: 510px;">
+            <div id="sales-wrapper" style="width: 510px;">
                 <div style="font-weight:bold; margin-bottom:5px;">📊 매출/영업이익 (분기)</div>
                 <table id="quarter-table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
                     <thead><tr id="quarter-head" style="background:#f4f4f4;"></tr></thead>
@@ -280,7 +280,7 @@
                 <div style="height:180px; margin-top:0px;"><canvas id="quarterChart"></canvas></div>
             </div>
 
-            <div style="width: 510px;">
+            <div id="qoq-wrapper" style="width: 510px;">
                 <div style="font-weight:bold; margin-bottom:5px;">📊 매출/영업이익 성장률(QOQ)</div>
                 <table id="qoq-table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
                     <thead><tr id="qoq-head" style="background:#f4f4f4;"></tr></thead>
@@ -293,7 +293,7 @@
 
 
         <div style="display: flex; gap: 20px; margin-top: 20px;">
-            <div style="width: 510px;">
+            <div id="asset-wrapper" style="width: 510px;">
                 <div style="font-weight:bold; margin-bottom:5px;">📊 자산/부채 (분기)</div>
                 <table id="quarter_balance_table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
                     <thead><tr id="quarter_balance_head" style="background:#f4f4f4;"></tr></thead>
@@ -302,7 +302,7 @@
                 <div style="height:180px; margin-top:0px;"><canvas id="quarter_balance_chart"></canvas></div>
             </div>
 
-            <div style="width: 510px;">
+            <div id="cf-wrapper" style="width: 510px;">
                 <div style="width: 510px;">
                     <div style="font-weight:bold; margin-bottom:5px;">📊 현금흐름 (분기)</div>
                     <table id="quarter_cash_table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
@@ -316,7 +316,7 @@
 
 
         <div style="display: flex; gap: 20px; margin-top: 20px;">
-                <div style="width: 510px;">
+                <div id="eps-wrapper" style="width: 510px;">
                     <div style="font-weight:bold; margin-bottom:5px;">📊 EPS (분기)</div>
                     <table id="quarter_eps_table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
                         <thead><tr id="quarter_eps_head" style="background:#f4f4f4;"></tr></thead>
@@ -326,7 +326,7 @@
                     <div style="height:131px; margin-top:0px;"><canvas id="quarter_eps_chart"></canvas></div>
                 </div>
 
-                <div style="width: 510px;">
+                <div id="epsqoq-wrapper" style="width: 510px;">
                     <div style="font-weight:bold; margin-bottom:5px;">📊 EPS 성장률 (QOQ)</div>
                     <table id="epsqoq_table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
                         <thead><tr id="epsqoq_head" style="background:#f4f4f4;"></tr></thead>
@@ -358,7 +358,7 @@
 
     <div class="right-panel">
 
-        <div>
+        <div id="roe-wrapper">
             <div style="font-weight:bold; margin-bottom:5px;">📊 영업이익률 / ROE</div>
             <table id="roe_table" border="1" style="width: 400px; border-collapse:collapse; font-size:11px;">
                 <thead><tr id="roe_head"></tr></thead>
@@ -371,7 +371,7 @@
 
 
 
-        <div>
+        <div id="etc-wrapper">
             <div style="font-weight:bold; margin-bottom:5px; margin-top:20px">📊 기타 재무 지표 </div>
 
 
@@ -444,6 +444,36 @@ function getFin(stockName, stockCode) {
 
             const qData = result.data.filter(i => i.구분 === '분기');
             const yData = result.data.filter(i => i.구분 === '연도');
+
+
+
+            const hasData = qData && qData.length > 0;
+
+            // 🔥 매출/영업이익 전체 영역 숨김
+            document.getElementById('sales-wrapper').style.display = hasData ? 'block' : 'none';
+            document.getElementById('qoq-wrapper').style.display = hasData ? 'block' : 'none';
+            document.getElementById('asset-wrapper').style.display = hasData ? 'block' : 'none';
+            document.getElementById('cf-wrapper').style.display = hasData ? 'block' : 'none';
+            document.getElementById('eps-wrapper').style.display = hasData ? 'block' : 'none';
+            document.getElementById('epsqoq-wrapper').style.display = hasData ? 'block' : 'none';
+            document.getElementById('roe-wrapper').style.display = hasData ? 'block' : 'none';
+            document.getElementById('etc-wrapper').style.display = hasData ? 'block' : 'none';
+
+
+
+
+
+            if (!hasData){
+                document.getElementById('stock-title').innerHTML += '<br><br><span style="font-size:17px;font-weight:normal;color:#9ca3af;">📊 해당 기업의 재무데이터가 아직 준비되지 않았습니다.</span>';
+                return;
+            }
+
+
+
+
+
+
+
 
 
             // 표 그리기

@@ -61,7 +61,7 @@
         .rsi-low { color: #337ab7; font-weight: bold; }
 
         tbody tr:hover { background-color: #e3f2fd; }
-        tbody tr { cursor: pointer; }
+        #table-gwansim tbody tr { cursor: pointer; }
 
 
 
@@ -191,7 +191,7 @@
 
         {% for group in groups %}
         <div id="group-{{ group.id }}" class="stock-list" style="display: {% if forloop.first %}block{% else %}none{% endif %};">
-            <table>
+            <table id="table-gwansim">
                 <thead>
                     <tr>
                         <th class="col-no"></th>
@@ -240,14 +240,14 @@
 
 
 
-        <table style="width:100%;border-collapse:collapse;color:#0f172a;font-weight:500;margin-bottom:8px;table-layout:fixed;border:1px solid #cbd5e1;background:#ffffff;">
+        <table id="table-fin" style="width:100%;border-collapse:collapse;color:#0f172a;font-weight:500;margin-bottom:8px;table-layout:fixed;border:1px solid #cbd5e1;background:#ffffff;">
 
             <tr>
                 <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;color:#334155;font-size:12px;width:21px;">업종</td>
-                <td id="fin-sector" style="border:1px solid #e2e8f0;padding:4px 6px;background:#ffffff;font-size:12px;width:110px;">-</td>
+                <td id="fin-sector" style="border:1px solid #e2e8f0;padding:4px 6px;background:#ffffff;font-size:12px;width:120px;">-</td>
 
                 <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;color:#334155;font-size:12px;width:21px;">시총</td>
-                <td id="fin-cap" style="border:1px solid #e2e8f0;padding:4px 6px;text-align:right;font-size:12px;width:70px;background:#ffffff;">-</td>
+                <td id="fin-cap" style="border:1px solid #e2e8f0;padding:4px 6px;padding-right:0px;padding-left:0px;text-align:center;font-size:12px;width:75px;background:#ffffff;">-</td>
 
                 <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;color:#334155;font-size:12px;width:21px;">배당</td>
                 <td id="fin-div" style="border:1px solid #e2e8f0;padding:4px 6px;text-align:right;font-size:12px;background:#ffffff;">-</td>
@@ -255,7 +255,7 @@
 
             <tr>
                 <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;">부채</td>
-                <td id="fin-debt" style="border:1px solid #e2e8f0;padding:4px 6px;text-align:right;font-size:12px;background:#ffffff;">-</td>
+                <td id="fin-debt" style="border:1px solid #e2e8f0;padding:4px 6px;padding-right:0px;padding-left:0px;text-align:center;font-size:12px;background:#ffffff;">-</td>
 
                 <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;">EPS</td>
                 <td id="fin-eps" style="border:1px solid #e2e8f0;padding:4px 6px;text-align:right;font-size:12px;background:#ffffff;">-</td>
@@ -360,9 +360,17 @@
             <!-- 📌 차트 영역 -->
             <div id="chart-container" style="width:700px; height:303px; position:relative; z-index:1;"></div>
 
-            <div id="rsi-container" style="width:700px; height:80px; margin-top:-5px; overflow:hidden; ">
-                <div style="position:absolute;top:7px;left:8px;z-index:10;font-size:16px;font-weight:bold;pointer-events:none;white-space:nowrap;color:#333;">RSI</div>
+            <div id="rsi-container" style="width:700px; height:0px; margin-top:-5px; overflow:hidden; ">                    
+                <div id="rsi-label" style="position:absolute;top:7px;left:8px;z-index:10;font-size:16px;font-weight:bold;pointer-events:none;white-space:nowrap;color:#333;">RSI</div>
             </div>
+
+
+
+
+
+
+
+
 
 
 
@@ -738,7 +746,7 @@ function searchFromLeft() {
         // 4. 종목이 0건일 때 텍스트 표시
         let messageDiv = groupElement.querySelector('.no-stock-msg');
         
-        if (rowCount === 0) {
+        if (rowCount === 0) {            
             if (!messageDiv) {
                 messageDiv = document.createElement('div');
                 messageDiv.className = 'no-stock-msg';
@@ -990,6 +998,27 @@ function selectAndCentral(code, name) {
         .then(res => res.json())
         .then(data => {
             const list_ilbong = data.list_ilbong;
+
+            if (!list_ilbong || list_ilbong.length === 0) {
+
+                document.getElementById('chart-wrapper').style.display = 'none';
+                document.getElementById('ilbong-table-wrapper').style.display = 'none';
+                document.getElementById('base-date').innerText = '';
+
+                return;
+            }
+            else {
+
+
+                document.getElementById('chart-wrapper').style.display = 'block';
+                document.getElementById('ilbong-table-wrapper').style.display = 'block';
+
+
+            }
+
+
+
+            
             
             // 최신일 계산 → #base-date div에 바로 출력
             const d = new Date(String(list_ilbong.at(-1).date).replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3'));
@@ -1007,15 +1036,28 @@ function selectAndCentral(code, name) {
             const qData = data.list_fin.filter(i => i.구분 === '분기');
 
 
+            
             // 🔥 재무 데이터 없을 때
             if (!qData || qData.length === 0) {
 
                 const emptyMsg = `
                     <tr>
-                        <td colspan="10" style="text-align:center; color:#999; padding:10px;">
+                        <td colspan="999" style="text-align:center; color:#999; padding:10px;">
                         </td>
                     </tr>
                 `;
+
+
+                // 🔥 재무 텍스트 초기화 (이게 핵심)
+                document.getElementById('fin-sector').innerText = '';
+                document.getElementById('fin-cap').innerText = '';
+                document.getElementById('fin-eps').innerText = '';
+                document.getElementById('fin-per').innerText = '';
+                document.getElementById('fin-div').innerText = '';
+                document.getElementById('fin-debt').innerText = '';
+
+
+                
 
                 document.getElementById('quarter-head').innerHTML = '<th>재무 데이터 없음</th>';
                 document.getElementById('quarter-body').innerHTML = emptyMsg;
@@ -1025,6 +1067,29 @@ function selectAndCentral(code, name) {
 
                 document.getElementById('quarter_cash_head').innerHTML = '<th>재무 데이터 없음</th>';
                 document.getElementById('quarter_cash_body').innerHTML = emptyMsg;
+
+                // 차트 숨김
+                document.getElementById('quarterChart').parentElement.style.display = 'none';
+                document.getElementById('quarter_balance_chart').parentElement.style.display = 'none';
+                document.getElementById('quarter_cf_chart').parentElement.style.display = 'none';
+                
+
+
+                
+
+            }
+            else {
+
+                // 차트 복구
+                document.getElementById('quarterChart').parentElement.style.display = 'block';
+                document.getElementById('quarter_balance_chart').parentElement.style.display = 'block';
+                document.getElementById('quarter_cf_chart').parentElement.style.display = 'block';
+                
+
+
+
+                
+
             }
 
 
@@ -1035,10 +1100,19 @@ function selectAndCentral(code, name) {
 
 
 
+            // 🔥 데이터 부족 방어
+            if (!qData || qData.length < 1) return;
+
+            // 최신 기준 안정적으로 선택
+            const fin = qData
+                .slice()
+                .reverse()
+                .find(i => !String(i.기간).includes('(E)'));
 
 
 
-            const fin = qData[qData.length - 4];
+
+
 
             
 
@@ -1054,7 +1128,7 @@ function selectAndCentral(code, name) {
 
 
             document.getElementById('fin-sector').innerText = fin.업종 || '-';
-            document.getElementById('fin-cap').innerText = fin.시가총액 || '-';
+            document.getElementById('fin-cap').innerText = fin.시가총액 + '억' || '-';
             document.getElementById('fin-eps').innerText = (fin.EPS || 0).toLocaleString('ko-KR');
             document.getElementById('fin-per').innerText = fin.PER || '-';
             // document.getElementById('fin-pbr').innerText = fin.PBR || '-';
@@ -2069,8 +2143,9 @@ if (rsiVisible){
 }
 
 
+    document.getElementById('rsi-container').style.height = document.getElementById('toggleRSI').checked ? '80px' : '0px';
 
-
+    document.getElementById('rsi-container').style.display = document.getElementById('toggleRSI').checked ? 'block' : 'none';
 
 
 
@@ -2444,7 +2519,6 @@ candleSeries.setData(chartData);
 
 
 
-   document.getElementById('rsi-container').style.height = document.getElementById('toggleRSI').checked ? '80px' : '0px';
 
 
 
@@ -2746,9 +2820,9 @@ function showSales(type, data) {
     const fmt = p => {
         const s = String(p).trim();
         const isE = s.includes('(E)');
-        const clean = s.replace('(E)','').trim();
+        const clean = s.trim();
         const x = clean.split('/');
-        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '') + (isE ? '(E)' : '');
+        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
     };
 
     const head = document.getElementById(type + '-head');
@@ -2858,9 +2932,9 @@ function showAsset(type, data) {
     const fmt = p => {
         const s = String(p).trim();
         const isE = s.includes('(E)');
-        const clean = s.replace('(E)','').trim();
+        const clean = s.trim();
         const x = clean.split('/');
-        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '') + (isE ? '(E)' : '');
+        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
     };
 
     const head = document.getElementById(type + '_head');
@@ -2965,7 +3039,7 @@ function showCF(type, data) {
     const fmt = p => {
         const s = String(p).trim();
         const isE = s.includes('(E)');
-        const clean = s.replace('(E)','').trim();
+        const clean = s.replace(' (IFRS별도)','').trim();
         const x = clean.split('/');
         return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '') + (isE ? '(E)' : '');
     };
