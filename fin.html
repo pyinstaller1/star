@@ -40,6 +40,7 @@
         .stock-list { flex: 1; overflow-y: auto; max-height: 300px; min-height: 300px; }
                   
         table { width: 100%; border-collapse: collapse; }
+                         
         th { background: #f8f8f8; position: sticky; top: 0; padding: 8px; font-size: 12px; border-bottom: 1px solid #ccc;  table-layout: fixed; }
         thead th {
             padding: 4px 8px; /* 위아래 간격을 4px로 줄임 */
@@ -53,6 +54,19 @@
         .col-num { text-align: right;  width: 53px; } 
         .col-rsi-style { font-size: 11px; text-align: right;  width: 38px; }
         .col-cap-style { font-size: 10px; color: #888; text-align: right; width: 65px; }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         .rate-pos { color: #d9534f; font-weight: bold; }
         .rate-neg { color: #337ab7; font-weight: bold; }
@@ -259,7 +273,7 @@
         <div style="display: flex; gap: 20px;">
             <div style="width: 510px;">
                 <div style="font-weight:bold; margin-bottom:5px;">📊 매출/영업이익 (분기)</div>
-                <table id="quarter-table" border="1" style="width:510px; border-collapse:collapse; font-size:12px; border:1px solid lightgray;">
+                <table id="quarter-table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
                     <thead><tr id="quarter-head" style="background:#f4f4f4;"></tr></thead>
                     <tbody id="quarter-body"></tbody>
                 </table>
@@ -481,54 +495,75 @@ function showSales(type, data) {
     const fields = [{ key: '매출', label: '매출' }, { key: '영업이익', label: '영익' }];
 
     // 1. 헤더 초기화 및 채우기
-    head.innerHTML = '<th style="height:20px; padding:2px; font-weight:normal; font-size:11px;">(억)</th>';
+    head.innerHTML = '<th style="height:20px; padding:2px; font-weight:normal; font-size:14px;">(억)</th>';
+
+
+
     data.forEach((d, index) => {
-        const isEstimate = index >= (data.length - 3);
-        let th = document.createElement('th');
-        th.style.padding = '1px';
-        th.style.fontSize = '11px';
-        th.style.border = '1px solid lightgray';
-        if (isEstimate) {
-            th.style.color = '#777';
-            th.style.backgroundColor = '#eeeeee';
-        }
-        // th.innerText = d.기간; // (E) 표기 포함
 
+        const isE = d.기간.includes('(E)');
 
-
-
-        let raw = d.기간;
-
-        // (E) 제거
-        let clean = raw.replace('(E)', '').trim();
-
-        // 2025/03 → 25/03
-        let parts = clean.split('/');
+        let raw = d.기간.replace('(E)', '').trim();
+        let parts = raw.split('/');
         let year = parts[0] ? parts[0].slice(2) : '';
         let month = parts[1] || '';
 
-        th.innerText = year + '/' + month + (raw.includes('(E)') ? '(E)' : '');
+        let label = year + '/' + month + (isE ? '(E)' : '');
 
+        let th = document.createElement('th');
 
+        th.innerText = label;
 
+        th.style.fontSize = '13px';
+        th.style.background = isE ? '#eeeeee' : '#f4f4f4';
+        th.style.color = isE ? '#777' : '#000';
 
+        th.style.width = isE ? '58px' : 'auto';
 
-        
+        th.style.whiteSpace = 'nowrap';
+        th.style.padding = '0px';
+        th.style.textAlign = 'center';
+
         head.appendChild(th);
     });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     // 2. 바디 초기화 및 채우기
     body.innerHTML = '';
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="height:20px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:20px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:14px;">${field.label}</td>`;
         
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
             let td = document.createElement('td');
             td.style.padding = '1px';
             td.style.textAlign = 'right';
-            td.style.fontSize = '11px';
+            td.style.fontSize = '13px';
             td.style.border = '1px solid lightgray';
             
             if (isEstimate) {
@@ -659,27 +694,39 @@ function showQoq(type, data) {
     const head = document.getElementById(type + '-head');
     const body = document.getElementById(type + '-body');
 
-    head.innerHTML = '<th style="height:20px; padding:1px;font-weight:normal;font-size:11px;">(%)</th>';
+    head.innerHTML = '<th style="width=20px;height:20px; padding:1px;font-weight:normal;font-size:14px;">(%)</th>';
+
+
 
     data.forEach((d, index) => {
-        const isEstimate = index >= data.length - 3;
+
+        const isE = d.기간.includes('(E)');
 
         let raw = d.기간.replace('(E)', '').trim();
         let parts = raw.split('/');
         let year = parts[0] ? parts[0].slice(2) : '';
         let month = parts[1] || '';
 
-        let label = year + '/' + month + (d.기간.includes('(E)') ? '(E)' : '');
+        let label = year + '/' + month + (isE ? '(E)' : '');
 
-        head.innerHTML += `<th style="padding:1px;font-size:11px;height:auto;border:1px solid lightgray;color:${isEstimate ? '#777' : '#000'};background:${isEstimate ? '#eeeeee' : '#f4f4f4'};">
-            ${label}
-        </th>`;
+        let th = document.createElement('th');
+
+        th.innerText = label;
+
+        th.style.fontSize = '13px';
+        th.style.background = isE ? '#eeeeee' : '#f4f4f4';
+        th.style.color = isE ? '#777' : '#000';
+
+        th.style.width = isE ? '58px' : 'auto';
+
+
+        th.style.whiteSpace = 'nowrap';
+
+        th.style.padding = '0px';
+        th.style.textAlign = 'center';
+
+        head.appendChild(th);
     });
-
-
-
-
-
 
 
 
@@ -702,7 +749,7 @@ function showQoq(type, data) {
     ].forEach(([key,label]) => {
 
         let tr = `<tr>
-            <td style="height:20px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${label}</td>`;
+            <td style="height:20px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:14px;">${label}</td>`;
 
 
 
@@ -715,7 +762,7 @@ function showQoq(type, data) {
             const color = d[key] < 0 ? '#d60000' : (isEstimate ? '#777' : '#000');
             const bg = isEstimate ? '#eeeeee' : '';
 
-            tr += `<td style="padding:0!important;text-align:right;font-size:11px;border:1px solid lightgray;line-height:12px;height:14px;color:${color};background:${bg};">${d[key] == null ? '-' : d[key].toFixed(1) + '%&nbsp;'}</td>`;
+            tr += `<td style="padding:0!important;text-align:right;font-size:14px;border:1px solid lightgray;line-height:12px;height:14px;color:${color};background:${bg};">${d[key] == null ? '-' : d[key].toFixed(1) + '%&nbsp;'}</td>`;
         });
 
 
@@ -875,27 +922,33 @@ function showAsset(type, data) {
     const body = document.getElementById(type + '_body');
 
     // 1. 헤더 생성 (뒤 3개 열 회색 처리)
-    head.innerHTML = '<th style="height:20px; padding:2px; font-weight:normal; font-size:11px;">(억)</th>';
+    head.innerHTML = '<th style="height:20px; padding:2px; font-weight:normal; font-size:14px;">(억)</th>';
+    
     data.forEach((d, index) => {
-        const isEstimate = index >= data.length - 3;
+
+        const isE = d.기간.includes('(E)');
 
         let raw = d.기간.replace('(E)', '').trim();
         let parts = raw.split('/');
         let year = parts[0] ? parts[0].slice(2) : '';
         let month = parts[1] || '';
 
-        let label = year + '/' + month + (d.기간.includes('(E)') ? '(E)' : '');
+        let label = year + '/' + month + (isE ? '(E)' : '');
 
         let th = document.createElement('th');
-        th.style.cssText = `
-            padding:2px;
-            text-align:center;
-            border:1px solid lightgray;
-            font-size:12px;
-            background:${isEstimate ? '#eeeeee' : '#f4f4f4'};
-            color:${isEstimate ? '#777' : '#000'};
-        `;
+
         th.innerText = label;
+
+        th.style.fontSize = '13px';
+        th.style.background = isE ? '#eeeeee' : '#f4f4f4';
+        th.style.color = isE ? '#777' : '#000';
+
+        th.style.width = isE ? '57px' : 'auto';
+
+        th.style.whiteSpace = 'nowrap';
+        th.style.padding = '0px';
+        th.style.textAlign = 'center';
+
         head.appendChild(th);
     });
 
@@ -1024,42 +1077,48 @@ function showCF(type, data) {
         { key: 'FCF', label: 'FCF' }
     ];
 
-    head.innerHTML = '<th style="height:20px; padding:2px; font-weight:normal;  font-size:11px;">(억)</th>';
+    head.innerHTML = '<th style="height:20px; padding:2px; font-weight:normal;  font-size:14px;">(억)</th>';
+
 
     data.forEach((d, index) => {
 
-        const isEstimate = index >= (data.length - 3);
+        const isE = d.기간.includes('(E)');
 
         let raw = d.기간.replace('(E)', '').trim();
         let parts = raw.split('/');
         let year = parts[0] ? parts[0].slice(2) : '';
         let month = parts[1] || '';
 
-        let label = year + '/' + month + (d.기간.includes('(E)') ? '(E)' : '');
+        let label = year + '/' + month + (isE ? '(E)' : '');
 
         let th = document.createElement('th');
-        th.style.cssText = `
-            padding:1px;
-            text-align:center;
-            border:1px solid lightgray;
-            font-size:11px;
-            background:${isEstimate ? '#eeeeee' : '#f4f4f4'};
-            color:${isEstimate ? '#777' : '#000'};
-        `;
 
         th.innerText = label;
+
+        // 🔥 통일 스타일
+        th.style.fontSize = '13px';
+        th.style.background = isE ? '#eeeeee' : '#f4f4f4';
+        th.style.color = isE ? '#777' : '#000';
+
+        th.style.width = isE ? '58px' : 'auto';
+
+        th.style.whiteSpace = 'nowrap';
+        th.style.padding = '0px';
+        th.style.textAlign = 'center';
+
         head.appendChild(th);
     });
+    
     
     body.innerHTML = '';
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="height:20px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:20px; padding:1px; text-align:center; background:#f9f9f9; border:1px solid lightgray; font-size:14px;">${field.label}</td>`;
         
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
             let td = document.createElement('td');
-            td.style.cssText = `padding:1px; text-align:right; border:1px solid lightgray; font-size:11px; background:${isEstimate ? '#eeeeee' : ''};`;
+            td.style.cssText = `padding:1px; text-align:right; border:1px solid lightgray; font-size:14px; background:${isEstimate ? '#eeeeee' : ''};`;
             
             // 데이터 키값이 정확히 일치해야 합니다
             let val = d[field.key] ?? 0;
@@ -1143,39 +1202,43 @@ function showEps(type, data) {
     const head = document.getElementById(type + '_head');
     const body = document.getElementById(type + '_body');
 
-    head.innerHTML = '<th style="height:20px; padding:2px;font-weight:normal;font-size:11px;">(원)</th>';
+    head.innerHTML = '<th style="height:20px; padding:2px;font-weight:normal;font-size:14px;">(원)</th>';
 
 
     data.forEach((d, index) => {
 
-        const isEstimate = index >= data.length - 3;
+        const isE = d.기간.includes('(E)');
 
         let raw = d.기간.replace('(E)', '').trim();
         let parts = raw.split('/');
         let year = parts[0] ? parts[0].slice(2) : '';
         let month = parts[1] || '';
 
-        let label = year + '/' + month + (d.기간.includes('(E)') ? '(E)' : '');
+        let label = year + '/' + month + (isE ? '(E)' : '');
 
-        head.innerHTML += `
-            <th style="
-                padding:1px;
-                font-size:11px;
-                border:1px solid lightgray;
-                color:${isEstimate ? '#777' : '#000'};
-                background:${isEstimate ? '#eeeeee' : '#f4f4f4'};
-            ">
-                ${label}
-            </th>`;
+        let th = document.createElement('th');
+
+        th.innerText = label;
+
+        th.style.fontSize = '13px';
+        th.style.background = isE ? '#eeeeee' : '#f4f4f4';
+        th.style.color = isE ? '#777' : '#000';
+
+        th.style.width = isE ? '58px' : 'auto';
+
+        th.style.whiteSpace = 'nowrap';
+        th.style.padding = '0px';
+        th.style.textAlign = 'center';
+
+        head.appendChild(th);
     });
-
 
 
     body.innerHTML = '';
 
     let tr = `
         <tr>
-            <td style="height:20px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">EPS</td>`;
+            <td style="height:20px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:14px;">EPS</td>`;
 
     data.forEach((d, index) => {
 
@@ -1188,7 +1251,7 @@ function showEps(type, data) {
                 padding:1px;
                 text-align:right;
                 border:1px solid lightgray;
-                font-size:11px;
+                font-size:14px;
                 background:${bg};
                 color:${color};
             ">
@@ -1268,7 +1331,7 @@ function showEpsChart(canvasId, data) {
             },
             scales: {
                 x: { ticks: { font: { size: 14 }, color: '#000000', autoSkip: false, maxRotation: 0, minRotation: 0 } },
-                y: { beginAtZero: true, ticks: { font: { size: 12 } } }
+                y: { beginAtZero: true, ticks: { font: { size: 11 } } }
             }
         }
     });
@@ -1285,30 +1348,36 @@ function showEpsQoq(type, data) {
     const head = document.getElementById(type + '_head');
     const body = document.getElementById(type + '_body');
 
-    head.innerHTML = '<th style="height:20px; padding:1px;font-weight:normal;font-size:11px;">(%)</th>';
+    head.innerHTML = '<th style="height:20px; padding:1px;font-weight:normal;font-size:14px;">(%)</th>';
+
 
 
     data.forEach((d, index) => {
 
-        const isEstimate = index >= data.length - 3;
+        const isE = d.기간.includes('(E)');
 
         let raw = d.기간.replace('(E)', '').trim();
         let parts = raw.split('/');
         let year = parts[0] ? parts[0].slice(2) : '';
         let month = parts[1] || '';
 
-        let label = year + '/' + month + (d.기간.includes('(E)') ? '(E)' : '');
+        let label = year + '/' + month + (isE ? '(E)' : '');
 
-        head.innerHTML += `
-            <th style="
-                padding:1px;
-                font-size:11px;
-                border:1px solid lightgray;
-                color:${isEstimate ? '#777' : '#000'};
-                background:${isEstimate ? '#eeeeee' : '#f4f4f4'};
-            ">
-                ${label}
-            </th>`;
+        let th = document.createElement('th');
+
+        th.innerText = label;
+
+        th.style.fontSize = '13px';
+        th.style.background = isE ? '#eeeeee' : '#f4f4f4';
+        th.style.color = isE ? '#777' : '#000';
+
+        th.style.width = isE ? '58px' : 'auto';
+
+        th.style.whiteSpace = 'nowrap';
+        th.style.padding = '0px';
+        th.style.textAlign = 'center';
+
+        head.appendChild(th);
     });
 
 
@@ -1318,7 +1387,7 @@ function showEpsQoq(type, data) {
 
     let tr = `
         <tr>
-            <td style="height:20px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">
+            <td style="height:20px; padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:14px;">
                 QOQ
             </td>`;
 
@@ -1333,7 +1402,7 @@ function showEpsQoq(type, data) {
                 padding:1px;
                 text-align:right;
                 border:1px solid lightgray;
-                font-size:11px;
+                font-size:14px;
                 background:${bg};
                 color:${color};
             ">
@@ -1427,11 +1496,13 @@ function showRoe(type, data) {
     const head = document.getElementById('roe_head');
     const body = document.getElementById('roe_body');
 
-    head.innerHTML = '<th style="height:20px;padding:0;font-size:11px; font-weight:normal; border:1px solid lightgray;">(%)</th>';
+    head.innerHTML = '<th style="height:20px;padding:0;font-size:12px; font-weight:normal; border:1px solid lightgray;">(%)</th>';
 
-    data.forEach(d => {
 
-        const isE = d.기간.includes('E');
+
+    data.forEach((d, index) => {
+
+        const isE = d.기간.includes('(E)');
 
         let raw = d.기간.replace('(E)', '').trim();
         let parts = raw.split('/');
@@ -1440,12 +1511,23 @@ function showRoe(type, data) {
 
         let label = year + '/' + month + (isE ? '(E)' : '');
 
-        head.innerHTML += `<th style="height:20px;padding:0;font-size:11px;border:1px solid lightgray;background:${isE?'#eeeeee':'#f4f4f4'};color:${isE?'#777':'#000'};">${label}</th>`;
+        let th = document.createElement('th');
+
+        th.innerText = label;
+
+        th.style.fontSize = isE ? '11px' : '12px';
+        th.style.background = isE ? '#eeeeee' : '#f4f4f4';
+        th.style.color = isE ? '#777' : '#000';
+
+        th.style.width = isE ? '47px' : 'auto';
+
+        th.style.whiteSpace = 'nowrap';
+        th.style.padding = '0px';
+        th.style.textAlign = 'center';
+
+        head.appendChild(th);
     });
-
-
-
-    
+        
 
     const fields = [
         { key: '영업이익률', label: '영익률' },
@@ -1457,13 +1539,13 @@ function showRoe(type, data) {
     fields.forEach(f => {
 
         let tr = `<tr>
-            <td style="height:20px;padding:0;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${f.label}</td>`;
+            <td style="height:20px;padding:0;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:12px;">${f.label}</td>`;
 
         data.forEach(d => {
 
             const isE = d.기간.includes('E');
 
-            tr += `<td style="height:20px;padding:0;text-align:right;border:1px solid lightgray;font-size:11px;background:${isE?'#eeeeee':''};color:${isE?'#777':'#000'};">${d[f.key]!=null?d[f.key].toFixed(1)+'%&nbsp;':'-'}</td>`;
+            tr += `<td style="height:20px;padding:0;text-align:right;border:1px solid lightgray;font-size:12px;background:${isE?'#eeeeee':''};color:${isE?'#777':'#000'};">${d[f.key]!=null?d[f.key].toFixed(1)+'%&nbsp;':'-'}</td>`;
         });
 
         tr += '</tr>';
@@ -1585,7 +1667,6 @@ function showEtc(data) {
 
     // ===== 기본 값 =====
     document.getElementById('fin-sector').innerText = latest?.업종 ?? '-';
-    document.getElementById('fin-cap').innerText = latest?.시가총액 ?? '-';
     document.getElementById('fin-div').innerText = latest?.배당 != null ? latest.배당 + '%' : '-';
 
     document.getElementById('fin-eps').innerText = latest?.EPS?.toLocaleString() ?? '-';

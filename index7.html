@@ -603,7 +603,7 @@
                 <tbody id="quarter_cash_body"></tbody>
             </table>
 
-            <div style="height:180px;">
+            <div style="height:171px;">
                 <canvas id="quarter_cf_chart"></canvas>
             </div>
         </div>
@@ -1005,6 +1005,38 @@ function selectAndCentral(code, name) {
             // const qData = data.list_fin.filter(i => i.구분 === '분기' && !i.기간.includes('(E)'));
 
             const qData = data.list_fin.filter(i => i.구분 === '분기');
+
+
+            // 🔥 재무 데이터 없을 때
+            if (!qData || qData.length === 0) {
+
+                const emptyMsg = `
+                    <tr>
+                        <td colspan="10" style="text-align:center; color:#999; padding:10px;">
+                        </td>
+                    </tr>
+                `;
+
+                document.getElementById('quarter-head').innerHTML = '<th>재무 데이터 없음</th>';
+                document.getElementById('quarter-body').innerHTML = emptyMsg;
+
+                document.getElementById('quarter_balance_head').innerHTML = '<th>재무 데이터 없음</th>';
+                document.getElementById('quarter_balance_body').innerHTML = emptyMsg;
+
+                document.getElementById('quarter_cash_head').innerHTML = '<th>재무 데이터 없음</th>';
+                document.getElementById('quarter_cash_body').innerHTML = emptyMsg;
+            }
+
+
+
+
+
+
+
+
+
+
+
 
             const fin = qData[qData.length - 4];
 
@@ -2727,13 +2759,15 @@ function showSales(type, data) {
         { key: '영업이익', label: '영익' }
     ];
 
-    head.innerHTML = '<th style="height:15px; padding:0px; font-weight:normal; font-size:11px">(억)</th>';
+    head.innerHTML = '<th style="height:20px; padding:0px; font-weight:normal; font-size:14px">(억)</th>';
 
     data.forEach((d, index) => {
         const isEstimate = index >= (data.length - 3);
         let th = document.createElement('th');
-        th.style.cssText = `padding:0px;font-size:11px;border:1px solid lightgray;background:${isEstimate ? '#eee' : '#f4f4f4'};color:${isEstimate ? '#777' : '#000'};`;
+        th.style.cssText = `padding:0px;font-size:13px;border:1px solid lightgray;background:${isEstimate ? '#eee' : '#f4f4f4'};color:${isEstimate ? '#777' : '#000'};`;
         th.innerText = fmt(d.기간);
+        th.style.width = isEstimate ? '58px' : 'auto';
+
         head.appendChild(th);
     });
 
@@ -2741,20 +2775,21 @@ function showSales(type, data) {
 
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="height:15px;padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:20px;padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:14px;">${field.label}</td>`;
 
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
             let td = document.createElement('td');
 
             td.style.cssText =
-                `padding:1px;text-align:right;border:1px solid lightgray;font-size:11px;` +
+                `padding:1px;text-align:right;border:1px solid lightgray;font-size:12px;` +
                 (isEstimate ? 'background:#eee;color:#777;' : '') +
                 (field.key === '영업이익' && d[field.key] < 0 ? 'color:red;' : '');
 
             td.innerText = (d[field.key] ?? 0).toLocaleString();
             tr.appendChild(td);
         });
+        
 
         body.appendChild(tr);
     });
@@ -2831,13 +2866,16 @@ function showAsset(type, data) {
     const head = document.getElementById(type + '_head');
     const body = document.getElementById(type + '_body');
 
-    head.innerHTML = '<th style="height:15px; padding:0px; font-weight:normal; font-size:11px">(억)</th>';
+    head.innerHTML = '<th style="height:20px; padding:0px; font-weight:normal; font-size:14px">(억)</th>';
 
     data.forEach((d, index) => {
         const isEstimate = index >= (data.length - 3);
         let th = document.createElement('th');
-        th.style.cssText = `padding:0px;text-align:center;border:1px solid lightgray;font-size:11px;background:${isEstimate ? '#eee' : '#f4f4f4'};color:${isEstimate ? '#777' : '#000'};`;
+        th.style.cssText = `padding:0px;text-align:center;border:1px solid lightgray;font-size:13px;background:${isEstimate ? '#eee' : '#f4f4f4'};color:${isEstimate ? '#777' : '#000'};`;
         th.innerText = fmt(d.기간);
+        th.style.width = isEstimate ? '58px' : 'auto';
+
+        
         head.appendChild(th);
     });
 
@@ -2846,11 +2884,11 @@ function showAsset(type, data) {
 
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="height:15px;padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:20px;padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:14px;">${field.label}</td>`;
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
             let td = document.createElement('td');
-            td.style.cssText = `padding:1px;text-align:right;border:1px solid lightgray;font-size:11px;background:${isEstimate ? '#eee' : ''};color:${d[field.key] < 0 ? 'red' : ''};`;
+            td.style.cssText = `padding:1px;text-align:right;border:1px solid lightgray;font-size:12px;background:${isEstimate ? '#eee' : ''};color:${d[field.key] < 0 ? 'red' : ''};`;
             td.innerText = (d[field.key] ?? 0).toLocaleString();
             tr.appendChild(td);
         });
@@ -2942,15 +2980,16 @@ function showCF(type, data) {
         { key: 'FCF', label: 'FCF' }
     ];
 
-    head.innerHTML = '<th style="height:15px;padding:0px;font-weight:normal;font-size:11px">(억)</th>';
+    head.innerHTML = '<th style="height:12px;padding:0px;font-weight:normal;font-size:12px">(억)</th>';
 
     data.forEach((d, index) => {
         const isEstimate = index >= (data.length - 3);
         let th = document.createElement('th');
         th.style.cssText =
-            `padding:0px;text-align:center;border:1px solid lightgray;font-size:11px;` +
+            `padding:0px;text-align:center;border:1px solid lightgray;font-size:12px;` +
             (isEstimate ? 'background:#eee;color:#777;' : 'background:#f4f4f4;');
         th.innerText = fmt(d.기간);
+        th.style.width = isEstimate ? '58px' : 'auto';
         head.appendChild(th);
     });
 
@@ -2958,7 +2997,7 @@ function showCF(type, data) {
 
     fields.forEach(field => {
         let tr = document.createElement('tr');
-        tr.innerHTML = `<td style="height:15px;padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:11px;">${field.label}</td>`;
+        tr.innerHTML = `<td style="height:15px;padding:1px;text-align:center;background:#f9f9f9;border:1px solid lightgray;font-size:12px;">${field.label}</td>`;
 
         data.forEach((d, index) => {
             const isEstimate = index >= (data.length - 3);
@@ -2967,7 +3006,7 @@ function showCF(type, data) {
             let val = d[field.key] ?? 0;
 
             td.style.cssText =
-                `padding:1px;text-align:right;border:1px solid lightgray;font-size:11px;` +
+                `padding:1px;text-align:right;border:1px solid lightgray;font-size:12px;` +
                 (isEstimate ? 'background:#eee;' : '') +
                 (val < 0 ? 'color:red;' : '');
 
