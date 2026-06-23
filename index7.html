@@ -2820,7 +2820,7 @@ function showSales(type, data) {
     const fmt = p => {
         const s = String(p).trim();
         const isE = s.includes('(E)');
-        const clean = s.trim();
+        const clean = s.replace(' (IFRS별도)','').trim();
         const x = clean.split('/');
         return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
     };
@@ -2886,7 +2886,7 @@ function showSalesChart(canvasId, data) {
     const canvas = document.getElementById(canvasId); if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const fmt = p => { const s = String(p).replace('(E)','').trim(); const x = s.split('/'); return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || ''); };
+    const fmt = p => { const s = String(p).replace(' (IFRS별도)','').trim(); const x = s.split('/'); return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || ''); };
 
     if (window[canvasId + 'Obj']) {
         const c = window[canvasId + 'Obj'];
@@ -2932,7 +2932,7 @@ function showAsset(type, data) {
     const fmt = p => {
         const s = String(p).trim();
         const isE = s.includes('(E)');
-        const clean = s.trim();
+        const clean = s.replace(' (IFRS별도)','').trim();
         const x = clean.split('/');
         return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
     };
@@ -2978,7 +2978,7 @@ function showAssetChart(canvasId, data) {
     const canvas = document.getElementById(canvasId); if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const fmt = p => { const s = String(p).replace('(E)','').trim(); const x = s.split('/'); return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || ''); };
+    const fmt = p => { const s = String(p).replace(' (IFRS별도)','').trim(); const x = s.split('/'); return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || ''); };
 
     if (window[canvasId + 'Obj']) {
         const c = window[canvasId + 'Obj'];
@@ -3041,7 +3041,7 @@ function showCF(type, data) {
         const isE = s.includes('(E)');
         const clean = s.replace(' (IFRS별도)','').trim();
         const x = clean.split('/');
-        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '') + (isE ? '(E)' : '');
+        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
     };
 
     const head = document.getElementById(type + '_cash_head');
@@ -3097,11 +3097,12 @@ function showCF(type, data) {
 
 
 
+
 function showCFChart(canvasId, data) {
     const canvas = document.getElementById(canvasId); if (!canvas) return;
     const ctx = canvas.getContext('2d');
 
-    const fmt = p => { const s = String(p).replace('(E)','').trim(); const x = s.split('/'); return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || ''); };
+    const fmt = p => { const s = String(p).replace(' (IFRS별도)','').trim(); const x = s.split('/'); return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || ''); };
 
     if (window[canvasId + 'Obj']) {
         const c = window[canvasId + 'Obj'];
