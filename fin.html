@@ -56,7 +56,13 @@
         .col-cap-style { font-size: 10px; color: #888; text-align: right; width: 65px; }
 
 
+        #gwansim_table tbody tr {
+            cursor: pointer;
+        }
 
+        #gwansim_table tbody tr:hover {
+            background-color: #e3f2fd;
+        }
 
 
 
@@ -76,7 +82,6 @@
         .rsi-low { color: #337ab7; font-weight: bold; }
 
         tbody tr:hover { background-color: #e3f2fd; }
-        tbody tr { cursor: pointer; }
 
 
 
@@ -211,7 +216,7 @@
 
         {% for group in groups %}
         <div id="group-{{ group.id }}" class="stock-list" style="display: {% if forloop.first %}block{% else %}none{% endif %};">
-            <table>
+            <table id="gwansim_table">
                 <thead>
                     <tr>
                         <th class="col-no"></th>

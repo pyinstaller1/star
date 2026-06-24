@@ -1125,7 +1125,6 @@ def st_hoga_view8(request):
         # 최대 잔량 저장
         item['max_rem'] = max(rems) if rems else 1
 
-    print(list_hoga)
 
     return render(request, 'strategy/st_hoga.html', {
         'list_hoga': list_hoga,
@@ -1193,11 +1192,10 @@ def api_ilbong_chart_st(request):
             'PER': fin_row.get('PER', 0),
             'PBR': fin_row.get('PBR', 0),
             '배당': fin_row.get('배당', 0),
-            '부채비율3': q_data.tail(3)['부채비율'].round(0).fillna(0).tolist(),
+            '부채비율3': q_data.tail(3)['부채비율'].round(1).fillna(0).tolist(),
             'RSI': round(day_rsi, 1) if (day_rsi := list_ilbong[-1].get('rsi14')) is not None else 0
         }
 
-    print(fin)
 
     chart_result_list = []
 
@@ -1234,9 +1232,17 @@ def api_ilbong_chart_st(request):
             '기관': day.get('기관')
         })
 
+
+
+
+    df = select_naver_fin(stock_code)
+    data = df.to_dict(orient='records')
+
+
     return JsonResponse({
         'chart': chart_result_list,
-        'fin': fin
+        'fin': fin,
+        'data': data
     })
 
 
@@ -1587,8 +1593,6 @@ def get_ilbong_main_view(request):
 
     list_fin = select_naver_fin(code).to_dict(orient='records')
 
-    print(list_fin)
-
     return JsonResponse({
         'list_ilbong': list_ilbong,
         'base_date': base_date,
@@ -1687,8 +1691,8 @@ def account_view(request):
     access_token=get_token()
     account_number = get_account_number(access_token)
     balance = get_balance(access_token, account_number)
-    print(balance)
-    print(type(balance))
+    # print(balance)
+    # print(type(balance))
     return render(request, 'account.html', {'balance': balance})
 
 

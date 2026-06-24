@@ -240,8 +240,6 @@ function selectStockCard(cardElement, stockCode, stockName) {
 
             const qData = result.data.filter(i => i.구분 === '분기');
 
-            console.log(qData)
-
             showSales('quarter', qData);
             showSalesChart('quarter_sales_chart', qData);
             
