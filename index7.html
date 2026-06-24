@@ -1026,9 +1026,6 @@ function selectAndCentral(code, name) {
                 `${d.getMonth() + 1}.${d.getDate()}.(${['일', '월','화','수','목','금','토'][d.getDay()]}) 기준`;
 
 
-
-            console.log(data.list_fin)
-
             renderIlbongChart(list_ilbong);
 
             // const qData = data.list_fin.filter(i => i.구분 === '분기' && !i.기간.includes('(E)'));
@@ -3048,10 +3045,10 @@ function showCF(type, data) {
     const body = document.getElementById(type + '_cash_body');
 
     const fields = [
+        { key: 'FCF', label: 'FCF' },
         { key: '영업현금흐름', label: '영업' },
         { key: '투자현금흐름', label: '투자' },
         { key: '재무현금흐름', label: '재무' },
-        { key: 'FCF', label: 'FCF' }
     ];
 
     head.innerHTML = '<th style="height:12px;padding:0px;font-weight:normal;font-size:12px">(억)</th>';
@@ -3135,10 +3132,10 @@ function showCFChart(canvasId, data) {
         data: {
             labels: data.map(d => fmt(d.기간)),
             datasets: [
+                { label: 'FCF', data: data.map(d => d.FCF ?? 0), type: 'line', borderColor: '#10b981', borderWidth: 2, fill: false },
                 { label: '영업', data: data.map(d => d.영업현금흐름 ?? 0), backgroundColor: '#3b82f6' },
                 { label: '투자', data: data.map(d => d.투자현금흐름 ?? 0), backgroundColor: '#ef4444' },
                 { label: '재무', data: data.map(d => d.재무현금흐름 ?? 0), backgroundColor: '#f59e0b' },
-                { label: 'FCF', data: data.map(d => d.FCF ?? 0), type: 'line', borderColor: '#10b981', borderWidth: 2, fill: false }
             ]
         },
         plugins: [bg],

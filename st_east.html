@@ -115,30 +115,60 @@ div[id^="chart-"] span[style*="z-index: 5"] {
             <div id="chart-candle" style="height:220px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8;">데이터 수집 중... 🔄</div>
             <div id="chart-macd" style="height:80px;margin-top:-8px;"></div>
             <div id="chart-supply" style="height:120px;margin-top:-8px;"></div>
+
+
+
+            <!-- 매출/영업이익 -->
+            <div style="width:460px; margin-bottom:20px;">
+                <div style="font-weight:bold; margin-bottom:5px;">📊 매출/영업이익 (분기)</div>
+
+                <table id="quarter_sales_table" border="1" style="width:460px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
+                    <thead><tr id="quarter_sales_head" style="background:#f4f4f4;"></tr></thead>
+                    <tbody id="quarter_sales_body"></tbody>
+                </table>
+
+                <div style="height:180px;"><canvas id="quarter_sales_chart"></canvas></div>
+            </div>
+
+
+            <div id="asset-wrapper" style="width: 510px;">
+                <div style="font-weight:bold; margin-bottom:5px;">📊 자산/부채 (분기)</div>
+                <table id="quarter_balance_table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
+                    <thead><tr id="quarter_asset_head" style="background:#f4f4f4;"></tr></thead>
+                    <tbody id="quarter_asset_body"></tbody>
+                </table>
+                <div style="height:180px; margin-top:0px;"><canvas id="quarter_asset_chart"></canvas></div>
+            </div>
+
+            <div id="cf-wrapper" style="width: 510px;">
+                <div style="width: 510px;">
+                    <div style="font-weight:bold; margin-bottom:5px;">📊 현금흐름 (분기)</div>
+                    <table id="quarter_cash_table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
+                        <thead><tr id="quarter_cf_head" style="background:#f4f4f4;"></tr></thead>
+                        <tbody id="quarter_cf_body"></tbody>
+                    </table>
+                    <div style="height:180px; margin-top:0px;"><canvas id="quarter_cf_chart"></canvas></div>
+                </div>
+            </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
             
         </div>
 
 
 
 
-
-
-
-
-        <div class="chart-section">
-            <h4>🏦 실적 추이 (매출액 / 영업이익)</h4>
-            <div id="chart-finance-profit" style="height:180px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8;">[대기]</div>
-        </div>
-
-        <div class="chart-section">
-            <h4>⚖️ 재무 건전성 (총자산 / 총부채)</h4>
-            <div id="chart-finance-asset" style="height:160px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8;">[대기]</div>
-        </div>
-
-        <div class="chart-section">
-            <h4>💸 현금흐름 (영업활동)</h4>
-            <div id="chart-finance-cash" style="height:150px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#94a3b8;">[대기]</div>
-        </div>
 
     </div>
 
@@ -152,6 +182,13 @@ div[id^="chart-"] span[style*="z-index: 5"] {
 
 
 <script>
+
+
+
+
+
+
+
 
 function selectStockCard(cardElement, stockCode, stockName) {
 
@@ -179,7 +216,7 @@ function selectStockCard(cardElement, stockCode, stockName) {
     if (cardCheck) {
         document.getElementById('fin-cap').innerText =
             cardElement.dataset.cap
-                ? cardElement.dataset.cap + " 억"
+                ? cardElement.dataset.cap + "억"
                 : "- 억";
     }
 
@@ -196,21 +233,23 @@ function selectStockCard(cardElement, stockCode, stockName) {
             document.getElementById('fin-per').innerText = fin.PER || '-';
             document.getElementById('fin-pbr').innerText = fin.PBR || '-';
             document.getElementById('fin-div').innerText = `${fin.배당 || 0} %`;
-            document.getElementById('fin-cap').innerText = (fin.시가총액 || 0).toLocaleString('ko-KR') + ' 억';
+            document.getElementById('fin-cap').innerText = (fin.시가총액 || 0).toLocaleString('ko-KR') + '억';
+            document.getElementById('fin-debt').innerText = (fin.부채비율3 || []).map(v => Math.round(v) + '%').join(' → ');
 
 
 
+            const qData = result.data.filter(i => i.구분 === '분기');
 
-            document.getElementById('fin-debt').innerText =
-                (fin.부채비율3 || [])
-                    .map(v => v + '%')
-                    .join(' → ');
+            console.log(qData)
 
-
+            showSales('quarter', qData);
+            showSalesChart('quarter_sales_chart', qData);
             
-
-            
-            // document.getElementById('fin-debt').innerText = `${fin.부채비율 || 0} %`;
+            showAsset('quarter', qData);
+            showAssetChart('quarter_asset_chart', qData);
+                        
+            showCF('quarter', qData);
+            showCFChart('quarter_cf_chart', qData);
 
 
 
@@ -794,6 +833,462 @@ zeroLineSeries.setData(zeroData);
 
 
 
+
+
+<script>
+
+function showSales(type, data) {
+
+    const head = document.getElementById(type + '_sales_head');
+    const body = document.getElementById(type + '_sales_body');
+
+    const fmt = p => {
+        const s = String(p || '').trim();
+        const x = s.split('/');
+        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
+    };
+
+    head.innerHTML = '<th>(억)</th>';
+
+    data.forEach((d, i) => {
+        const th = document.createElement('th');
+        th.innerText = fmt(d.기간);
+        th.style.cssText =
+            `padding:0px;font-size:11px;border:1px solid #ddd;
+             background:${i >= data.length - 3 ? '#eee' : '#f4f4f4'};
+             color:${i >= data.length - 3 ? '#777' : '#000'};`;
+        head.appendChild(th);
+    });
+
+    const fields = [
+        { key: '매출', label: '매출' },
+        { key: '영업이익', label: '영익' }
+    ];
+
+    body.innerHTML = '';
+
+    fields.forEach(f => {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `<td style="text-align:center;font-size:11px;background:#fafafa;">${f.label}</td>`;
+
+        data.forEach((d, i) => {
+            const td = document.createElement('td');
+
+            const val = d[f.key] ?? 0;
+
+            td.style.cssText =
+                `text-align:right;padding:0px;border:1px solid #ddd;
+                 font-size:11px;
+                 ${i >= data.length - 3 ? 'background:#eee;color:#777;' : ''}
+                 ${f.key === '영업이익' && val < 0 ? 'color:red;' : ''}`;
+
+            td.innerText = Number(val).toLocaleString();
+            tr.appendChild(td);
+        });
+
+        body.appendChild(tr);
+    });
+}
+
+
+
+
+
+
+                           
+function showSalesChart(canvasId, data) {
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    const chartKey = canvasId + 'Obj';
+
+    // 🔥 무조건 재생성
+    if (window[chartKey]) {
+        window[chartKey].destroy();
+    }
+
+    const backgroundPlugin = {
+        id: 'customCanvasBackgroundColor',
+        beforeDraw: (chart) => {
+            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+            const meta = chart.getDatasetMeta(0);
+            const dataset = meta.data;
+            const threshold = dataset.length - 3;
+
+            ctx.save();
+            ctx.fillStyle = '#eeeeee';
+
+            for (let i = threshold; i < dataset.length; i++) {
+                const start = x.getPixelForValue(i - 0.5);
+                const end = x.getPixelForValue(i + 0.5);
+                ctx.fillRect(start, top, end - start, bottom - top);
+            }
+
+            ctx.restore();
+        }
+    };
+
+    window[chartKey] = new Chart(ctx, {
+        type: 'bar',
+        plugins: [backgroundPlugin],
+
+        data: {
+            labels: data.map(d => {
+
+                let raw = d.기간;
+
+                let isE = raw.includes('(E)');
+                let clean = raw.replace(' (IFRS별도)', '').trim();
+
+                let parts = clean.split('/');
+                let year = parts[0];
+                let month = parts[1];
+
+                // 👉 2025 → 25 변환 (그대로 inline)
+                if (year.length === 4) {
+                    year = year.slice(2);
+                }
+
+                return year + '/' + month;
+            }),
+
+            datasets: [
+                {
+                    label: '매출',
+                    data: data.map(d => d.매출),
+                    backgroundColor: '#475569'
+                },
+                {
+                    label: '영업이익 (억원)',
+                    data: data.map(d => d.영업이익),
+                    backgroundColor: '#ef4444'
+                }
+            ]
+        },
+
+        options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+
+            plugins: {
+                legend: {
+                    labels: {
+                        font: { size: 14 },
+                        color: '#000000'
+                    }
+                }
+            },
+
+            scales: {
+                x: {
+                    ticks: {
+                        font: { size: 14 },
+                        color: '#000000',
+                        autoSkip: false,
+                        maxRotation: 0,
+                        minRotation: 0
+                    }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        font: { size: 9 }
+                    }
+                }
+            }
+        }
+    });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function showAsset(type, data) {
+
+    const head = document.getElementById(type + '_asset_head');
+    const body = document.getElementById(type + '_asset_body');
+
+    const fmt = p => {
+        const s = String(p || '').trim();
+        const x = s.split('/');
+        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
+    };
+
+    console.log(7)
+
+    head.innerHTML = '<th>(억)</th>';
+    console.log(8)
+
+    data.forEach((d, i) => {
+        const th = document.createElement('th');
+        th.innerText = fmt(d.기간);
+        th.style.cssText =
+            `padding:2px;font-size:12px;border:1px solid #ddd;
+             background:${i >= data.length - 3 ? '#eee' : '#f4f4f4'};
+             color:${i >= data.length - 3 ? '#777' : '#000'};`;
+        head.appendChild(th);
+    });
+
+    const fields = [
+        { key: '자산', label: '자산' },
+        { key: '부채', label: '부채' }
+    ];
+
+    body.innerHTML = '';
+
+    fields.forEach(f => {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `<td style="text-align:center;font-size:12px;background:#fafafa;">${f.label}</td>`;
+
+        data.forEach((d, i) => {
+            const td = document.createElement('td');
+
+            const val = d[f.key] ?? 0;
+
+            td.style.cssText =
+                `text-align:right;padding:2px;border:1px solid #ddd;
+                 font-size:12px;
+                 ${i >= data.length - 3 ? 'background:#eee;color:#777;' : ''}
+                 ${val < 0 ? 'color:red;' : ''}`;
+
+            td.innerText = Number(val).toLocaleString();
+            tr.appendChild(td);
+        });
+
+        body.appendChild(tr);
+    });
+}
+
+
+
+
+
+
+
+function showAssetChart(canvasId, data) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const chartKey = canvasId + 'Obj';
+
+    if (window[chartKey]) window[chartKey].destroy();
+
+    const backgroundPlugin = {
+        id: 'customCanvasBackgroundColor',
+        beforeDraw: (chart) => {
+            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+            const meta = chart.getDatasetMeta(0);
+            const dataset = meta.data;
+            const threshold = dataset.length - 3;
+            ctx.save();
+            ctx.fillStyle = '#eeeeee';
+            for (let i = threshold; i < dataset.length; i++) {
+                const start = x.getPixelForValue(i - 0.5);
+                const end = x.getPixelForValue(i + 0.5);
+                ctx.fillRect(start, top, end - start, bottom - top);
+            }
+            ctx.restore();
+        }
+    };
+
+    window[chartKey] = new Chart(ctx, {
+        type: 'bar',
+        plugins: [backgroundPlugin],
+        data: {
+            labels: data.map(d => {
+                let raw = d.기간;
+                let isE = raw.includes('(E)');
+                let clean = raw.replace(' (IFRS별도)', '').trim();
+                let parts = clean.split('/');
+                let year = parts[0];
+                let month = parts[1];
+                if (year && year.length === 4) year = year.slice(2);
+                return year + '/' + month;
+            }),
+            datasets: [
+                { label: '자산', data: data.map(d => d.자산), backgroundColor: '#1e40af' },
+                { label: '부채', data: data.map(d => d.부채), backgroundColor: '#fbbf24' }
+            ]
+        },
+        options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { font: { size: 14 }, color: '#000000' } } },
+            scales: {
+                x: { ticks: { font: { size: 14 }, color: '#000000', autoSkip: false, maxRotation: 0, minRotation: 0 } },
+                y: { ticks: { font: { size: 9 } } }
+            }
+        }
+    });
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function showCF(type, data) {
+
+    const head = document.getElementById(type + '_cf_head');
+    const body = document.getElementById(type + '_cf_body');
+
+    const fmt = p => {
+        const s = String(p || '').trim();
+        const x = s.split('/');
+        return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
+    };
+
+    head.innerHTML = '<th>(억)</th>';
+
+    data.forEach((d, i) => {
+        const th = document.createElement('th');
+        th.innerText = fmt(d.기간);
+        th.style.cssText =
+            `padding:2px;font-size:12px;border:1px solid #ddd;
+             background:${i >= data.length - 3 ? '#eee' : '#f4f4f4'};
+             color:${i >= data.length - 3 ? '#777' : '#000'};`;
+        head.appendChild(th);
+    });
+
+    const fields = [
+        { key: 'FCF', label: 'FCF' },
+        { key: '영업현금흐름', label: '영업' },
+        { key: '투자현금흐름', label: '투자' },
+        { key: '재무현금흐름', label: '재무' }
+    ];
+
+    body.innerHTML = '';
+
+    fields.forEach(f => {
+        const tr = document.createElement('tr');
+
+        tr.innerHTML = `<td style="text-align:center;font-size:12px;background:#fafafa;">${f.label}</td>`;
+
+        data.forEach((d, i) => {
+            const td = document.createElement('td');
+
+            const val = d[f.key] ?? 0;
+
+            td.style.cssText =
+                `text-align:right;padding:2px;border:1px solid #ddd;
+                 font-size:12px;
+                 ${i >= data.length - 3 ? 'background:#eee;color:#777;' : ''}
+                 ${val < 0 ? 'color:red;' : ''}`;
+
+            td.innerText = Number(val).toLocaleString();
+            tr.appendChild(td);
+        });
+
+        body.appendChild(tr);
+    });
+}
+
+
+
+function showCFChart(canvasId, data) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const chartKey = canvasId + 'Obj';
+
+    if (window[chartKey]) window[chartKey].destroy();
+
+    const backgroundPlugin = {
+        id: 'cfBackgroundPlugin',
+        beforeDraw: (chart) => {
+            const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+            const meta = chart.getDatasetMeta(0);
+            const dataset = meta.data;
+            const threshold = dataset.length - 3;
+            ctx.save();
+            ctx.fillStyle = '#eeeeee';
+            for (let i = threshold; i < dataset.length; i++) {
+                const start = x.getPixelForValue(i - 0.5);
+                const end = x.getPixelForValue(i + 0.5);
+                ctx.fillRect(start, top, end - start, bottom - top);
+            }
+            ctx.restore();
+        }
+    };
+
+    window[chartKey] = new Chart(ctx, {
+        type: 'bar',
+        plugins: [backgroundPlugin],
+        data: {
+            labels: data.map(d => {
+                let raw = d.기간;
+                let isE = raw.includes('(E)');
+                let clean = raw.replace(' (IFRS별도)', '').trim();
+                let parts = clean.split('/');
+                let year = parts[0];
+                let month = parts[1];
+                if (year && year.length === 4) year = year.slice(2);
+                return year + '/' + month;
+            }),
+            datasets: [
+                { label: 'FCF', data: data.map(d => d.FCF ?? 0), type: 'line', borderColor: '#10b981', borderWidth: 2, fill: false, tension: 0 },
+                { label: '영업', data: data.map(d => d.영업현금흐름 ?? 0), backgroundColor: '#3b82f6' },
+                { label: '투자', data: data.map(d => d.투자현금흐름 ?? 0), backgroundColor: '#ef4444' },
+                { label: '재무', data: data.map(d => d.재무현금흐름 ?? 0), backgroundColor: '#f59e0b' },
+            ]
+        },
+        options: {
+            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { labels: { font: { size: 14 }, color: '#000000' } } },
+            scales: {
+                x: { ticks: { font: { size: 14 }, color: '#000000', autoSkip: false, maxRotation: 0, minRotation: 0 } },
+                y: { ticks: { font: { size: 9 } } }
+            }
+        }
+    });
+}
+
+
+
+
+
+</script>
 
 
 

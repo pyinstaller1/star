@@ -360,7 +360,8 @@
 
         <div id="roe-wrapper">
             <div style="font-weight:bold; margin-bottom:5px;">📊 영업이익률 / ROE</div>
-            <table id="roe_table" border="1" style="width: 400px; border-collapse:collapse; font-size:11px;">
+            <table id="roe_table" style="border-collapse:collapse; border:1px solid lightgray;">
+                    
                 <thead><tr id="roe_head"></tr></thead>
                 <tbody id="roe_body"></tbody>
             </table>
@@ -382,10 +383,10 @@
                         <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;width:21px;">업종</td>
                         <td id="fin-sector" style="padding:4px 6px;border:1px solid #e2e8f0;font-size:12px;width:128px;">-</td>
 
-                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;width:22px;">시총</td>
+                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;width:21px;">시총</td>
                         <td id="fin-cap" style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;font-size:12px;width:70px;">-</td>
-                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;width:23px;">배당</td>
-                        <td id="fin-div" style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;font-size:12px;">-</td>
+                        <td style="padding:4px 6px;font-weight:700;border:1px solid #cbd5e1;background:#e8eef6;font-size:12px;color:#334155;width:21px;">배당</td>
+                        <td id="fin-div" style="padding:4px 6px;border:1px solid #e2e8f0;text-align:right;font-size:12px; width:30px">-</td>
                     </tr>
 
                     <!-- 2층 -->
@@ -435,9 +436,6 @@ function getFin(stockName, stockCode) {
     fetch(`/get_naver_fin/?code=${stockCode}`)
         .then(res => res.json())
         .then(result => {
-
-            console.log(result)
-
 
             
             if (!result.data) return;
@@ -1069,10 +1067,10 @@ function showCF(type, data) {
     const head = document.getElementById(type + '_cash_head');
     const body = document.getElementById(type + '_cash_body');
     const fields = [
+        { key: 'FCF', label: 'FCF' },
         { key: '영업현금흐름', label: '영업' },
         { key: '투자현금흐름', label: '투자' },
         { key: '재무현금흐름', label: '재무' },
-        { key: 'FCF', label: 'FCF' }
     ];
 
     head.innerHTML = '<th style="height:20px; padding:2px; font-weight:normal;  font-size:14px;">(억)</th>';
@@ -1170,10 +1168,10 @@ function showCFChart(canvasId, data) {
                 return year + '/' + month;
             }),
             datasets: [
+                { label: 'FCF', data: data.map(d => d.FCF ?? 0), type: 'line', borderColor: '#10b981', borderWidth: 2, fill: false, tension: 0 },
                 { label: '영업', data: data.map(d => d.영업현금흐름 ?? 0), backgroundColor: '#3b82f6' },
                 { label: '투자', data: data.map(d => d.투자현금흐름 ?? 0), backgroundColor: '#ef4444' },
                 { label: '재무', data: data.map(d => d.재무현금흐름 ?? 0), backgroundColor: '#f59e0b' },
-                { label: 'FCF', data: data.map(d => d.FCF ?? 0), type: 'line', borderColor: '#10b981', borderWidth: 2, fill: false, tension: 0 }
             ]
         },
         options: {
@@ -1665,6 +1663,9 @@ function showEtc(data) {
 
     // ===== 기본 값 =====
     document.getElementById('fin-sector').innerText = latest?.업종 ?? '-';
+    document.getElementById('fin-cap').innerText = latest?.시가총액+'억' ?? '-';
+
+    
     document.getElementById('fin-div').innerText = latest?.배당 != null ? latest.배당 + '%' : '-';
 
     document.getElementById('fin-eps').innerText = latest?.EPS?.toLocaleString() ?? '-';
