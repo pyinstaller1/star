@@ -131,19 +131,19 @@ div[id^="chart-"] span[style*="z-index: 5"] {
             </div>
 
 
-            <div id="asset-wrapper" style="width: 510px;">
+            <div id="asset-wrapper" style="width: 460px;">
                 <div style="font-weight:bold; margin-bottom:5px;">📊 자산/부채 (분기)</div>
-                <table id="quarter_balance_table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
+                <table id="quarter_balance_table" border="1" style="width:460px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
                     <thead><tr id="quarter_asset_head" style="background:#f4f4f4;"></tr></thead>
                     <tbody id="quarter_asset_body"></tbody>
                 </table>
                 <div style="height:180px; margin-top:0px;"><canvas id="quarter_asset_chart"></canvas></div>
             </div>
 
-            <div id="cf-wrapper" style="width: 510px;">
-                <div style="width: 510px;">
+            <div id="cf-wrapper" style="width: 460px;">
+                <div style="width: 460px;">
                     <div style="font-weight:bold; margin-bottom:5px;">📊 현금흐름 (분기)</div>
-                    <table id="quarter_cash_table" border="1" style="width:510px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
+                    <table id="quarter_cash_table" border="1" style="width:460px; border-collapse:collapse; font-size:11px; border:1px solid lightgray;">
                         <thead><tr id="quarter_cf_head" style="background:#f4f4f4;"></tr></thead>
                         <tbody id="quarter_cf_body"></tbody>
                     </table>
@@ -854,9 +854,13 @@ function showSales(type, data) {
         const th = document.createElement('th');
         th.innerText = fmt(d.기간);
         th.style.cssText =
-            `padding:0px;font-size:11px;border:1px solid #ddd;
+            `padding:0px;font-size:12px;border:1px solid #ddd;
              background:${i >= data.length - 3 ? '#eee' : '#f4f4f4'};
              color:${i >= data.length - 3 ? '#777' : '#000'};`;
+        
+        const isE = d.기간.includes('(E)');
+        th.style.width = isE ? '53px' : 'auto';
+
         head.appendChild(th);
     });
 
@@ -870,7 +874,7 @@ function showSales(type, data) {
     fields.forEach(f => {
         const tr = document.createElement('tr');
 
-        tr.innerHTML = `<td style="text-align:center;font-size:11px;background:#fafafa;">${f.label}</td>`;
+        tr.innerHTML = `<td style="text-align:center;font-size:12px;background:#fafafa;">${f.label}</td>`;
 
         data.forEach((d, i) => {
             const td = document.createElement('td');
@@ -879,7 +883,7 @@ function showSales(type, data) {
 
             td.style.cssText =
                 `text-align:right;padding:0px;border:1px solid #ddd;
-                 font-size:11px;
+                 font-size:12px;
                  ${i >= data.length - 3 ? 'background:#eee;color:#777;' : ''}
                  ${f.key === '영업이익' && val < 0 ? 'color:red;' : ''}`;
 
@@ -1031,18 +1035,18 @@ function showAsset(type, data) {
         return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
     };
 
-    console.log(7)
 
     head.innerHTML = '<th>(억)</th>';
-    console.log(8)
 
     data.forEach((d, i) => {
         const th = document.createElement('th');
         th.innerText = fmt(d.기간);
         th.style.cssText =
-            `padding:2px;font-size:12px;border:1px solid #ddd;
+            `padding:0px;font-size:12px;border:1px solid #ddd;
              background:${i >= data.length - 3 ? '#eee' : '#f4f4f4'};
              color:${i >= data.length - 3 ? '#777' : '#000'};`;
+        const isE = d.기간.includes('(E)');
+        th.style.width = isE ? '53px' : 'auto';
         head.appendChild(th);
     });
 
@@ -1064,7 +1068,7 @@ function showAsset(type, data) {
             const val = d[f.key] ?? 0;
 
             td.style.cssText =
-                `text-align:right;padding:2px;border:1px solid #ddd;
+                `text-align:right;padding:0px;border:1px solid #ddd;
                  font-size:12px;
                  ${i >= data.length - 3 ? 'background:#eee;color:#777;' : ''}
                  ${val < 0 ? 'color:red;' : ''}`;
@@ -1183,9 +1187,11 @@ function showCF(type, data) {
         const th = document.createElement('th');
         th.innerText = fmt(d.기간);
         th.style.cssText =
-            `padding:2px;font-size:12px;border:1px solid #ddd;
+            `padding:0px;font-size:12px;border:1px solid #ddd;
              background:${i >= data.length - 3 ? '#eee' : '#f4f4f4'};
              color:${i >= data.length - 3 ? '#777' : '#000'};`;
+        const isE = d.기간.includes('(E)');
+        th.style.width = isE ? '53px' : 'auto';
         head.appendChild(th);
     });
 
@@ -1209,7 +1215,7 @@ function showCF(type, data) {
             const val = d[f.key] ?? 0;
 
             td.style.cssText =
-                `text-align:right;padding:2px;border:1px solid #ddd;
+                `text-align:right;padding:0px;border:1px solid #ddd;
                  font-size:12px;
                  ${i >= data.length - 3 ? 'background:#eee;color:#777;' : ''}
                  ${val < 0 ? 'color:red;' : ''}`;
