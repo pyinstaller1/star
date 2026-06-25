@@ -1088,16 +1088,63 @@ def st_hoga_view(request):
     })
 
 
-# 🔥 2. 새로 추가할 비동기 데이터 API 뷰
-def st_hoga_data_api(request):
+def st_hoga_data_view(request):
     mode = request.GET.get('mode', 'buy')
     
-    # 이전에 수정한 DuckDB 초고속 조회 함수 실행
-    list_hoga = select_st_hoga(mode)
+    list_data = select_st_hoga(mode)
+
+    # print(list_hoga)
     
-    # 2,500개의 데이터를 파이썬 루프 없이 통째로 초고속 JSON 전송
-    # safe=False를 해주어야 리스트 형태의 데이터를 보낼 수 있습니다.
-    return JsonResponse(list_hoga, safe=False)
+    return JsonResponse({ 'list_data': json.loads(json.dumps(list_data, default=str)) })
+
+
+def st_macd_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_macd.html', {
+        'mode': mode,
+        'strategy_title': '🚀 MACD 전략',
+    })
+
+
+
+
+def st_macd_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    list_data =  select_st_macd(mode)
+
+    json_ilbong = {}
+
+    for item in list_data:
+        code = item['code']  # 🎯 코드가 딕셔너리의 key가 됩니다.
+        json_ilbong[code] = get_ilbong_data(code)
+
+    return JsonResponse({ 'list_data': list_data, 'json_ilbong': json_ilbong })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1246,27 +1293,6 @@ def strategy_view(request):
         'strategies': strategies
     })
 
-
-
-def st_macd_view(request):
-    mode = request.GET.get('mode', 'buy')
-    
-    # 1. DB에서 한글명과 영문 코드가 깔끔히 정돈된 결과를 들고옵니다.
-    cross_stocks = select_st_macd(mode)
-    json_stocks_data = {}
-
-    # 2. 각 종목의 순수 MACD 보조지표 선 데이터만 패킹합니다.
-    for stock in cross_stocks:
-        shcode = stock['code']  # 🎯 진짜 주식 코드(예: '005930')가 정확히 딕셔너리의 key가 됩니다.
-        json_stocks_data[shcode] = get_ilbong_data(shcode) 
-
-    return render(request, 'strategy/st_macd.html', {
-        'mode': mode,
-        'strategy_title': '🚀 MACD 전략',
-
-        'cross_stocks': cross_stocks,
-        'json_stocks_data': json.dumps(json_stocks_data)
-    })
 
 
 

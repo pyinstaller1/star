@@ -190,7 +190,10 @@
 
 <script>
     let currentMode = "{{ mode|default:'buy' }}";
-    let currentFilteredData = []; 
+                        
+    let currentFilteredData = [];
+    let json_ilbong = {};
+
     let currentDisplayIndex = 0;  
     const PAGE_SIZE = 40; 
     let stAbortController = null;
@@ -218,6 +221,7 @@
 
     function loadData(mode) {
         currentMode = mode;
+
         const grid = document.getElementById('st-grid');
         grid.innerHTML = '<div class="loading-text">데이터를 불러오는 중입니다... 🔄</div>';
         document.getElementById('check-all-stocks').checked = false;
@@ -225,25 +229,51 @@
         if (stAbortController) { stAbortController.abort(); }
         stAbortController = new AbortController();
         const { signal } = stAbortController;
+     
 
-        fetch(`/api/st-hoga-data/?mode=${mode}`, { signal: signal })
+        fetch(`/st_macd_data/?mode=${mode}`, { signal })
             .then(res => res.json())
             .then(data => {
-                document.getElementById('stock-count').innerText = `포착 종목 수: ${data.length}`;
-                if(data.length === 0) {
+
+                list_data = data.list_data;
+                json_ilbong = data.json_ilbong;
+
+
+
+
+                document.getElementById('stock-count').innerText =
+                    `포착 종목 수: ${list_data.length}`;
+
+                if (list_data.length === 0) {
                     grid.innerHTML = '<div class="loading-text">포착된 종목이 없습니다. 📭</div>';
                     return;
                 }
-                currentFilteredData = data;
+
+                currentFilteredData = list_data;
                 currentDisplayIndex = 0;
-                grid.innerHTML = ''; 
-                renderNextChunk();
+
+                grid.innerHTML = '';
+
+                renderNextChunk();   // 🔥 이게 핵심
             })
             .catch(err => {
+
+
+                console.error("FETCH ERROR:", err);   // 🔥 이거 꼭 추가
+
+
+                
                 if (err.name === 'AbortError') return;
-                grid.innerHTML = '<div class="loading-text" style="color:#ef4444;">데이터를 불러오는 중 오류가 발생했습니다. ❌</div>';
+
+                
+                grid.innerHTML =
+                    '<div class="loading-text" style="color:#ef4444;">데이터를 불러오는 중 오류가 발생했습니다. ❌</div>';
             });
+
+   
     }
+
+
 
 
 
@@ -262,7 +292,7 @@
         nextChunk.forEach((item, idx) => {
             const globalCount = currentDisplayIndex + idx + 1;
 
-            htmlBuffer.push(renderHoga(item, globalCount));
+            htmlBuffer.push(renderSt(item, globalCount));
         });
 
         currentDisplayIndex += nextChunk.length;
@@ -271,17 +301,18 @@
     }
                             
 
-    function renderNextChunk8() {
-        const grid = document.getElementById('st-grid');
-        const nextChunk = currentFilteredData.slice(currentDisplayIndex, currentDisplayIndex + PAGE_SIZE);
-        if (nextChunk.length === 0) return; 
 
-        let htmlBuffer = [];
-        nextChunk.forEach((item) => {
-            const maxRem = item.max_rem || 1;
-            const globalCount = currentDisplayIndex + 1; 
-            
-            let cardHtml = `
+
+
+    function renderSt(item, globalCount) {
+
+        const raw = json_ilbong[item.code] || [];
+
+        const macdData = raw
+            .filter(d => d.macd != null && d.macd9 != null)
+            .map(d => ({ time: String(d.date), macd: d.macd, macd9: d.macd9, hist: d.macd - d.macd9 }));
+
+        let html = `
             <div class="st-card" onclick="selectStockCard(this, '${item.code}', '${item.name}')">
                 <div class="card-head">
                     <div style="display:flex; align-items:center; gap:5px; font-weight:700;">
@@ -290,102 +321,69 @@
                         <span>${item.name}</span>
                     </div>
                 </div>
-            `;
-            
-            for(let i=10; i>=1; i--) {
-                const rem = item[`offer_rem${i}`] || 0;
-                const price = item[`offer${i}`] || 0;
-                const widthRatio = (rem / maxRem) * 100;
-                cardHtml += `
-                    <div class="st-row">
-                        <div class="rem-cell">
-                            <div class="bar offer-bar" style="width:${widthRatio}%"></div>
-                            <span class="rem-text">${rem.toLocaleString()}</span>
-                        </div>
-                        <div class="price-cell offer-price" style="background-color: #f8fbff;">${price.toLocaleString()}</div>
-                    </div>`;
-            }
-            cardHtml += `<div class="mid-line"></div>`;
-            for(let i=1; i<=10; i++) {
-                const rem = item[`bid_rem${i}`] || 0;
-                const price = item[`bid${i}`] || 0;
-                const widthRatio = (rem / maxRem) * 100;
-                cardHtml += `
-                    <div class="st-row">
-                        <div class="rem-cell">
-                            <div class="bar bid-bar" style="width:${widthRatio}%"></div>
-                            <span class="rem-text">${rem.toLocaleString()}</span>
-                        </div>
-                        <div class="price-cell bid-price" style="background-color: #fff8f9;">${price.toLocaleString()}</div>
-                    </div>`;
-            }
-            cardHtml += `</div></div>`;
-            htmlBuffer.push(cardHtml);
-            currentDisplayIndex++;
-        });
-        grid.insertAdjacentHTML('beforeend', htmlBuffer.join(''));
-    }
-
-
-
-
-    function renderHoga(item, globalCount) {
-        const maxRem = item.max_rem || 1;
-
-        let cardHtml = `
-        <div class="st-card" onclick="selectStockCard(this, '${item.code}', '${item.name}')">
-            <div class="card-head">
-                <div style="display:flex; align-items:center; gap:5px; font-weight:700;">
-                    <input type="checkbox" class="stock-item-checkbox" data-code="${item.code}" onclick="event.stopPropagation();">
-                    <span style="font-size:15px; font-weight:700;">${globalCount}.</span>
-                    <span>${item.name}</span>
-                </div>
+                <div id="macd-${item.code}" style="height:120px; position:relative;"></div>
             </div>
         `;
 
-        // 🔥 매도 (offer)
-        for (let i = 10; i >= 1; i--) {
-            const rem = item[`offer_rem${i}`] || 0;
-            const price = item[`offer${i}`] || 0;
-            const widthRatio = (rem / maxRem) * 100;
+        setTimeout(() => {
 
-            cardHtml += `
-            <div class="st-row">
-                <div class="rem-cell">
-                    <div class="bar offer-bar" style="width:${widthRatio}%"></div>
-                    <span class="rem-text">${rem.toLocaleString()}</span>
-                </div>
-                <div class="price-cell offer-price" style="background-color: #f8fbff;">
-                    ${price.toLocaleString()}
-                </div>
-            </div>`;
-        }
+            const el = document.getElementById(`macd-${item.code}`);
+            if (!el || !macdData.length) return;
 
-        cardHtml += `<div class="mid-line"></div>`;
+            el.innerHTML = "";
 
-        // 🔥 매수 (bid)
-        for (let i = 1; i <= 10; i++) {
-            const rem = item[`bid_rem${i}`] || 0;
-            const price = item[`bid${i}`] || 0;
-            const widthRatio = (rem / maxRem) * 100;
+            const chart = LightweightCharts.createChart(el, {
+                width: el.clientWidth,
+                height: 120,
+                layout: { background: { type: LightweightCharts.ColorType.Solid, color: '#fff' }, textColor: '#64748b', fontSize: 10 },
+                grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+                rightPriceScale: { visible: true, scaleMargins: { top: 0.2, bottom: 0.2 } },
+                timeScale: { visible: false }
+            });
 
-            cardHtml += `
-            <div class="st-row">
-                <div class="rem-cell">
-                    <div class="bar bid-bar" style="width:${widthRatio}%"></div>
-                    <span class="rem-text">${rem.toLocaleString()}</span>
-                </div>
-                <div class="price-cell bid-price" style="background-color: #fff8f9;">
-                    ${price.toLocaleString()}
-                </div>
-            </div>`;
-        }
+            const macdSeries = chart.addSeries(LightweightCharts.LineSeries, {
+                color: '#1976D2',
+                lineWidth: 1.5,
+                priceLineVisible: false,
+                lastValueVisible: false
+            });
 
-        cardHtml += `</div></div>`;
+            macdSeries.setData(macdData.map(d => ({ time: d.time, value: d.macd })));
 
-        return cardHtml;
+            const signalSeries = chart.addSeries(LightweightCharts.LineSeries, {
+                color: '#FF9800',
+                lineWidth: 1.5,
+                priceLineVisible: false,
+                lastValueVisible: false
+            });
+
+            signalSeries.setData(macdData.map(d => ({ time: d.time, value: d.macd9 })));
+
+            const histSeries = chart.addSeries(LightweightCharts.HistogramSeries, {
+                priceLineVisible: false,
+                lastValueVisible: false
+            });
+
+            histSeries.setData(macdData.map(d => {
+                const v = d.hist;
+                return { time: d.time, value: v, color: v >= 0 ? 'rgba(214,0,0,0.5)' : 'rgba(0,87,216,0.5)' };
+            }));
+
+            const label = document.createElement('div');
+            label.innerHTML = 'MACD';
+            label.style.position = 'absolute';
+            label.style.left = '8px';
+            label.style.top = '4px';
+            label.style.fontSize = '14px';
+            label.style.fontWeight = 'bold';
+            label.style.color = '#1976D2';
+            label.style.pointerEvents = 'none';
+            el.appendChild(label);
+
+        }, 0);
+
+        return html;
     }
-
 
 
 

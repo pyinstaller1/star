@@ -52,7 +52,7 @@
         }
 
         /* 원본 그리드 속성 그대로 유지 */
-        .hoga-grid { 
+        .st-grid { 
             display: grid; 
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
             gap: 12px; 
@@ -81,7 +81,7 @@
         }
 
         .card-head { height:25px; display:flex; align-items:center; justify-content:space-between; padding:0 5px; border-bottom:1px solid #edf1f5; font-size:15px; }
-        .hoga-row { position:relative; display:flex; align-items:stretch; height:16px; margin:0; padding:0; line-height:16px; font-size:11px; }
+        .st-row { position:relative; display:flex; align-items:stretch; height:16px; margin:0; padding:0; line-height:16px; font-size:11px; }
         .rem-cell { position:relative; flex: 1; overflow:hidden; display:flex; align-items:center; justify-content:flex-end; padding-right:1px; background:#fff; }
         .price-cell { width: 55px; padding-right:2px; text-align:right; letter-spacing:-0.5px; background:#f8fafc; line-height:16px; z-index:2; font-weight: 510; font-variant-numeric: tabular-nums; }
         .bid-price { color:#ff2d55; }
@@ -125,7 +125,7 @@
                             
 
         <div class="west-scroll-body" id="west-scroll-container">
-            <div class="hoga-grid" id="hoga-grid">
+            <div class="st-grid" id="st-grid">
                 <div class="loading-text">데이터를 불러오는 중입니다... 🔄</div>
             </div>
         </div>
@@ -187,12 +187,15 @@
 
 
 
+
+
+
 <script>
     let currentMode = "{{ mode|default:'buy' }}";
     let currentFilteredData = []; 
     let currentDisplayIndex = 0;  
     const PAGE_SIZE = 40; 
-    let hogaAbortController = null;
+    let stAbortController = null;
 
     document.addEventListener("DOMContentLoaded", function() {
         loadData(currentMode);
@@ -215,27 +218,38 @@
         });
     });
 
+         
+
+
     function loadData(mode) {
         currentMode = mode;
-        const grid = document.getElementById('hoga-grid');
+
+        const grid = document.getElementById('st-grid');
         grid.innerHTML = '<div class="loading-text">데이터를 불러오는 중입니다... 🔄</div>';
         document.getElementById('check-all-stocks').checked = false;
 
-        if (hogaAbortController) { hogaAbortController.abort(); }
-        hogaAbortController = new AbortController();
-        const { signal } = hogaAbortController;
+        if (stAbortController) { stAbortController.abort(); }
+        stAbortController = new AbortController();
+        const { signal } = stAbortController;
 
-        fetch(`/api/st-hoga-data/?mode=${mode}`, { signal: signal })
+        fetch(`/st_hoga_data/?mode=${mode}`, { signal })
             .then(res => res.json())
             .then(data => {
-                document.getElementById('stock-count').innerText = `포착 종목 수: ${data.length}`;
-                if(data.length === 0) {
+
+                const list = data.list_data;
+
+                document.getElementById('stock-count').innerText =
+                    `포착 종목 수: ${list.length}`;
+
+                if (list.length === 0) {
                     grid.innerHTML = '<div class="loading-text">포착된 종목이 없습니다. 📭</div>';
                     return;
                 }
-                currentFilteredData = data;
+
+                currentFilteredData = list;
                 currentDisplayIndex = 0;
-                grid.innerHTML = ''; 
+                grid.innerHTML = '';
+
                 renderNextChunk();
             })
             .catch(err => {
@@ -244,8 +258,54 @@
             });
     }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     function renderNextChunk() {
-        const grid = document.getElementById('hoga-grid');
+        const grid = document.getElementById('st-grid');
+
+        const nextChunk = currentFilteredData.slice(
+            currentDisplayIndex,
+            currentDisplayIndex + PAGE_SIZE
+        );
+
+        if (nextChunk.length === 0) return;
+
+        let htmlBuffer = [];
+
+        nextChunk.forEach((item, idx) => {
+            const globalCount = currentDisplayIndex + idx + 1;
+
+            htmlBuffer.push(renderSt(item, globalCount));
+        });
+
+        currentDisplayIndex += nextChunk.length;
+
+        grid.insertAdjacentHTML('beforeend', htmlBuffer.join(''));
+    }
+                            
+
+    function renderNextChunk8() {
+        const grid = document.getElementById('st-grid');
         const nextChunk = currentFilteredData.slice(currentDisplayIndex, currentDisplayIndex + PAGE_SIZE);
         if (nextChunk.length === 0) return; 
 
@@ -263,7 +323,6 @@
                         <span>${item.name}</span>
                     </div>
                 </div>
-                <div class="hoga-wrap">
             `;
             
             for(let i=10; i>=1; i--) {
@@ -271,7 +330,7 @@
                 const price = item[`offer${i}`] || 0;
                 const widthRatio = (rem / maxRem) * 100;
                 cardHtml += `
-                    <div class="hoga-row">
+                    <div class="st-row">
                         <div class="rem-cell">
                             <div class="bar offer-bar" style="width:${widthRatio}%"></div>
                             <span class="rem-text">${rem.toLocaleString()}</span>
@@ -285,7 +344,7 @@
                 const price = item[`bid${i}`] || 0;
                 const widthRatio = (rem / maxRem) * 100;
                 cardHtml += `
-                    <div class="hoga-row">
+                    <div class="st-row">
                         <div class="rem-cell">
                             <div class="bar bid-bar" style="width:${widthRatio}%"></div>
                             <span class="rem-text">${rem.toLocaleString()}</span>
@@ -298,6 +357,66 @@
             currentDisplayIndex++;
         });
         grid.insertAdjacentHTML('beforeend', htmlBuffer.join(''));
+    }
+
+
+
+
+    function renderSt(item, globalCount) {
+        const maxRem = item.max_rem || 1;
+
+        let cardHtml = `
+        <div class="st-card" onclick="selectStockCard(this, '${item.code}', '${item.name}')">
+            <div class="card-head">
+                <div style="display:flex; align-items:center; gap:5px; font-weight:700;">
+                    <input type="checkbox" class="stock-item-checkbox" data-code="${item.code}" onclick="event.stopPropagation();">
+                    <span style="font-size:15px; font-weight:700;">${globalCount}.</span>
+                    <span>${item.name}</span>
+                </div>
+            </div>
+        `;
+
+        // 🔥 매도 (offer)
+        for (let i = 10; i >= 1; i--) {
+            const rem = item[`offer_rem${i}`] || 0;
+            const price = item[`offer${i}`] || 0;
+            const widthRatio = (rem / maxRem) * 100;
+
+            cardHtml += `
+            <div class="st-row">
+                <div class="rem-cell">
+                    <div class="bar offer-bar" style="width:${widthRatio}%"></div>
+                    <span class="rem-text">${rem.toLocaleString()}</span>
+                </div>
+                <div class="price-cell offer-price" style="background-color: #f8fbff;">
+                    ${price.toLocaleString()}
+                </div>
+            </div>`;
+        }
+
+        cardHtml += `<div class="mid-line"></div>`;
+
+        // 🔥 매수 (bid)
+        for (let i = 1; i <= 10; i++) {
+            const rem = item[`bid_rem${i}`] || 0;
+            const price = item[`bid${i}`] || 0;
+            const widthRatio = (rem / maxRem) * 100;
+
+            cardHtml += `
+            <div class="st-row">
+                <div class="rem-cell">
+                    <div class="bar bid-bar" style="width:${widthRatio}%"></div>
+                    <span class="rem-text">${rem.toLocaleString()}</span>
+                </div>
+                <div class="price-cell bid-price" style="background-color: #fff8f9;">
+                    ${price.toLocaleString()}
+                </div>
+            </div>`;
+        }
+
+        cardHtml += `</div></div>`;
+
+        return cardHtml;
     }
 
 

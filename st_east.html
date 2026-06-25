@@ -841,7 +841,7 @@ function showSales(type, data) {
     const body = document.getElementById(type + '_sales_body');
 
     const fmt = p => {
-        const s = String(p || '').trim();
+        const s = String(p || '').trim().replace(' (IFRS별도)', '');
         const x = s.split('/');
         return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
     };
@@ -1028,7 +1028,7 @@ function showAsset(type, data) {
     const body = document.getElementById(type + '_asset_body');
 
     const fmt = p => {
-        const s = String(p || '').trim();
+        const s = String(p || '').trim().replace(' (IFRS별도)', '');
         const x = s.split('/');
         return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
     };
@@ -1174,7 +1174,7 @@ function showCF(type, data) {
     const body = document.getElementById(type + '_cf_body');
 
     const fmt = p => {
-        const s = String(p || '').trim();
+        const s = String(p || '').trim().replace(' (IFRS별도)', '');
         const x = s.split('/');
         return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
     };

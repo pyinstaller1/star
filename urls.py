@@ -44,7 +44,16 @@ urlpatterns = [
     path('strategy/', views.strategy_view, name='strategy'),
     path('st_macd/', views.st_macd_view, name='st_macd'),
     path('st_hoga/', views.st_hoga_view, name='st_hoga'),
-    path('api/st-hoga-data/', views.st_hoga_data_api, name='st_hoga_data_api'),
+    path('st_hoga_data/', views.st_hoga_data_view, name='st_hoga_data'),
+
+    path('st_macd_data/', views.st_macd_data_view, name='st_macd_data'),
+
+
+    
+    path('api/ilbong-chart/', views.api_ilbong_chart, name='api_ilbong_chart'),
+    path('api/ilbong-chart-st/', views.api_ilbong_chart_st, name='api_ilbong_chart_st'),
+
+    
     path('hoga_stream/', views.hoga_stream_view, name='hoga_stream'),
     path('stop_hoga/', views.stop_hoga_view, name='stop_hoga'),
     
@@ -56,6 +65,9 @@ urlpatterns = [
 
     path('fin/', views.fin_view, name='fin'),
     # path('add_naver_fin/', views.add_naver_fin_view, name='add_naver_fin'),
+
+
+    
     path('get_naver_fin/', views.get_naver_fin_view, name='get_naver_fin'),
 
     path('get_ilbong/', views.get_ilbong_view, name='get_ilbong'),

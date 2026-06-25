@@ -32,6 +32,24 @@ def get_ilbong_data(shcode: str):
     df = con.execute(query, {"shcode": shcode}).df()
     con.close()
 
+
+
+    # 🔥 핵심 1: numpy → python type 변환
+    df = df.astype(object)
+
+    # 🔥 핵심 2: NaN → None
+    df = df.where(pd.notnull(df), None)
+
+
+
+
+
+
+
+
+
+
+
     return df.to_dict('records')
 
 
@@ -1485,7 +1503,7 @@ def select_st_macd(mode: str):
     
     # 💡 i.code는 무조건 영문 소문자 'code'라는 키값으로 변환하고, 
     # k."종목명"은 템플릿 규격에 맞춰 'name'으로 정확히 뱉어내게 강제 지정합니다.
-    if mode == 'golden':
+    if mode == 'buy':
         query = """
             SELECT DISTINCT i.code AS code, k."종목명" AS name
             FROM tb_ilbong i
@@ -1493,7 +1511,7 @@ def select_st_macd(mode: str):
             WHERE i.code LIKE '005%' 
             LIMIT 30
         """
-    elif mode == 'dead':
+    elif mode == 'sell':
         query = """
             SELECT DISTINCT i.code AS code, k."종목명" AS name
             FROM tb_ilbong i
@@ -1548,7 +1566,7 @@ def insert_naver_fin(dict_total):
         매출 DOUBLE, 영업이익 DOUBLE, 당기순이익 DOUBLE, 자산 DOUBLE, 자본 DOUBLE, 부채 DOUBLE,
         영업이익률 DOUBLE, 부채비율 DOUBLE, 영업현금흐름 DOUBLE, 투자현금흐름 DOUBLE,
         재무현금흐름 DOUBLE, FCF DOUBLE, CAPEX DOUBLE, ROE DOUBLE,
-        EPS DOUBLE, PER DOUBLE, BPS DOUBLE, PBR DOUBLE,
+        EPS DOUBLE, PER DOUBLE, BPS DOUBLE, PBR DOUBLE, 배당 DOUBLE, 업종 VARCHAR,
         매출QOQ DOUBLE, 영업이익QOQ DOUBLE, 자본QOQ DOUBLE, EPSQOQ DOUBLE,
         PRIMARY KEY (코드, 구분, 기간)
     );
@@ -1557,7 +1575,7 @@ def insert_naver_fin(dict_total):
     # 2. 삽입 쿼리 (파라미터 바인딩 사용)
     insert_sql = """
     INSERT OR REPLACE INTO tb_naver_fin VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
     );
     """
 
@@ -1573,16 +1591,13 @@ def insert_naver_fin(dict_total):
                     영업이익성장 = data.get('영업이익QOQ') or data.get('영업이익YOY')
                     자본성장 = data.get('자본QOQ') or data.get('자본YOY')
                     EPS성장 = data.get('EPSQOQ') or data.get('EPSYOY')
-
-
-                    
                     
                     params = (
                         code, gubun, period,
-                        data.get('매출'), data.get('영업이익'), data.get('영업이익'),
+                        data.get('매출'), data.get('영업이익'), data.get('당기순이익'),
                         data.get('자산'), data.get('자본'), data.get('부채'), data.get('영업이익률'), data.get('부채비율'),
                         data.get('영업현금흐름'), data.get('투자현금흐름'), data.get('재무현금흐름'), data.get('FCF'), data.get('CAPEX'),
-                        data.get('ROE'), data.get('EPS'), data.get('PER'), data.get('BPS'), data.get('PBR'),
+                        data.get('ROE'), data.get('EPS'), data.get('PER'), data.get('BPS'), data.get('PBR'), data.get('배당'), dict_total['업종'],
                         매출성장, 영업이익성장, 자본성장, EPS성장
                     )
                     conn.execute(insert_sql, params)
@@ -1604,27 +1619,24 @@ def insert_naver_fin(dict_total):
 
 
 def select_naver_fin(code):
+
     query = """
-    SELECT 코드, 구분, 기간, 매출, 영업이익, 당기순이익, 자산, 자본, 부채, 영업이익률, 부채비율, 
-           영업현금흐름, 투자현금흐름, 재무현금흐름, FCF, CAPEX, ROE, EPS, PER, BPS, PBR, 매출QOQ, 영업이익QOQ, 자본QOQ, EPSQOQ 
-    FROM tb_naver_fin 
-    WHERE 코드 = ? 
-    ORDER BY 구분 DESC, 기간 ASC
+    SELECT a.코드, a.구분, a.기간, a.매출, a.영업이익, a.당기순이익, a.자산, a.자본, a.부채, a.영업이익률, a.부채비율, a.영업현금흐름, a.투자현금흐름, a.재무현금흐름, a.FCF, a.CAPEX, a.ROE, a.EPS, a.PER, a.BPS, a.PBR, a.배당, a.업종, b.시가총액, a.매출QOQ, a.영업이익QOQ, a.자본QOQ, a.EPSQOQ
+    FROM tb_naver_fin a
+    LEFT JOIN tb_kospi b ON a.코드 = b.코드
+    WHERE a.코드 = ?
+    ORDER BY a.구분 DESC, a.기간 ASC
     """
-    
+
     try:
         with duckdb.connect(db_path) as conn:
             df = conn.execute(query, [code]).df()
-        
-        # 차트용 데이터이므로 None(NULL)은 0으로 채움
+
         return df.fillna(0)
-    
+
     except Exception as e:
         print(f"❌ DB 조회 중 오류 발생: {e}")
-        return pd.DataFrame() # 오류 시 빈 데이터프레임 반환
-
-
-
+        return pd.DataFrame()
 
 
 
