@@ -1072,66 +1072,6 @@ def partial_hoga_view(request, shcode):
 
 
 
-def st_hoga_view8(request):
-
-    mode = request.GET.get('mode', 'buy')
-
-    #print(mode)
-
-    # 기존 기능 유지
-    hoga = select_hoga('005930')
-    # print(hoga)
-
-    list_hoga = select_st_hoga(mode)
-
-    for item in list_hoga:
-
-        # 시간 문자열 변환
-        if isinstance(item.get('updated_at'), datetime):
-            item['updated_at'] = item['updated_at'].strftime('%H:%M:%S')
-
-        # 전체 호가 잔량 수집
-        rems = [
-
-            item.get('offer_rem1', 0),
-            item.get('offer_rem2', 0),
-            item.get('offer_rem3', 0),
-            item.get('offer_rem4', 0),
-            item.get('offer_rem5', 0),
-            item.get('offer_rem6', 0),
-            item.get('offer_rem7', 0),
-            item.get('offer_rem8', 0),
-            item.get('offer_rem9', 0),
-            item.get('offer_rem10', 0),
-
-            item.get('bid_rem1', 0),
-            item.get('bid_rem2', 0),
-            item.get('bid_rem3', 0),
-            item.get('bid_rem4', 0),
-            item.get('bid_rem5', 0),
-            item.get('bid_rem6', 0),
-            item.get('bid_rem7', 0),
-            item.get('bid_rem8', 0),
-            item.get('bid_rem9', 0),
-            item.get('bid_rem10', 0),
-        ]
-
-        # None 제거 + 숫자 변환
-        rems = [
-            int(r) for r in rems
-            if r not in [None, '', '-']
-        ]
-
-        # 최대 잔량 저장
-        item['max_rem'] = max(rems) if rems else 1
-
-
-    return render(request, 'strategy/st_hoga.html', {
-        'list_hoga': list_hoga,
-        'mode': request.GET.get('mode', 'buy'),
-    })
-
-
 
 
 def st_hoga_view(request):
@@ -1309,7 +1249,7 @@ def strategy_view(request):
 
 
 def st_macd_view(request):
-    mode = request.GET.get('mode', 'golden')
+    mode = request.GET.get('mode', 'buy')
     
     # 1. DB에서 한글명과 영문 코드가 깔끔히 정돈된 결과를 들고옵니다.
     cross_stocks = select_st_macd(mode)
@@ -1322,6 +1262,8 @@ def st_macd_view(request):
 
     return render(request, 'strategy/st_macd.html', {
         'mode': mode,
+        'strategy_title': '🚀 MACD 전략',
+
         'cross_stocks': cross_stocks,
         'json_stocks_data': json.dumps(json_stocks_data)
     })

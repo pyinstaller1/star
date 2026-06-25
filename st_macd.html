@@ -227,15 +227,8 @@
         const { signal } = stAbortController;
 
         fetch(`/api/st-hoga-data/?mode=${mode}`, { signal: signal })
-        //    .then(res => res.json())
-
-            .then(res => {
-        console.log(res);
-        return res.json();
-    })
+            .then(res => res.json())
             .then(data => {
-                console.log(data)
-                console.log(7)
                 document.getElementById('stock-count').innerText = `포착 종목 수: ${data.length}`;
                 if(data.length === 0) {
                     grid.innerHTML = '<div class="loading-text">포착된 종목이 없습니다. 📭</div>';
@@ -252,7 +245,33 @@
             });
     }
 
+
+
     function renderNextChunk() {
+        const grid = document.getElementById('st-grid');
+
+        const nextChunk = currentFilteredData.slice(
+            currentDisplayIndex,
+            currentDisplayIndex + PAGE_SIZE
+        );
+
+        if (nextChunk.length === 0) return;
+
+        let htmlBuffer = [];
+
+        nextChunk.forEach((item, idx) => {
+            const globalCount = currentDisplayIndex + idx + 1;
+
+            htmlBuffer.push(renderHoga(item, globalCount));
+        });
+
+        currentDisplayIndex += nextChunk.length;
+
+        grid.insertAdjacentHTML('beforeend', htmlBuffer.join(''));
+    }
+                            
+
+    function renderNextChunk8() {
         const grid = document.getElementById('st-grid');
         const nextChunk = currentFilteredData.slice(currentDisplayIndex, currentDisplayIndex + PAGE_SIZE);
         if (nextChunk.length === 0) return; 
@@ -310,7 +329,62 @@
 
 
 
+    function renderHoga(item, globalCount) {
+        const maxRem = item.max_rem || 1;
 
+        let cardHtml = `
+        <div class="st-card" onclick="selectStockCard(this, '${item.code}', '${item.name}')">
+            <div class="card-head">
+                <div style="display:flex; align-items:center; gap:5px; font-weight:700;">
+                    <input type="checkbox" class="stock-item-checkbox" data-code="${item.code}" onclick="event.stopPropagation();">
+                    <span style="font-size:15px; font-weight:700;">${globalCount}.</span>
+                    <span>${item.name}</span>
+                </div>
+            </div>
+        `;
+
+        // 🔥 매도 (offer)
+        for (let i = 10; i >= 1; i--) {
+            const rem = item[`offer_rem${i}`] || 0;
+            const price = item[`offer${i}`] || 0;
+            const widthRatio = (rem / maxRem) * 100;
+
+            cardHtml += `
+            <div class="st-row">
+                <div class="rem-cell">
+                    <div class="bar offer-bar" style="width:${widthRatio}%"></div>
+                    <span class="rem-text">${rem.toLocaleString()}</span>
+                </div>
+                <div class="price-cell offer-price" style="background-color: #f8fbff;">
+                    ${price.toLocaleString()}
+                </div>
+            </div>`;
+        }
+
+        cardHtml += `<div class="mid-line"></div>`;
+
+        // 🔥 매수 (bid)
+        for (let i = 1; i <= 10; i++) {
+            const rem = item[`bid_rem${i}`] || 0;
+            const price = item[`bid${i}`] || 0;
+            const widthRatio = (rem / maxRem) * 100;
+
+            cardHtml += `
+            <div class="st-row">
+                <div class="rem-cell">
+                    <div class="bar bid-bar" style="width:${widthRatio}%"></div>
+                    <span class="rem-text">${rem.toLocaleString()}</span>
+                </div>
+                <div class="price-cell bid-price" style="background-color: #fff8f9;">
+                    ${price.toLocaleString()}
+                </div>
+            </div>`;
+        }
+
+        cardHtml += `</div></div>`;
+
+        return cardHtml;
+    }
 
 
 
