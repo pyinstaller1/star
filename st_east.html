@@ -227,7 +227,7 @@ function selectStockCard(cardElement, stockCode, stockName) {
             const chartData = result.chart;
             const fin = result.fin;
 
-            document.getElementById('fin-sector').innerText = fin.업종 || '-';
+            document.getElementById('fin-sector').innerText = fin.업종 || '';
             document.getElementById('fin-rsi').innerText = fin.RSI || '-';
             document.getElementById('fin-eps').innerText = (fin.EPS || 0).toLocaleString('ko-KR');
             document.getElementById('fin-per').innerText = fin.PER || '-';
@@ -320,10 +320,9 @@ function renderTradingViewCandle(data) {
 
         crosshair: {
             mode: LightweightCharts.CrosshairMode.Normal,
-            vertLine: { visible: true, style: 1 },
+            vertLine: { visible: true, style: 2 },
             horzLine: { visible: false }
         },
-
 
 
         rightPriceScale: {
@@ -525,6 +524,23 @@ function renderTradingViewCandle(data) {
             width: macdContainer.clientWidth,
             height: 80,
 
+            handleScroll: false,
+            handleScale: false,
+
+
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+                vertLine: {
+                    visible: true,
+                    style: 2 // dotted
+                },
+                horzLine: {
+                    visible: false
+                }
+            },
+
+
+            
             localization: { priceFormatter: (price) => Math.round(price).toLocaleString('ko-KR') },
 
             layout: {
@@ -624,13 +640,7 @@ function renderTradingViewCandle(data) {
 
 
 
-    chart.timeScale().subscribeVisibleLogicalRangeChange(range => {
 
-        if (range) {
-            macdChart.timeScale().setVisibleLogicalRange(range);
-        }
-
-    });
 
 
 
@@ -663,6 +673,24 @@ function renderTradingViewCandle(data) {
         {
             width: supplyContainer.clientWidth,
             height: 120,
+
+            handleScroll: false,
+            handleScale: false,
+
+
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Normal,
+                vertLine: {
+                    visible: true,
+                    style: 2 // dotted
+                },
+                horzLine: {
+                    visible: false
+                }
+            },
+
+
+            
 
             localization: {
 
@@ -840,6 +868,51 @@ function showSales(type, data) {
     const head = document.getElementById(type + '_sales_head');
     const body = document.getElementById(type + '_sales_body');
 
+    const wrapper = head.closest('div');
+    const chart = document.getElementById(type + '_sales_chart');
+
+    // =========================
+    // ❌ 데이터 없음
+    // =========================
+    if (!data || data.length === 0) {
+
+        head.innerHTML = '';
+        body.innerHTML = '';
+
+        // 👉 빈 차트 숨김 (핵심)
+        if (chart) {
+            chart.parentElement.style.display = 'none';
+        }
+
+        // 기존 메시 제거
+        wrapper.querySelectorAll('.empty-msg').forEach(e => e.remove());
+
+        const msg = document.createElement('div');
+        msg.className = 'empty-msg';
+        msg.style.cssText = `
+            color:#64748b;
+            font-size:16px;
+            font-weight:600;
+            margin-top:10px;
+        `;
+        msg.innerText = '재무 데이터가 준비되지 않았습니다.\n\n';
+
+        wrapper.appendChild(msg);
+
+        return;
+    }
+
+    // =========================
+    // 데이터 있을 때 차트 복구
+    // =========================
+    if (chart) {
+        chart.parentElement.style.display = 'block';
+    }
+
+    // =========================
+    // 기존 로직
+    // =========================
+
     const fmt = p => {
         const s = String(p || '').trim().replace(' (IFRS별도)', '');
         const x = s.split('/');
@@ -855,7 +928,7 @@ function showSales(type, data) {
             `padding:0px;font-size:12px;border:1px solid #ddd;
              background:${i >= data.length - 3 ? '#eee' : '#f4f4f4'};
              color:${i >= data.length - 3 ? '#777' : '#000'};`;
-        
+
         const isE = d.기간.includes('(E)');
         th.style.width = isE ? '53px' : 'auto';
 
@@ -892,9 +965,6 @@ function showSales(type, data) {
         body.appendChild(tr);
     });
 }
-
-
-
 
 
 
@@ -1019,13 +1089,14 @@ function showSalesChart(canvasId, data) {
 
 
 
-
-
-
 function showAsset(type, data) {
 
     const head = document.getElementById(type + '_asset_head');
     const body = document.getElementById(type + '_asset_body');
+
+    // 차트까지 포함된 wrapper
+    const wrapper = head.closest('div');
+    const chartCanvas = document.getElementById(type + '_asset_chart');
 
     const fmt = p => {
         const s = String(p || '').trim().replace(' (IFRS별도)', '');
@@ -1033,6 +1104,47 @@ function showAsset(type, data) {
         return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
     };
 
+    // =========================
+    // ❌ 데이터 없음
+    // =========================
+    if (!data || data.length === 0) {
+
+        head.innerHTML = '';
+        body.innerHTML = '';
+
+        // ✅ 차트 완전 숨김 (핵심)
+        if (chartCanvas) {
+            chartCanvas.parentElement.style.display = 'none';
+        }
+
+        // 기존 메시 제거
+        wrapper.querySelectorAll('.empty-msg').forEach(e => e.remove());
+
+        const msg = document.createElement('div');
+        msg.className = 'empty-msg';
+        msg.style.cssText = `
+            color:#64748b;
+            font-size:16px;
+            font-weight:600;
+            margin-top:10px;
+        `;
+        msg.innerText = '재무 데이터가 준비되지 않았습니다.\n\n\n';
+
+        wrapper.appendChild(msg);
+
+        return;
+    }
+
+    // =========================
+    // ❌ 데이터 있을 때는 차트 다시 보이게
+    // =========================
+    if (chartCanvas) {
+        chartCanvas.parentElement.style.display = 'block';
+    }
+
+    // =========================
+    // 기존 로직
+    // =========================
 
     head.innerHTML = '<th>(억)</th>';
 
@@ -1043,8 +1155,10 @@ function showAsset(type, data) {
             `padding:0px;font-size:12px;border:1px solid #ddd;
              background:${i >= data.length - 3 ? '#eee' : '#f4f4f4'};
              color:${i >= data.length - 3 ? '#777' : '#000'};`;
+
         const isE = d.기간.includes('(E)');
         th.style.width = isE ? '53px' : 'auto';
+
         head.appendChild(th);
     });
 
@@ -1078,8 +1192,6 @@ function showAsset(type, data) {
         body.appendChild(tr);
     });
 }
-
-
 
 
 
@@ -1167,17 +1279,61 @@ function showAssetChart(canvasId, data) {
 
 
 
-
 function showCF(type, data) {
 
     const head = document.getElementById(type + '_cf_head');
     const body = document.getElementById(type + '_cf_body');
+
+    const wrapper = head.closest('div');
+    const chart = document.getElementById(type + '_cf_chart');
 
     const fmt = p => {
         const s = String(p || '').trim().replace(' (IFRS별도)', '');
         const x = s.split('/');
         return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
     };
+
+    // =========================
+    // ❌ 데이터 없음
+    // =========================
+    if (!data || data.length === 0) {
+
+        head.innerHTML = '';
+        body.innerHTML = '';
+
+        // 👉 빈 차트 숨김
+        if (chart) {
+            chart.parentElement.style.display = 'none';
+        }
+
+        // 기존 메시 제거
+        wrapper.querySelectorAll('.empty-msg').forEach(e => e.remove());
+
+        const msg = document.createElement('div');
+        msg.className = 'empty-msg';
+        msg.style.cssText = `
+            color:#64748b;
+            font-size:16px;
+            font-weight:600;
+            margin-top:10px;
+        `;
+        msg.innerText = '재무 데이터가 준비되지 않았습니다';
+
+        wrapper.appendChild(msg);
+
+        return;
+    }
+
+    // =========================
+    // 데이터 있을 때 복구
+    // =========================
+    if (chart) {
+        chart.parentElement.style.display = 'block';
+    }
+
+    // =========================
+    // 기존 로직
+    // =========================
 
     head.innerHTML = '<th>(억)</th>';
 
@@ -1188,8 +1344,10 @@ function showCF(type, data) {
             `padding:0px;font-size:12px;border:1px solid #ddd;
              background:${i >= data.length - 3 ? '#eee' : '#f4f4f4'};
              color:${i >= data.length - 3 ? '#777' : '#000'};`;
+
         const isE = d.기간.includes('(E)');
         th.style.width = isE ? '53px' : 'auto';
+
         head.appendChild(th);
     });
 

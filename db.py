@@ -1539,28 +1539,27 @@ def select_st_macd8(mode: str):
 
 import duckdb
 import pandas as pd
-import json
 import numpy as np
-from django.http import HttpResponse
 
-# 1. 종목 선정 함수 (가볍고 빠르게)
 def select_st_macd(mode: str):
+    """1. 모든 종목 리스트를 가져오는 함수 (LIMIT 제거)"""
     con = duckdb.connect(db_path)
     pattern = '0%' if mode == 'buy' else '000%' if mode == 'sell' else '001%'
     
+    # LIMIT 3000 제거: 전체 2,700여 건을 모두 조회
     query = f"""
         SELECT DISTINCT i.code, k."종목명" as name
         FROM tb_ilbong i, tb_kospi k 
         WHERE i.code = k."코드" AND i.code LIKE '{pattern}'
-        LIMIT 3000
     """
     df = con.execute(query).df()
     con.close()
-    return df.to_dict('records') # 종목 리스트만 반환
+    return df.to_dict('records')
 
-# 2. 일봉 데이터 조회 함수 (필요한 종목만 고속 조회)
 def select_st_macd_ilbong(code_list: list):
+    """2. 요청받은 종목들의 전체 일봉 데이터를 가져오는 함수 (필터링 제거)"""
     con = duckdb.connect(db_path)
+    # 쉼표로 구분된 코드 문자열 생성
     codes_str = ", ".join([f"'{c}'" for c in code_list])
     
     query = f"""
@@ -1572,8 +1571,8 @@ def select_st_macd_ilbong(code_list: list):
     df = con.execute(query).df()
     con.close()
     
-    # 3000개 슬라이싱 및 NaN 처리
-    df = df.groupby('code').tail(3000).replace({np.nan: None})
+    # NaN 처리
+    df = df.replace({np.nan: None})
     
     # [최적화] 컬럼 중심 구조(Columnar)로 반환
     return {
@@ -1583,8 +1582,6 @@ def select_st_macd_ilbong(code_list: list):
             'macd9': group['macd9'].tolist()
         } for code, group in df.groupby('code')
     }
-
-
 
 
 
