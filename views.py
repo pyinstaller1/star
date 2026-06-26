@@ -1100,7 +1100,6 @@ def st_hoga_data_view(request):
 
 def st_macd_view(request):
     mode = request.GET.get('mode', 'buy')
-
     return render(request, 'strategy/st_macd.html', {
         'mode': mode,
         'strategy_title': '🚀 MACD 전략',
@@ -1109,21 +1108,53 @@ def st_macd_view(request):
 
 
 
+
+
+
+
+def st_macd_data_view8(request):
+    mode = request.GET.get('mode', 'buy')
+    print(7)
+    
+    # 1. 데이터를 가져오는 함수 호출 (db.py에서 수정하신 함수)
+    # 이제 이 함수가 list_data와 json_ilbong을 반환한다고 가정합니다.
+    response = select_st_macd(mode)
+    print(8)
+    print(response)
+    
+    # 2. ★ 중요: 여기서 리턴을 명시적으로 해야 합니다!
+    return response
+
+
 def st_macd_data_view(request):
     mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes', None)
+    
+    # 1. 종목 리스트 요청
+    if not codes:
+        data = select_st_macd(mode)
+        return HttpResponse(json.dumps(data), content_type="application/json")
+    
+    # 2. 특정 종목들의 일봉 데이터 요청
+    else:
+        code_list = codes.split(',')
+        data = select_st_macd_ilbong(code_list)
+        return HttpResponse(json.dumps(data), content_type="application/json")
 
-    list_data =  select_st_macd(mode)
-
-    json_ilbong = {}
-
-    for item in list_data:
-        code = item['code']  # 🎯 코드가 딕셔너리의 key가 됩니다.
-        json_ilbong[code] = get_ilbong_data(code)
-
-    return JsonResponse({ 'list_data': list_data, 'json_ilbong': json_ilbong })
 
 
 
+
+
+
+
+
+
+
+
+def st_macd_ilbong_view(request):
+    code = request.GET.get('code')
+    return JsonResponse({'data': get_ilbong_data(code)})
 
 
 

@@ -214,36 +214,40 @@
 
         const westContainer = document.getElementById('west-scroll-container');
         westContainer.addEventListener('scroll', () => {
+            drawVisibleCharts();
             if ((westContainer.clientHeight + westContainer.scrollTop) >= westContainer.scrollHeight - 120) {
                 renderNextChunk();
             }
         });
     });
 
-    function loadData(mode) {
+function loadData(mode) {
         currentMode = mode;
-
         const grid = document.getElementById('st-grid');
         grid.innerHTML = '<div class="loading-text">데이터를 불러오는 중입니다... 🔄</div>';
-        document.getElementById('check-all-stocks').checked = false;
 
         if (stAbortController) { stAbortController.abort(); }
         stAbortController = new AbortController();
         const { signal } = stAbortController;
-     
 
         fetch(`/st_macd_data/?mode=${mode}`, { signal })
-            .then(res => res.json())
+            .then(res => {
+                if (!res.ok) throw new Error('서버 응답 오류');
+                return res.json();
+            })
             .then(data => {
+                // 🔥 디버깅용: 데이터 구조 확인
+                console.log("서버에서 받은 데이터:", data);
+
+                // 데이터 검증: 둘 다 있어야 함
+                if (!data || !data.list_data || !data.json_ilbong) {
+                    throw new Error("데이터 구조가 올바르지 않습니다.");
+                }
 
                 list_data = data.list_data;
                 json_ilbong = data.json_ilbong;
 
-
-
-
-                document.getElementById('stock-count').innerText =
-                    `포착 종목 수: ${list_data.length}`;
+                document.getElementById('stock-count').innerText = `포착 종목 수: ${list_data.length}`;
 
                 if (list_data.length === 0) {
                     grid.innerHTML = '<div class="loading-text">포착된 종목이 없습니다. 📭</div>';
@@ -252,26 +256,14 @@
 
                 currentFilteredData = list_data;
                 currentDisplayIndex = 0;
-
                 grid.innerHTML = '';
-
-                renderNextChunk();   // 🔥 이게 핵심
+                renderNextChunk();
             })
             .catch(err => {
-
-
-                console.error("FETCH ERROR:", err);   // 🔥 이거 꼭 추가
-
-
-                
+                console.error("FETCH ERROR:", err);
                 if (err.name === 'AbortError') return;
-
-                
-                grid.innerHTML =
-                    '<div class="loading-text" style="color:#ef4444;">데이터를 불러오는 중 오류가 발생했습니다. ❌</div>';
+                grid.innerHTML = `<div class="loading-text" style="color:#ef4444;">오류 발생: ${err.message} ❌</div>`;
             });
-
-   
     }
 
 
@@ -305,14 +297,13 @@
 
         requestAnimationFrame(drawVisibleCharts);
     }
-                            
 
 
 
 
     function renderSt(item, globalCount) {
-
-        const macdData = json_ilbong[item.code] || [];
+        // 🔥 안전한 데이터 접근
+        const data = (json_ilbong && json_ilbong[item.code]) ? json_ilbong[item.code] : null;
 
         let cardHtml = `
         <div class="st-card" onclick="selectStockCard(this, '${item.code}', '${item.name}')">
@@ -323,112 +314,84 @@
                     <span>${item.name}</span>
                 </div>
             </div>
-
             <div class="macd-box" id="macd-${item.code}" style="height:120px;"></div>
         </div>
         `;
-
         return cardHtml;
     }
 
 
 
+    function drawVisibleCharts() {
+        const boxes = document.querySelectorAll('.macd-box');
+        const viewportHeight = window.innerHeight;
 
-    function drawVisibleCharts(){
+        for (const el of boxes) {
+            // 이미 그려진 차트는 건너뜀
+            if (el.dataset.done === "1") continue;
 
-        document.querySelectorAll('.macd-box').forEach(el => {
-
-            if(el.dataset.done) return;
-
+            // 요소의 위치 계산
             const rect = el.getBoundingClientRect();
-            if(rect.top < window.innerHeight && rect.bottom > 0){
 
-                const code = el.id.replace('macd-','');
-                const data = json_ilbong[code];
-
-                const chart = LightweightCharts.createChart(el,{
-                    width: el.clientWidth,
-                    height: 120,
-
-                    
-
-                    layout:{
-                        background:{type:'Solid',color:'#fff'},
-                        textColor:'#64748b',
-                        attributionLogo: false,
-                    },
-
-                    grid:{
-                        vertLines:{visible:false},
-                        horzLines:{visible:false}
-                    },
-
-                    timeScale:{
-                        visible:true,
-                        timeVisible:true,
-                        secondsVisible:false
-                    },
-
-                    crosshair: {
-                        vertLine: {
-                            visible: true,
-                            labelVisible: false,
-                            width: 1,
-                            style: LightweightCharts.LineStyle.Dashed
-                        },
-                        horzLine: {
-                            visible: false,
-                            labelVisible: false
-                        },
-                    },
-
-                    localization: {
-                        priceFormatter: (price) =>
-                            Math.round(price).toLocaleString('ko-KR')
-                    }
-                });
-
-
-
+            // 화면 안에 들어온 경우에만 렌더링
+            if (rect.top < viewportHeight && rect.bottom > 0) {
                 
-
-                const macd = chart.addSeries(LightweightCharts.LineSeries,{color:'#1976D2',lineWidth:1.5, priceLineVisible: false});
-                const signal = chart.addSeries(LightweightCharts.LineSeries,{color:'#FF9800',lineWidth:1.5, priceLineVisible: false});
-
-                const fixed = data.map(d => ({
-                    time: d.date.slice(0,4)+'-'+d.date.slice(4,6)+'-'+d.date.slice(6,8),
-                    value: d.macd
-                }));
-
-                const fixed2 = data.map(d => ({
-                    time: d.date.slice(0,4)+'-'+d.date.slice(4,6)+'-'+d.date.slice(6,8),
-                    value: d.macd9
-                }));
-
-                macd.setData(fixed);
-                signal.setData(fixed2);
-
-                el.dataset.done = "1";
-
-
-
-                macd.applyOptions({
-                    lineWidth: 1,
-                    crosshairMarkerVisible: false
-                });
-
-                signal.applyOptions({
-                    lineWidth: 1,
-                    crosshairMarkerVisible: false
-                });
-
-
-
-
+                // 중복 실행 방지
+                el.dataset.done = "1"; 
+                const code = el.id.replace('macd-', '');
                 
+                // 서버 fetch 없이, 이미 로드된 전역 변수 json_ilbong 사용
+                const data = json_ilbong[code]; 
+
+                if (!data || !data.date || data.date.length === 0) continue;
+
+                try {
+                    // 차트 생성
+                    const chart = LightweightCharts.createChart(el, {
+                        width: el.clientWidth,
+                        height: 120,
+                        layout: { 
+                            background: { type: 'Solid', color: '#fff' }, 
+                            textColor: '#64748b', 
+                            attributionLogo: false 
+                        },
+                        grid: { vertLines: { visible: false }, horzLines: { visible: false } },
+                        timeScale: { visible: true, timeVisible: true, secondsVisible: false },
+                        crosshair: {
+                            vertLine: { visible: true, labelVisible: false, width: 1, style: LightweightCharts.LineStyle.Dotted },
+                            horzLine: { visible: false, labelVisible: false },
+                        },
+                        localization: { priceFormatter: (price) => Math.round(price).toLocaleString('ko-KR') }
+                    });
+
+                    const macd = chart.addSeries(LightweightCharts.LineSeries, { 
+                        color: '#1976D2', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false 
+                    });
+                    const signal = chart.addSeries(LightweightCharts.LineSeries, { 
+                        color: '#FF9800', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false 
+                    });
+
+                    // 데이터 구조가 배열 방식 {date: [], macd: [], macd9: []}으로 변경되었으므로 매핑 방식 변경
+                    const fixed = data.date.map((d, i) => ({
+                        time: d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8),
+                        value: data.macd[i]
+                    }));
+                    const fixed2 = data.date.map((d, i) => ({
+                        time: d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8),
+                        value: data.macd9[i]
+                    }));
+
+                    macd.setData(fixed);
+                    signal.setData(fixed2);
+
+                } catch (err) {
+                    console.error("차트 로드 실패:", code, err);
+                    el.dataset.done = ""; // 실패 시 다시 시도할 수 있게 초기화
+                }
             }
-        });
+        }
     }
+
 
 
 
