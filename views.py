@@ -164,7 +164,10 @@ def fin_gwansim_view(request):
 
 
 
-def index7_view(request):
+def index_view(request):
+    code = request.GET.get('code', '005930')
+    name = request.GET.get('name', '삼성전자')
+    
     raw_groups = select_tb_gwansim_group()
     groups_data = []
     
@@ -218,7 +221,7 @@ def index7_view(request):
 
 
 
-    list_ilbong = get_ilbong_db('005930')
+    list_ilbong = get_ilbong_db(code)
     if list_ilbong:
         list_ilbong = list_ilbong[::-1]
 
@@ -230,7 +233,7 @@ def index7_view(request):
 
     last_update_str = "미정"
     try:
-        sam_data = get_ilbong_data('005930')
+        sam_data = get_ilbong_data(code)
         if sam_data:
             last_day = sam_data[-1]
             raw_date = str(last_day.get('date', '')).strip()
@@ -260,11 +263,13 @@ def index7_view(request):
 
     
 
-    return render(request, 'index7.html', {
+    return render(request, 'index.html', {
         'list_ilbong': json.dumps(list_ilbong),
         'groups': groups_data,
         'kospi': kospi_list,
         'last_update': last_update_str,
+        'init_code': code,
+        'init_name': name,
 
 
 
@@ -1149,6 +1154,228 @@ def st_macd_data_view(request):
 
 
 
+def st_rsi_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_rsi.html', {
+        'mode': mode,
+        'strategy_title': '🚀 RSI 전략',
+    })
+
+
+def st_rsi_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes', None)
+
+    if not codes:
+        data = select_st_rsi(mode)
+        return JsonResponse({'list_data': data})
+
+    code_list = codes.split(',')
+
+    data = select_st_rsi_ilbong(code_list)
+
+    return JsonResponse(data)
+
+
+
+
+
+
+
+def st_bol_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_bol.html', {
+        'mode': mode,
+        'strategy_title': '🚀 볼린저 밴드 전략',
+    })
+
+
+def st_bol_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes', None)
+
+    if not codes:
+        data = select_st_bol(mode)
+        return JsonResponse({'list_data': data})
+
+    code_list = codes.split(',')
+
+    data = select_st_bol_ilbong(code_list)
+
+    return JsonResponse(data)
+
+
+
+
+
+
+def st_ilmok_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_ilmok.html', {
+        'mode': mode,
+        'strategy_title': '🚀 일목균형표 전략',
+    })
+
+
+def st_ilmok_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes', None)
+
+    if not codes:
+        data = select_st_ilmok(mode)
+        return JsonResponse({'list_data': data})
+
+    code_list = codes.split(',')
+
+    data = select_st_ilmok_ilbong(code_list)
+
+    # print(data[next(iter(data))])
+
+    return JsonResponse(data)
+
+
+
+
+
+
+
+def st_vol_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_vol.html', {
+        'mode': mode,
+        'strategy_title': '🚀 거래량 전략',
+    })
+
+
+def st_vol_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
+
+    if not codes:
+        data = select_st_vol(mode)
+        return JsonResponse({'list_data': data})
+
+    data = select_st_vol_ilbong(codes.split(','))
+
+    return JsonResponse(data)
+
+
+
+
+
+
+
+
+
+def st_ma5_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_ma5.html', {
+        'mode': mode,
+        'strategy_title': '📈 MA5 전략',
+    })
+
+
+def st_ma5_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
+
+    if not codes:
+        data = select_st_ma5(mode)
+        return JsonResponse({'list_data': data})
+
+    data = select_st_ma5_ilbong(codes.split(','))
+
+    return JsonResponse(data)
+
+
+
+
+
+
+
+
+
+
+def st_ma20_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_ma20.html', {
+        'mode': mode,
+        'strategy_title': '📈 MA20 전략',
+    })
+
+
+def st_ma20_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
+
+    if not codes:
+        data = select_st_ma20(mode)
+        return JsonResponse({'list_data': data})
+
+    data = select_st_ma20_ilbong(codes.split(','))
+
+    return JsonResponse(data)
+
+
+
+
+
+
+
+def st_sales_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_sales.html', {
+        'mode': mode,
+        'strategy_title': '📊 매출/영업이익 전략',
+    })
+
+
+def st_sales_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
+
+    if not codes:
+        data = select_st_sales(mode)
+        return JsonResponse({'list_data': data})
+
+    data = select_st_sales_fin(codes.split(','))
+
+    return JsonResponse(data)
+
+
+
+
+
+
+
+
+def st_salesqoq_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_salesqoq.html', {
+        'mode': mode,
+        'strategy_title': '📈 매출/영업이익 성장률 전략',
+    })
+
+
+def st_salesqoq_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
+
+    if not codes:
+        data = select_st_salesqoq(mode)
+        return JsonResponse({'list_data': data})
+
+    data = select_st_salesqoq_fin(codes.split(','))
+
+    return JsonResponse(data)
 
 
 
@@ -1160,6 +1387,128 @@ def st_macd_data_view(request):
 
 
 
+def st_asset_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_asset.html', {
+        'mode': mode,
+        'strategy_title': '🏦 자산/부채 전략',
+    })
+
+
+def st_asset_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
+
+    if not codes:
+        data = select_st_asset(mode)
+        return JsonResponse({'list_data': data})
+
+    data = select_st_asset_fin(codes.split(','))
+
+    return JsonResponse(data)
+
+
+
+
+
+def st_cf_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_cf.html', {
+        'mode': mode,
+        'strategy_title': '💰 현금흐름 전략',
+    })
+
+
+def st_cf_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
+
+    if not codes:
+        data = select_st_cf(mode)
+        return JsonResponse({'list_data': data})
+
+    data = select_st_cf_fin(codes.split(','))
+
+    return JsonResponse(data)
+
+
+
+
+
+def st_eps_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_eps.html', {
+        'mode': mode,
+        'strategy_title': '📈 EPS 전략',
+    })
+
+
+def st_eps_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
+
+    if not codes:
+        data = select_st_eps(mode)
+        return JsonResponse({'list_data': data})
+
+    data = select_st_eps_fin(codes.split(','))
+
+    return JsonResponse(data)
+
+
+
+
+
+
+
+def st_epsqoq_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_epsqoq.html', {
+        'mode': mode,
+        'strategy_title': '📈 EPS 성장률 전략',
+    })
+
+
+def st_epsqoq_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
+
+    if not codes:
+        data = select_st_epsqoq(mode)
+        return JsonResponse({'list_data': data})
+
+    data = select_st_epsqoq_fin(codes.split(','))
+
+    return JsonResponse(data)
+
+
+
+
+
+def st_margin_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_margin.html', {
+        'mode': mode,
+        'strategy_title': '📈 영업이익률 전략',
+    })
+
+
+def st_margin_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
+
+    if not codes:
+        data = select_st_margin(mode)
+        return JsonResponse({'list_data': data})
+
+    data = select_st_margin_fin(codes.split(','))
+
+    return JsonResponse(data)
 
 
 
@@ -1168,26 +1517,52 @@ def st_macd_data_view(request):
 
 
 
-def st_macd_ilbong_view(request):
-    code = request.GET.get('code')
-    return JsonResponse({'data': get_ilbong_data(code)})
+def st_roe_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_roe.html', {
+        'mode': mode,
+        'strategy_title': '📈 ROE 전략',
+    })
+
+
+def st_roe_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
+
+    if not codes:
+        data = select_st_roe(mode)
+        return JsonResponse({'list_data': data})
+
+    data = select_st_roe_fin(codes.split(','))
+
+    return JsonResponse(data)
 
 
 
 
 
 
+def st_dept_view(request):
+    mode = request.GET.get('mode', 'buy')
+
+    return render(request, 'strategy/st_dept.html', {
+        'mode': mode,
+        'strategy_title': '📉 부채비율 전략',
+    })
 
 
+def st_dept_data_view(request):
+    mode = request.GET.get('mode', 'buy')
+    codes = request.GET.get('codes')
 
+    if not codes:
+        data = select_st_dept(mode)
+        return JsonResponse({'list_data': data})
 
+    data = select_st_dept_fin(codes.split(','))
 
-
-
-
-
-
-
+    return JsonResponse(data)
 
 
 
@@ -1330,16 +1705,8 @@ def stop_hoga_view(request):
 
 
 
-
 def strategy_view(request):
-    strategies = [
-        {'id': 'st_macd', 'name': 'MACD 전략', 'desc': 'MACD 골든크로스 및 데드크로스를 이용한 추세 매매전략'},
-        {'id': 'st_hoga', 'name': '호가창 전략', 'desc': '실시간 잔량 및 체결 강도를 분석하는 단타 전략'},
-    ]
-    return render(request, 'strategy/strategy.html', {
-        'strategies': strategies
-    })
-
+    return render(request, 'strategy/strategy.html')
 
 
 
@@ -1459,6 +1826,10 @@ def get_naver_fin_view(request):
 
 
 def fin_view(request):
+
+    code = request.GET.get('code', '005930')
+    name = request.GET.get('name', '삼성전자')
+    
     raw_groups = select_tb_gwansim_group()
     groups_data = []
 
@@ -1496,7 +1867,9 @@ def fin_view(request):
 
     return render(request, 'fin.html', {
         'groups': groups_data,
-        'kospi': kospi
+        'kospi': kospi,
+        'init_code': code,
+        'init_name': name,
     })
 
 

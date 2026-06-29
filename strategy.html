@@ -3,129 +3,294 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>📊 매매전략</title>
+  <title>🚀 매매전략</title>
+
   <style>
     @import url("{% static 'pretendard/pretendard.css' %}");
-    
+
     body {
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-      background-color: #ffffff; 
+      background-color: #ffffff;
       margin: 25px;
       color: #1e293b;
     }
-    
+
+    /* ================= HEADER ================= */
     .header-container {
       display: flex;
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid #f1f5f9;
-      padding-bottom: 14px; /* 헤더 여백도 살짝 축소 */
+      padding-bottom: 10px;
       margin-bottom: 20px;
-      width: 100%;
     }
-    
+
     h1 {
       margin: 0;
       font-size: 24px;
       font-weight: 700;
       color: #0f172a;
     }
-    
+
     .back-btn {
       padding: 6px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
       background-color: #64748b;
       color: white;
-      border: none;
+
       border-radius: 8px;
-      cursor: pointer;
+      font-size: 18px;
       font-weight: 600;
       text-decoration: none;
-      font-size: 13.5px;
+      width: 100px;
     }
-    
-    .back-btn:hover {
-      background-color: #475569;
-    }
-    
+
+    /* ================= GRID ================= */
     .strategy-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(calc(14.285% - 13px), 1fr));
-      gap: 12px; /* 격자 간격도 15px -> 12px로 줄여 컴팩트하게 밀착 */
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
       width: 100%;
     }
-    
+
+    /* ================= CARD ================= */
     .strategy-card {
       background: #ffffff;
       border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 14px 16px; /* 💡 상하 패딩을 20px -> 14px로 대폭 줄여 높이 축소 */
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
-      min-height: 65px;   /* 💡 최소 높이를 100px -> 65px로 낮춰 슬림하게 빌드 */
-    }
-    
-    .strategy-card:hover {
+      border-radius: 8px;
+
+      padding: 8px 10px;
+      min-height: 60px;
+
       cursor: pointer;
-      background-color: #fcfcff;
-      border-color: #cbcbf6;
-      box-shadow: 0 8px 12px -3px rgba(59, 130, 246, 0.04);
+      transition: 0.2s;
     }
-    
+
+    .strategy-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.10);
+      border-color: #c7d2fe;
+    }
+
+    /* ================= HEADER ROW ================= */
+    .strategy-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+
+    /* ================= TITLE ================= */
     .strategy-name {
-      font-size: 19px; 
-      font-weight: 700;
-      margin-bottom: 6px; /* 💡 제목과 설명 사이 간격 축소 */
-      color: #0f172a; 
+      font-size: 18px;
+      font-weight: 800;
+
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+
+      flex: 1;
+      line-height: 1.2;
     }
-    
+
+    /* ================= SQL BUTTON ================= */
+    .sql-btn {
+      font-size: 13px;
+      padding: 6px 10px;
+
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      border-radius: 5px;
+
+      cursor: pointer;
+      font-weight: 700;
+      min-width: 55px;
+    }
+
+    .sql-btn:hover {
+      background: #e0e7ff;
+    }
+
+    /* ================= DESC ================= */
     .strategy-desc {
-      font-size: 14px; 
-      color: #334155; 
-      line-height: 1.4; /* 💡 행간을 1.5 -> 1.4로 미세하게 좁혀 수직 공간 절약 */
+      font-size: 12px;
+      line-height: 1.25;
+
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
+
+      color: #334155;
+      margin-top: 12px;
     }
 
-    @media (max-width: 1500px) {
-      .strategy-grid {
-        grid-template-columns: repeat(auto-fill, minmax(calc(25% - 10px), 1fr));
-      }
+    /* ================= MODAL ================= */
+    #sqlModal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 3000;
     }
 
-    @media (max-width: 1024px) {
-      .strategy-grid {
-        grid-template-columns: repeat(auto-fill, minmax(calc(33.333% - 8px), 1fr));
-      }
+    .modal-box {
+      width: 700px;
+      height: 710px;
+
+      background: #fff;
+      margin: 80px auto;
+      border-radius: 12px;
+
+      padding: 17px;
+      box-sizing: border-box;
+
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
     }
-    
-    @media (max-width: 640px) {
-      .strategy-grid {
-        grid-template-columns: 1fr;
-      }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
+
+    #sql-title {
+      margin: 0;
+      font-size: 23px;
+      font-weight: 700;
+    }
+
+    .close-btn {
+      width: 100px;
+      height: 38px;
+
+      background: #94a3b8;
+      color: white;
+
+      border: none;
+      border-radius: 6px;
+
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    #sql-box {
+      width: 100%;
+      height: 620px;
+
+      margin-top: 10px;
+      padding: 10px;
+
+      font-family: Consolas, monospace;
+      font-size: 13px;
+
+      white-space: pre;
+      overflow: auto;
+
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+    }
+
   </style>
 </head>
+
 <body>
 
-  <div class="header-container">
-    <h1>📊 매매전략</h1>
-    <a href="{% url 'index' %}" class="back-btn">← 메인 페이지</a>
+<!-- HEADER -->
+<div class="header-container">
+  <h1>🚀 매매전략</h1>
+  <a href="{% url 'index' %}" class="back-btn">← 메인으로</a>
+</div>
+
+<!-- ================= STRATEGIES (HTML ONLY) ================= -->
+<div class="strategy-grid">
+
+  <!-- MACD -->
+  <div class="strategy-card"
+       onclick="location.href='/st_macd/'">
+
+    <div class="strategy-header">
+      <div class="strategy-name">MACD 전략</div>
+
+      <button class="sql-btn"
+        onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_macd, 'MACD 전략')">
+        SQL
+      </button>
+    </div>
+
+    <div class="strategy-desc">
+      MACD 골든크로스 및 데드크로스를 이용한 추세 매매전략
+    </div>
+
   </div>
 
-  <div class="strategy-grid">
-    {% for strategy in strategies %}
-      <div class="strategy-card" onclick="location.href='/{{ strategy.id }}/'">
-        <div class="strategy-name" title="{{ strategy.name }}">{{ strategy.name }}</div>
-        <div class="strategy-desc">{{ strategy.desc }}</div>
-      </div>
-    {% empty %}
-      <p style="color: #94a3b8;">등록된 매매 전략이 없습니다.</p>
-    {% endfor %}
+  <!-- HOGA -->
+  <div class="strategy-card"
+       onclick="location.href='/st_hoga/'">
+
+    <div class="strategy-header">
+      <div class="strategy-name">호가창 전략</div>
+
+      <button class="sql-btn"
+        onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_hoga, '호가창 전략')">
+        SQL
+      </button>
+    </div>
+
+    <div class="strategy-desc">
+      실시간 잔량 및 체결 강도를 분석하는 단타 전략
+    </div>
+
   </div>
+
+</div>
+
+<!-- ================= SQL MAP ================= -->
+<script>
+const SQL_MAP = {
+  st_macd: `
+SELECT *
+FROM stock
+WHERE macd_signal = 'golden_cross'
+  `,
+
+  st_hoga: `
+SELECT *
+FROM orderbook
+WHERE bid_strength > ask_strength
+  `
+};
+</script>
+
+<!-- ================= MODAL ================= -->
+<div id="sqlModal">
+  <div class="modal-box">
+
+    <div class="modal-header">
+      <h3 id="sql-title">전략 SQL</h3>
+      <button class="close-btn" onclick="closeSqlModal()">닫기</button>
+    </div>
+
+    <div id="sql-box"></div>
+
+  </div>
+</div>
+
+<script>
+function openSqlModal(sqlText, title) {
+  document.getElementById('sql-title').innerText = title + " SQL";
+  document.getElementById('sql-box').textContent = sqlText;
+  document.getElementById('sqlModal').style.display = 'block';
+}
+
+function closeSqlModal() {
+  document.getElementById('sqlModal').style.display = 'none';
+}
+</script>
 
 </body>
 </html>
