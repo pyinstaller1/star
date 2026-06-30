@@ -1089,7 +1089,9 @@ def st_hoga_view(request):
             <button class="btn" onclick="startHogaWindow('/hoga_stream/')" style="padding:8px 16px;background:#2563eb;color:white;cursor:pointer;">
                 📊 호가틱 수집
             </button>
-        '''
+        ''',
+        'st_id': 'st_hoga',
+
     })
 
 
@@ -1123,6 +1125,7 @@ def st_macd_view(request):
     return render(request, 'strategy/st_macd.html', {
         'mode': mode,
         'strategy_title': '🚀 MACD 전략',
+        'st_id': 'st_macd',
     })
 
 def st_macd_data_view(request):
@@ -1160,6 +1163,8 @@ def st_rsi_view(request):
     return render(request, 'strategy/st_rsi.html', {
         'mode': mode,
         'strategy_title': '🚀 RSI 전략',
+        'st_id': 'st_rsi',
+
     })
 
 
@@ -1189,6 +1194,7 @@ def st_bol_view(request):
     return render(request, 'strategy/st_bol.html', {
         'mode': mode,
         'strategy_title': '🚀 볼린저 밴드 전략',
+        'st_id': 'st_bol',        
     })
 
 
@@ -1217,6 +1223,7 @@ def st_ilmok_view(request):
     return render(request, 'strategy/st_ilmok.html', {
         'mode': mode,
         'strategy_title': '🚀 일목균형표 전략',
+        'st_id': 'st_ilmok',        
     })
 
 
@@ -1248,6 +1255,7 @@ def st_vol_view(request):
     return render(request, 'strategy/st_vol.html', {
         'mode': mode,
         'strategy_title': '🚀 거래량 전략',
+        'st_id': 'st_vol',        
     })
 
 
@@ -1277,6 +1285,7 @@ def st_ma5_view(request):
     return render(request, 'strategy/st_ma5.html', {
         'mode': mode,
         'strategy_title': '📈 MA5 전략',
+        'st_id': 'st_ma5',        
     })
 
 
@@ -1307,6 +1316,7 @@ def st_ma20_view(request):
     return render(request, 'strategy/st_ma20.html', {
         'mode': mode,
         'strategy_title': '📈 MA20 전략',
+        'st_id': 'st_ma20',
     })
 
 
@@ -1334,6 +1344,7 @@ def st_sales_view(request):
     return render(request, 'strategy/st_sales.html', {
         'mode': mode,
         'strategy_title': '📊 매출/영업이익 전략',
+        'st_id': 'st_sales',        
     })
 
 
@@ -1362,6 +1373,7 @@ def st_salesqoq_view(request):
     return render(request, 'strategy/st_salesqoq.html', {
         'mode': mode,
         'strategy_title': '📈 매출/영업이익 성장률 전략',
+        'st_id': 'st_salesqoq',        
     })
 
 
@@ -1393,6 +1405,7 @@ def st_asset_view(request):
     return render(request, 'strategy/st_asset.html', {
         'mode': mode,
         'strategy_title': '🏦 자산/부채 전략',
+        'st_id': 'st_asset',
     })
 
 
@@ -1418,6 +1431,7 @@ def st_cf_view(request):
     return render(request, 'strategy/st_cf.html', {
         'mode': mode,
         'strategy_title': '💰 현금흐름 전략',
+        'st_id': 'st_cf',        
     })
 
 
@@ -1443,6 +1457,7 @@ def st_eps_view(request):
     return render(request, 'strategy/st_eps.html', {
         'mode': mode,
         'strategy_title': '📈 EPS 전략',
+        'st_id': 'st_eps',        
     })
 
 
@@ -1470,6 +1485,7 @@ def st_epsqoq_view(request):
     return render(request, 'strategy/st_epsqoq.html', {
         'mode': mode,
         'strategy_title': '📈 EPS 성장률 전략',
+        'st_id': 'st_epsqoq',
     })
 
 
@@ -1495,6 +1511,7 @@ def st_margin_view(request):
     return render(request, 'strategy/st_margin.html', {
         'mode': mode,
         'strategy_title': '📈 영업이익률 전략',
+        'st_id': 'st_margin',        
     })
 
 
@@ -1523,6 +1540,7 @@ def st_roe_view(request):
     return render(request, 'strategy/st_roe.html', {
         'mode': mode,
         'strategy_title': '📈 ROE 전략',
+        'st_id': 'st_roe',        
     })
 
 
@@ -1549,6 +1567,7 @@ def st_dept_view(request):
     return render(request, 'strategy/st_dept.html', {
         'mode': mode,
         'strategy_title': '📉 부채비율 전략',
+        'st_id': 'st_dept',
     })
 
 
@@ -2035,6 +2054,35 @@ def get_ilbong_view(request):
         'list_financial': list_financial,
         # 'list_quarter': list_quarter
     }, safe=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+def golden_view(request):
+    return render(request, "golden.html")
+
+
+@require_POST
+def golden_api_view(request):
+
+    data = json.loads(request.body)
+    sql = data.get("sql", "").strip()
+
+    result = select_golden(sql)
+
+    return JsonResponse(result)
+
+
+
 
 
 

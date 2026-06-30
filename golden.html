@@ -1,0 +1,409 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>🟡 Golden</title>
+
+<style>
+
+@import url("{% static 'pretendard/pretendard.css' %}");
+
+body{
+    margin:15px;
+    font-family:'Pretendard',sans-serif;
+    background:#fff;
+}
+
+h2{
+    margin:0;
+}
+
+.title-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:10px;
+}
+
+.home-btn{
+    width:120px;
+    height:34px;
+
+    display:flex;
+    align-items:center;
+    justify-content:center;
+
+    border:0px solid #94a3b8;
+    border-radius:6px;
+
+    background:#64748b;
+    color:#fff;
+
+    font-size:15px;
+    font-weight:600;
+
+    cursor:pointer;
+    line-height:1;
+}
+
+.home-btn:hover{
+    background:#475569;
+}
+
+#sql{
+    width:100%;
+    height:180px;
+    padding:10px;
+    box-sizing:border-box;
+    font-family:Consolas;
+    font-size:14px;
+    resize:vertical;
+}
+
+
+
+button{
+    width:90px;
+    height:34px;
+    cursor:pointer;
+}
+
+
+
+.toolbar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin:10px 0;
+}
+
+.toolbar button{
+    width:80px;
+    height:32px;
+}
+
+.run-btn{
+    width:110px !important;
+    height:36px !important;
+
+    margin-right:55px;
+
+    background:#2563eb;
+    color:#fff;
+    border:1px solid #1d4ed8;
+
+    border-radius:6px;
+
+    font-size:15px;
+    font-weight:700;
+
+    cursor:pointer;
+}
+
+.run-btn:hover{
+    background:#1d4ed8;
+}
+
+
+
+
+
+
+#loading{
+    display:none;
+    color:#2563eb;
+    font-weight:600;
+}
+
+.spinner{
+    display:inline-block;
+    width:14px;
+    height:14px;
+    margin-right:6px;
+    border:2px solid #ddd;
+    border-top:2px solid #2563eb;
+    border-radius:50%;
+    animation:spin .8s linear infinite;
+    vertical-align:-2px;
+}
+
+@keyframes spin{
+    to{transform:rotate(360deg);}
+}
+
+#result{
+    margin-top:10px;
+    height:570px;
+    overflow:auto;
+    border:1px solid #ccc;
+}
+
+table{
+    border-collapse:collapse;
+    width:auto;
+}
+
+th,td{
+    border:1px solid #ddd;
+    padding:4px 8px;
+    white-space:nowrap;
+    font-size:13px;
+}
+
+th{
+    position:sticky;
+    top:0;
+    background:#f5f5f5;
+    text-align:center;
+}
+
+.rowno{
+    width:30px;
+    min-width:30px;
+    padding:4px 6px;
+    text-align:right;
+    color:#999;
+    background:#fafafa;
+}
+
+.num{
+    text-align:right;
+}
+
+.text{
+    text-align:left;
+}
+
+#error{
+    color:red;
+    padding:10px;
+}
+
+
+</style>
+</head>
+
+<body>
+
+<div class="title-bar">
+    <h2>🟡 Golden</h2>
+
+
+    <div style="display:flex;align-items:center;gap:8px;">
+
+        <a href="{% url 'strategy' %}" style="text-decoration:none;height:100%;">
+            <button
+                type="button"
+                onmouseover="this.style.background='#f0f7ff'"
+                onmouseout="this.style.background='#ffffff'"
+                style="width:110px; height:34px;background:#ffffff;border:1px solid #555;color:#111;padding:0 7px;cursor:pointer;border-radius:5px;font-size:15px;font-weight:550;">
+                🚀 매매전략
+            </button>
+        </a>
+
+        <button class="home-btn" onclick="location.href='/'">
+            ← 메인으로
+        </button>
+
+    </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<textarea id="sql">SELECT * FROM TB_KOSPI</textarea>
+
+
+<div class="toolbar">
+
+    <button class="run-btn" onclick="runSql()">실행</button>
+
+    <div id="loading">
+        <span class="spinner"></span>
+        조회중...
+    </div>
+
+
+
+    <button onclick="sampleKospi()">코스피</button>
+    <button onclick="sampleIlbong()">일봉</button>
+    <button onclick="sampleFin()">재무</button>
+    <button onclick="sampleHoga()">호가</button>
+
+
+
+
+
+    
+
+</div>
+
+<div id="result"></div>
+
+<script>
+
+function getCookie(name){
+
+    let value=null;
+
+    document.cookie.split(";").forEach(c=>{
+
+        c=c.trim();
+
+        if(c.startsWith(name+"="))
+            value=decodeURIComponent(c.substring(name.length+1));
+
+    });
+
+    return value;
+}
+
+
+async function runSql(){
+
+    document.getElementById("loading").style.display="block";
+
+    document.getElementById("result").innerHTML="";
+
+    const sql=document.getElementById("sql").value;
+
+    try{
+
+        const res=await fetch("/golden_api/",{
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":"application/json",
+                "X-CSRFToken":getCookie("csrftoken")
+            },
+
+            body:JSON.stringify({sql})
+
+        });
+
+        const data=await res.json();
+
+        document.getElementById("loading").style.display="none";
+
+        if(data.error){
+
+            document.getElementById("result").innerHTML=
+                `<div id="error">${data.error}</div>`;
+
+            return;
+        }
+
+        let html="<table>";
+
+        html+="<tr>";
+        html+="<th class='rowno'>No</th>";
+
+        data.columns.forEach(c=>{
+            html+=`<th>${c}</th>`;
+        });
+
+        html+="</tr>";
+
+        data.rows.forEach((row,idx)=>{
+
+            html+="<tr>";
+
+            html+=`<td class="rowno">${idx+1}</td>`;
+
+            row.forEach(v=>{
+
+
+                const raw = String(v).replace(/,/g, '');
+                const isNum = !isNaN(raw) && raw !== '';
+
+                html += `<td class="${isNum ? "num" : "text"}">
+                            ${isNum ? Number(raw).toLocaleString() : (v ?? "")}
+                         </td>`;
+
+
+
+
+            });
+
+            html+="</tr>";
+
+        });
+
+        html+="</table>";
+
+        document.getElementById("result").innerHTML=html;
+
+    }
+    catch(err){
+
+        document.getElementById("loading").style.display="none";
+
+        document.getElementById("result").innerHTML=
+            `<div id="error">${err}</div>`;
+
+    }
+
+}
+
+
+
+
+function sampleKospi(){
+
+    document.getElementById("sql").value =
+`SELECT *
+FROM TB_KOSPI`;
+
+}
+
+function sampleIlbong(){
+
+    document.getElementById("sql").value =
+`SELECT *
+FROM TB_ILBONG
+WHERE code='005930'`;
+
+}
+
+function sampleHoga(){
+
+    document.getElementById("sql").value =
+`SELECT *
+FROM TB_HOGA
+WHERE code='005930'`;
+
+}
+
+function sampleFin(){
+
+    document.getElementById("sql").value =
+`SELECT *
+FROM TB_NAVER_FIN
+WHERE 코드='005930'`;
+
+}
+
+
+
+
+</script>
+
+</body>
+</html>

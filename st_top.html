@@ -15,23 +15,23 @@
 
 .title-area h1 {
     margin: 0;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 700;
 }
 
 .title-area span {
-    font-size: 12px;
+    font-size: 15px;
     color: #64748b;
 }
 
 .right-control-area {
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 5px;
 }
 
 .btn {
-    padding: 8px 16px;
+    padding: 8px 12px;
     border-radius: 8px;
     font-size: 14px;
     font-weight: 700;
@@ -42,6 +42,11 @@
     color: white;
 }
 
+.btn:hover {
+    filter: brightness(1.15);
+    transform: translateY(-1px);
+}
+
 </style>
 
 
@@ -50,23 +55,26 @@
 
     <div class="title-area">
         <h1>{{ strategy_title|default:"전략" }}</h1>
-        <span id="stock-count">포착 종목 수: 계산 중...</span>
+        <span id="stock-count">종목 수: 계산 중...</span>
     </div>
 
     <div class="right-control-area">
 
-        <label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;cursor:pointer;user-select:none;">
-            <input type="checkbox" id="check-all-stocks" style="width:16px;height:16px;cursor:pointer;">
-            전체 선택
-        </label>
-
-        <button type="button" class="btn" onclick="openGroupModal()" style="background-color:#2563eb;">🌟 관심종목 추가</button>
 
         <div style="display:flex;align-items:center;gap:15px;margin-right:15px;padding:5px 15px;border:1px solid #e2e8f0;border-radius:8px;background-color:#f8fafc;">
             <label style="font-size:15px;cursor:pointer;"><input type="radio" name="mode" value="buy" {% if mode == 'buy' %}checked{% endif %} onchange="loadData(this.value)"> 매수 📈</label>
             <label style="font-size:15px;cursor:pointer;"><input type="radio" name="mode" value="sell" {% if mode == 'sell' %}checked{% endif %} onchange="loadData(this.value)"> 매도 📉</label>
             <label style="font-size:15px;cursor:pointer;"><input type="radio" name="mode" value="etc" {% if mode == 'etc' %}checked{% endif %} onchange="loadData(this.value)"> 나머지</label>
         </div>
+
+
+        <label style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600;cursor:pointer;user-select:none;">
+            <input type="checkbox" id="check-all-stocks" style="width:16px;height:16px;cursor:pointer;">
+            전체 선택
+        </label>
+
+        <button type="button" class="btn" onclick="openGroupModal()" style="background-color:#2563eb; padding:8px 7px;">🌟 관심종목 추가</button>
+
 
 
     {% if strategy_button_html %}
@@ -76,12 +84,33 @@
 
 
 
-        <button type="button" class="btn" onclick="openSqlModal()" style="background-color:#111827;">🧠 SQL</button>
+        <button type="button" class="btn" onclick="openSqlModal()" style="background-color:#2563eb;">💾 SQL</button>
 
 
+        <a href="{% url 'golden' %}" style="text-decoration:none;height:100%;">
+            <button
+                type="button"
+                onmouseover="this.style.background='#f0f7ff'"
+                onmouseout="this.style.background='#ffffff'"
+                style="width:110px; height:34px;background:#ffffff;border:1px solid #555;color:#111;padding:0 7px;cursor:pointer;border-radius:5px;font-size:14px;font-weight:550;">
+                🟡 Golden
+            </button>
+        </a>
+
+        
+
+        <a href="{% url 'strategy' %}" style="text-decoration:none;height:100%;">
+            <button
+                type="button"
+                onmouseover="this.style.background='#f0f7ff'"
+                onmouseout="this.style.background='#ffffff'"
+                style="width:110px; height:34px;background:#ffffff;border:1px solid #555;color:#111;padding:0 7px;cursor:pointer;border-radius:5px;font-size:15px;font-weight:550;">
+                🚀 매매전략
+            </button>
+        </a>
 
 
-        <a href="{% url 'index' %}" class="btn">➔ 메인으로</a>
+        <button type="button" class="btn" onclick="location.href='/?code='+(selectedCode||'005930')+'&name='+encodeURIComponent(selectedName||'삼성전자')">➔ 메인으로</button>
 
     </div>
 
@@ -92,7 +121,7 @@
 <div id="groupModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:2000;justify-content:center;align-items:center;">
     <div style="background:#fff;padding:20px;border-radius:8px;width:300px;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
         <h3 style="margin-top:0;">관심그룹명 입력</h3>
-        <input type="text" id="groupName" value="호가틱" style="width:100%;padding:8px;box-sizing:border-box;margin-bottom:10px;">
+        <input type="text" id="groupName" value="{{ strategy_title|cut:'🚀 '|cut:' 전략' }}" style="width:100%;padding:8px;box-sizing:border-box;margin-bottom:10px;">
         <div style="display:flex;gap:10px;">
             <button onclick="sendGwansim()" class="btn" style="flex:1;">확인</button>
             <button onclick="closeGroupModal()" class="btn" style="flex:1;background-color:#94a3b8;">취소</button>
@@ -105,39 +134,43 @@
 
 
 <div id="sqlModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;">
-    <div style="
-        width:700px;
-        background:#fff;
-        margin:80px auto;
-        border-radius:12px;
-        padding:20px;
-        box-shadow:0 10px 30px rgba(0,0,0,0.2);
-    ">
+    <div style=" width:700px; height:710px; background:#fff; margin:80px auto; border-radius:12px; padding:17px; box-shadow:0 10px 30px rgba(0,0,0,0.2); ">
 
-        <div style="display:flex;justify-content:space-between;align-items:center;">
-            <h3 id="sql-title" style="margin:0;font-size:18px;">
+
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding-top:0;margin-top:-8px;">
+
+            <h3 id="sql-title" style="margin:0;font-size:23px;line-height:3px;">
                 전략 SQL
             </h3>
 
-            <button onclick="closeSqlModal()" style="border:none;background:#ef4444;color:#fff;padding:6px 10px;border-radius:6px;cursor:pointer;">
-                닫기
-            </button>
+            <div style="display:flex;align-items:center;gap:8px;">
+
+                <a href="{% url 'golden' %}" style="text-decoration:none;height:100%;">
+                    <button
+                        type="button"
+                        onmouseover="this.style.background='#f0f7ff'"
+                        onmouseout="this.style.background='#ffffff'"
+                        style="width:100px;height:34px;background:#ffffff;border:1px solid #555;color:#111;padding:0 7px;cursor:pointer;border-radius:5px;font-size:14px;font-weight:550;">
+                        🟡 Golden
+                    </button>
+                </a>
+
+                <button
+                    onclick="closeSqlModal()"
+                    style="width:100px;height:38px;border:none;background:#94a3b8;color:#fff;border-radius:6px;cursor:pointer;font-size:20px;">
+                    닫기
+                </button>
+
+            </div>
+
         </div>
 
-        <div style="margin-top:10px;font-size:13px;color:#64748b;">
-            현재 전략 기준 SQL
-        </div>
 
-        <textarea id="sql-box" style="
-            width:100%;
-            height:300px;
-            margin-top:10px;
-            padding:10px;
-            font-size:13px;
-            border:1px solid #e2e8f0;
-            border-radius:8px;
-            font-family:monospace;
-        "></textarea>
+    <div id="sql-box" style=" width:100%; height:620px; overflow:auto; margin-top:10px; padding:10px; font-size:13px; font-family:Consolas, monospace; white-space:pre; border:1px solid #e2e8f0; border-radius:8px; background:#fff;"></div>
+
+
+        
 
     </div>
 </div>
@@ -151,7 +184,8 @@
 
 
 
-
+{% load static %}
+<script src="{% static 'strategy/st_sql_map.js' %}"></script>
 
 
 
@@ -216,32 +250,30 @@ function sendGwansim() {
 
 
 
-
-
 <script>
 function openSqlModal() {
 
-    // 🔥 화면에서 직접 읽기 (body dataset 필요 없음)
     const strategy =
         document.querySelector('.title-area h1')?.innerText || "전략";
 
-    document.getElementById('sql-title').innerText =
-        `📊 ${strategy} SQL`;
+    document.getElementById('sql-title').innerText = `${strategy} SQL`;
 
-    document.getElementById('sql-box').value =
-        `-- ${strategy} 전략 SQL\n-- (여기에 쿼리 추가 예정)`;
+    let sql = SQL_MAP["{{ st_id }}"] || "";
 
+    for (const table in TABLE_MAP) {
+        if (sql.toUpperCase().includes(table)) {
+            sql += "\n\n\n" + TABLE_MAP[table];
+        }
+    }
+
+    document.getElementById('sql-box').textContent = sql;
     document.getElementById('sqlModal').style.display = 'block';
 }
 
 function closeSqlModal() {
     document.getElementById('sqlModal').style.display = 'none';
 }
-
 </script>
-
-
-
 
 
 

@@ -7,6 +7,7 @@
 
   <style>
     @import url("{% static 'pretendard/pretendard.css' %}");
+    
 
     body {
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -49,7 +50,7 @@
     }
 
     /* ================= GRID ================= */
-    .strategy-grid {
+    .st-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
       gap: 12px;
@@ -57,7 +58,7 @@
     }
 
     /* ================= CARD ================= */
-    .strategy-card {
+    .st-card {
       background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
@@ -69,14 +70,14 @@
       transition: 0.2s;
     }
 
-    .strategy-card:hover {
+    .st-card:hover {
       transform: translateY(-2px);
       box-shadow: 0 10px 25px rgba(0,0,0,0.10);
       border-color: #c7d2fe;
     }
 
     /* ================= HEADER ROW ================= */
-    .strategy-header {
+    .st-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -85,7 +86,7 @@
     }
 
     /* ================= TITLE ================= */
-    .strategy-name {
+    .st-name {
       font-size: 18px;
       font-weight: 800;
 
@@ -116,7 +117,7 @@
     }
 
     /* ================= DESC ================= */
-    .strategy-desc {
+    .st-desc {
       font-size: 12px;
       line-height: 1.25;
 
@@ -179,101 +180,270 @@
     }
 
     #sql-box {
-      width: 100%;
-      height: 620px;
+        width: 100%;
+        height: 620px;
 
-      margin-top: 10px;
-      padding: 10px;
+        margin-top: 10px;
+        padding: 10px;
 
-      font-family: Consolas, monospace;
-      font-size: 13px;
+        font-family: Consolas, monospace;
+        font-size: 13px;
 
-      white-space: pre;
-      overflow: auto;
+        white-space: pre-wrap;     /* 변경 */
+        word-break: break-word;    /* 추가 */
+        overflow: auto;
 
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        box-sizing: border-box;    /* 추가 */
     }
 
   </style>
+  <script src="{% static 'strategy/st_sql_map.js' %}"></script>
 </head>
 
 <body>
 
 <!-- HEADER -->
 <div class="header-container">
-  <h1>🚀 매매전략</h1>
-  <a href="{% url 'index' %}" class="back-btn">← 메인으로</a>
+    <h1>🚀 매매전략</h1>
+
+    <div style="display:flex; gap:8px;">
+
+        <a href="{% url 'golden' %}" style="text-decoration:none;height:100%;">
+            <button
+                type="button"
+                onmouseover="this.style.background='#f0f7ff'"
+                onmouseout="this.style.background='#ffffff'"
+                style="height:34px;background:#ffffff;border:1px solid #555;color:#111;padding:0 7px;cursor:pointer;border-radius:5px;font-size:14px;font-weight:550;">
+                🟡 Golden
+            </button>
+        </a>
+
+        <a href="{% url 'index' %}" class="back-btn"
+           style="text-decoration:none;">
+            ← 메인으로
+        </a>
+
+    </div>
 </div>
 
 <!-- ================= STRATEGIES (HTML ONLY) ================= -->
-<div class="strategy-grid">
+<div class="st-grid">
 
   <!-- MACD -->
-  <div class="strategy-card"
-       onclick="location.href='/st_macd/'">
-
-    <div class="strategy-header">
-      <div class="strategy-name">MACD 전략</div>
-
-      <button class="sql-btn"
-        onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_macd, 'MACD 전략')">
-        SQL
-      </button>
+  <div class="st-card" onclick="location.href='/st_macd/'">
+    <div class="st-header">
+      <div class="st-name">MACD 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_macd, 'MACD 전략')">SQL</button>
     </div>
-
-    <div class="strategy-desc">
-      MACD 골든크로스 및 데드크로스를 이용한 추세 매매전략
-    </div>
-
+    <div class="st-desc">MACD선이 시그널선을 돌파하는 순간 매수</div>
   </div>
 
   <!-- HOGA -->
-  <div class="strategy-card"
-       onclick="location.href='/st_hoga/'">
-
-    <div class="strategy-header">
-      <div class="strategy-name">호가창 전략</div>
-
-      <button class="sql-btn"
-        onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_hoga, '호가창 전략')">
-        SQL
-      </button>
+  <div class="st-card" onclick="location.href='/st_hoga/'">
+    <div class="st-header">
+      <div class="st-name">호가창 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_hoga, '호가창 전략')">SQL</button>
     </div>
-
-    <div class="strategy-desc">
-      실시간 잔량 및 체결 강도를 분석하는 단타 전략
-    </div>
-
+    <div class="st-desc">매수 1호가틱이 두껍고, 매도 호가틱들이 얇으면 매수</div>
   </div>
+
+
+  <div class="st-card" onclick="location.href='/st_rsi/'">
+    <div class="st-header">
+      <div class="st-name">RSI 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_rsi, 'RSI 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 상승하면 매수</div>
+  </div>
+
+
+
+
+
+  <div class="st-card" onclick="location.href='/st_bol/'">
+    <div class="st-header">
+      <div class="st-name">볼린저밴드 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_bol, '볼린저밴드 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 위로 상승하면 매수</div>
+  </div>
+
+
+  <div class="st-card" onclick="location.href='/st_ilmok/'">
+    <div class="st-header">
+      <div class="st-name">일목균형표 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_ilmok, '일목균형표 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 위로 상승하면 매수</div>
+  </div>
+
+
+
+  <div class="st-card" onclick="location.href='/st_vol/'">
+    <div class="st-header">
+      <div class="st-name">거래량 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_vol, '거래량 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 위로 상승하면 매수</div>
+  </div>
+
+
+  <div class="st-card" onclick="location.href='/st_ma5/'">
+    <div class="st-header">
+      <div class="st-name">5일선 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_ma5, '5일선 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 위로 상승하면 매수</div>
+  </div>
+
+
+  <div class="st-card" onclick="location.href='/st_ma20/'">
+    <div class="st-header">
+      <div class="st-name">20일선 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_ma20, '20일선 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 위로 상승하면 매수</div>
+  </div>
+
+
+
+
+  <div class="st-card" onclick="location.href='/st_sales/'">
+    <div class="st-header">
+      <div class="st-name">매출/영익 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_sales, '매출/영익 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 위로 상승하면 매수</div>
+  </div>
+
+
+  <div class="st-card" onclick="location.href='/st_salesqoq/'">
+    <div class="st-header">
+      <div class="st-name">매출/영익QOQ 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_salesqoq, '매출/영익QOQ 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 위로 상승하면 매수</div>
+  </div>
+
+
+  <div class="st-card" onclick="location.href='/st_asset/'">
+    <div class="st-header">
+      <div class="st-name">자산/부채 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_asset, '자산/부채 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 위로 상승하면 매수</div>
+  </div>
+
+
+
+  <div class="st-card" onclick="location.href='/st_cf/'">
+    <div class="st-header">
+      <div class="st-name">현금흐름 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_cf, '현금흐름 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 위로 상승하면 매수</div>
+  </div>
+
+
+  <div class="st-card" onclick="location.href='/st_eps/'">
+    <div class="st-header">
+      <div class="st-name">EPS 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_eps, 'EPS 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 위로 상승하면 매수</div>
+  </div>
+
+
+
+  <div class="st-card" onclick="location.href='/st_epsqoq/'">
+    <div class="st-header">
+      <div class="st-name">EPS QOQ 전략</div>
+      <button class="sql-btn" onclick="event.stopPropagation(); openSqlModal(SQL_MAP.st_epsqoq, 'EPS QOQ 전략')">SQL</button>
+    </div>
+    <div class="st-desc">RSI가 30 이하이면서 위로 상승하면 매수</div>
+  </div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 </div>
 
-<!-- ================= SQL MAP ================= -->
-<script>
-const SQL_MAP = {
-  st_macd: `
-SELECT *
-FROM stock
-WHERE macd_signal = 'golden_cross'
-  `,
 
-  st_hoga: `
-SELECT *
-FROM orderbook
-WHERE bid_strength > ask_strength
-  `
-};
-</script>
+
 
 <!-- ================= MODAL ================= -->
 <div id="sqlModal">
   <div class="modal-box">
 
+
     <div class="modal-header">
-      <h3 id="sql-title">전략 SQL</h3>
-      <button class="close-btn" onclick="closeSqlModal()">닫기</button>
+
+        <h3 id="sql-title">전략 SQL</h3>
+
+        <div style="display:flex;align-items:center;gap:8px;">
+
+            <a href="{% url 'golden' %}" style="text-decoration:none;height:100%;">
+                <button
+                    type="button"
+                    onmouseover="this.style.background='#f0f7ff'"
+                    onmouseout="this.style.background='#ffffff'"
+                    style="height:34px;background:#ffffff;border:1px solid #555;color:#111;padding:0 7px;cursor:pointer;border-radius:5px;font-size:14px;font-weight:550;">
+                    ✨ Golden
+                </button>
+            </a>
+
+
+
+            <button
+                onclick="closeSqlModal()"
+                style="width:100px;height:38px;border:none;background:#94a3b8;color:#fff;border-radius:6px;cursor:pointer;font-size:20px;">
+                닫기
+            </button>
+
+        </div>
+
     </div>
+
+
+
+
+
+
+
+
+
+
 
     <div id="sql-box"></div>
 
@@ -282,9 +452,31 @@ WHERE bid_strength > ask_strength
 
 <script>
 function openSqlModal(sqlText, title) {
-  document.getElementById('sql-title').innerText = title + " SQL";
-  document.getElementById('sql-box').textContent = sqlText;
-  document.getElementById('sqlModal').style.display = 'block';
+
+    // 1. 무조건 문자열 변환 (undefined 방어)
+    let sql = String(sqlText || "");
+    title = String(title || "");
+
+    // 2. case 통일 (핵심)
+    const normSql = sql.toLowerCase();
+
+    // 3. TABLE_MAP 자동 추가
+    for (const table in TABLE_MAP) {
+
+        if (!table) continue;
+
+        if (normSql.includes(table.toLowerCase())) {
+            sql += "\n\n\n" + TABLE_MAP[table];
+        }
+    }
+
+    // 4. UI 업데이트
+    document.getElementById('sql-title').innerText =
+        "🚀 " + title + " SQL";
+
+    document.getElementById('sql-box').textContent = sql;
+
+    document.getElementById('sqlModal').style.display = 'block';
 }
 
 function closeSqlModal() {
