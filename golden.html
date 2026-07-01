@@ -258,6 +258,26 @@ th{
 
 <script>
 
+
+window.onload = function () {
+
+    const sql = sessionStorage.getItem("golden_sql");
+    const key = sessionStorage.getItem("golden_key");
+
+
+    if (sql) {
+        document.getElementById("sql").value = sql;
+    }
+
+
+    
+};
+
+
+
+
+
+
 function getCookie(name){
 
     let value=null;
@@ -277,15 +297,18 @@ function getCookie(name){
 
 async function runSql(){
 
-    document.getElementById("loading").style.display="block";
+    const loading = document.getElementById("loading");
 
-    document.getElementById("result").innerHTML="";
+    loading.style.display = "block";
+    loading.innerHTML = `<span class="spinner"></span>조회중...`;
 
-    const sql=document.getElementById("sql").value;
+    document.getElementById("result").innerHTML = "";
+
+    const sql = document.getElementById("sql").value;
 
     try{
 
-        const res=await fetch("/golden_api/",{
+        const res = await fetch("/golden_api/",{
 
             method:"POST",
 
@@ -298,70 +321,77 @@ async function runSql(){
 
         });
 
-        const data=await res.json();
-
-        document.getElementById("loading").style.display="none";
+        const data = await res.json();
 
         if(data.error){
 
-            document.getElementById("result").innerHTML=
+            loading.style.display = "none";
+
+            document.getElementById("result").innerHTML =
                 `<div id="error">${data.error}</div>`;
 
             return;
         }
 
-        let html="<table>";
+        loading.innerHTML = `총 ${data.rows.length.toLocaleString()}건`;
 
-        html+="<tr>";
-        html+="<th class='rowno'>No</th>";
+        let html = "<table>";
+
+        html += "<tr>";
+        html += "<th class='rowno'>No</th>";
 
         data.columns.forEach(c=>{
-            html+=`<th>${c}</th>`;
+            html += `<th>${c}</th>`;
         });
 
-        html+="</tr>";
+        html += "</tr>";
 
-        data.rows.forEach((row,idx)=>{
+        data.rows.forEach((row, idx) => {
 
-            html+="<tr>";
+            html += "<tr>";
+            html += `<td class="rowno">${idx + 1}</td>`;
 
-            html+=`<td class="rowno">${idx+1}</td>`;
+            row.forEach((v, i) => {
 
-            row.forEach(v=>{
+                const col = data.columns[i].toUpperCase();
 
+                const isCode =
+                    col === "CODE" ||
+                    col === "코드";
 
-                const raw = String(v).replace(/,/g, '');
-                const isNum = !isNaN(raw) && raw !== '';
+                const isDate =
+                    col === "DATE" ||
+                    col === "일자";
 
-                html += `<td class="${isNum ? "num" : "text"}">
-                            ${isNum ? Number(raw).toLocaleString() : (v ?? "")}
-                         </td>`;
+                const raw = String(v ?? "").replace(/,/g, "");
+                const isNum = !isNaN(raw) && raw !== "";
 
+                let value = v ?? "";
 
+                if (isNum && !isCode && !isDate) {
+                    value = Number(raw).toLocaleString();
+                }
 
-
+                html += `<td class="${isNum && !isCode && !isDate ? "num" : "text"}">${value}</td>`;
             });
 
-            html+="</tr>";
-
+            html += "</tr>";
         });
 
-        html+="</table>";
+        html += "</table>";
 
-        document.getElementById("result").innerHTML=html;
+        document.getElementById("result").innerHTML = html;
 
     }
     catch(err){
 
-        document.getElementById("loading").style.display="none";
+        loading.style.display = "none";
 
-        document.getElementById("result").innerHTML=
+        document.getElementById("result").innerHTML =
             `<div id="error">${err}</div>`;
-
     }
 
 }
-
 
 
 

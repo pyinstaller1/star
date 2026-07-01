@@ -87,15 +87,14 @@
         <button type="button" class="btn" onclick="openSqlModal()" style="background-color:#2563eb;">💾 SQL</button>
 
 
-        <a href="{% url 'golden' %}" style="text-decoration:none;height:100%;">
-            <button
-                type="button"
-                onmouseover="this.style.background='#f0f7ff'"
-                onmouseout="this.style.background='#ffffff'"
-                style="width:110px; height:34px;background:#ffffff;border:1px solid #555;color:#111;padding:0 7px;cursor:pointer;border-radius:5px;font-size:14px;font-weight:550;">
-                🟡 Golden
-            </button>
-        </a>
+        <button
+            type="button"
+            onclick="goGoldenFromModal()"
+            onmouseover="this.style.background='#f0f7ff'"
+            onmouseout="this.style.background='#ffffff'"
+            style="width:110px; height:34px;background:#ffffff;border:1px solid #555;color:#111;padding:0 7px;cursor:pointer;border-radius:5px;font-size:14px;font-weight:550;">
+            🟡 Golden
+        </button>
 
         
 
@@ -146,15 +145,14 @@
 
             <div style="display:flex;align-items:center;gap:8px;">
 
-                <a href="{% url 'golden' %}" style="text-decoration:none;height:100%;">
-                    <button
-                        type="button"
-                        onmouseover="this.style.background='#f0f7ff'"
-                        onmouseout="this.style.background='#ffffff'"
-                        style="width:100px;height:34px;background:#ffffff;border:1px solid #555;color:#111;padding:0 7px;cursor:pointer;border-radius:5px;font-size:14px;font-weight:550;">
-                        🟡 Golden
-                    </button>
-                </a>
+                <button
+                    type="button"
+                    onclick="goGoldenFromModal()"
+                    onmouseover="this.style.background='#f0f7ff'"
+                    onmouseout="this.style.background='#ffffff'"
+                    style="width:100px;height:34px;background:#ffffff;border:1px solid #555;color:#111;padding:0 7px;cursor:pointer;border-radius:5px;font-size:14px;font-weight:550;">
+                    🟡 Golden
+                </button>
 
                 <button
                     onclick="closeSqlModal()"
@@ -251,6 +249,15 @@ function sendGwansim() {
 
 
 <script>
+
+let CURRENT_SQL = "";
+let CURRENT_KEY = "";
+
+CURRENT_SQL = SQL_MAP["{{ st_id }}"] || "";
+CURRENT_KEY = "{{ st_id }}"
+
+
+
 function openSqlModal() {
 
     const strategy =
@@ -260,6 +267,9 @@ function openSqlModal() {
 
     let sql = SQL_MAP["{{ st_id }}"] || "";
 
+    CURRENT_SQL = sql
+    CURRENT_KEY = "{{ st_id }}"
+
     for (const table in TABLE_MAP) {
         if (sql.toUpperCase().includes(table)) {
             sql += "\n\n\n" + TABLE_MAP[table];
@@ -268,11 +278,30 @@ function openSqlModal() {
 
     document.getElementById('sql-box').textContent = sql;
     document.getElementById('sqlModal').style.display = 'block';
+
+    sessionStorage.setItem("golden_sql", CURRENT_SQL);
+    sessionStorage.setItem("golden_key", CURRENT_KEY);
+
+
+    
 }
 
 function closeSqlModal() {
     document.getElementById('sqlModal').style.display = 'none';
 }
+
+
+
+function goGoldenFromModal() {
+
+    sessionStorage.setItem("golden_sql", CURRENT_SQL);
+    sessionStorage.setItem("golden_key", CURRENT_KEY);
+
+
+
+    location.href = "/golden/";
+}
+
 </script>
 
 
