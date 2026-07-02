@@ -31,7 +31,7 @@
         }
 
         /* ========================================================
-           ◀ 서쪽 영역: 1430px 딱 고정 (호가창 감시판)
+           ◀ 서쪽 영역: 1430px 딱 고정
         ======================================================== */
         .west-side {
             width: 1430px;        /* ★ 1430px 절대 고정 크기 */
@@ -44,7 +44,6 @@
         }
 
 
-        /* 서쪽 내부의 호가 카드가 스크롤되는 바디 구역 */
         .west-scroll-body {
             flex: 1;
             overflow-y: auto;    /* 100개 넘어가면 이 안에서만 남북으로 스크롤 */
@@ -193,7 +192,7 @@
     let currentMode = "{{ mode|default:'buy' }}";
     let selectedCode = '';
     let selectedName = '';
-              
+                    
                         
     let currentFilteredData = [];
     let json_ilbong = {};
@@ -253,7 +252,6 @@
                 return res.json();
             })
             .then(data => {
-                console.log("서버에서 받은 데이터:", data);
 
                 // 🔥 수정: json_ilbong이 없어도 에러를 내지 않고 빈 객체 할당
                 if (!data || !data.list_data) {
@@ -402,69 +400,257 @@
 
 
 
-    function renderChart(el, code) {
-        const data = json_ilbong[code];
-        if (!data || !data.date) return;
-        
-        el.dataset.done = "1"; // 그렸음을 표시
+function renderChart(el, code) {
+    const data = json_ilbong[code];
+    if (!data || !data.date) return;
 
-        try {
-            const chart = LightweightCharts.createChart(el, {
-                width: el.clientWidth,
-                height: 120,
-                layout: { background: { type: 'Solid', color: '#fff' }, textColor: '#64748b', attributionLogo: false },
-                    rightPriceScale: { visible: false },
-                grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-                timeScale: { visible: true, timeVisible: true, secondsVisible: false },
-                crosshair: {
-                    mode: LightweightCharts.CrosshairMode.Hidden,
-                    vertLine: { visible: true, labelVisible: false, width: 1, style: LightweightCharts.LineStyle.Dotted },
-                    horzLine: { visible: false, labelVisible: false },
+    el.dataset.done = "1";
+
+    try {
+        const chart = LightweightCharts.createChart(el, {
+            width: el.clientWidth,
+            height: 120,
+            layout: {
+                background: { type: 'Solid', color: '#fff' },
+                textColor: '#64748b',
+                attributionLogo: false
+            },
+
+
+            rightPriceScale: {
+                visible: true,
+                maximumWidth: 10,
+                minimumWidth: 10,                
+                scaleMargins: {
+                    top: 0,
+                    bottom: 0
+                }
+            },
+
+
+
+            
+            grid: {
+                vertLines: { visible: false },
+                horzLines: { visible: false }
+            },
+            timeScale: {
+                visible: true,
+                timeVisible: true,
+                secondsVisible: false
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Hidden,
+                vertLine: {
+                    visible: true,
+                    labelVisible: false,
+                    width: 1,
+                    style: LightweightCharts.LineStyle.Dotted
                 },
-                localization: { priceFormatter: (price) => Math.round(price).toLocaleString('ko-KR') }
-            });
+                horzLine: {
+                    visible: false,
+                    labelVisible: false
+                }
+            },
+            localization: {
+                priceFormatter: price => Math.round(price).toString()
+            }
+        });
 
-            const macd = chart.addSeries(LightweightCharts.LineSeries, { color: '#1976D2', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false });
-            const signal = chart.addSeries(LightweightCharts.LineSeries, { color: '#FF9800', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false });
+        const chartData = data.date.map((d, i) => ({
+            time: d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8),
+            value: data.rsi14[i]
+        }));
 
-            macd.setData(data.date.map((d, i) => ({ 
-                time: d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8), value: data.macd[i] 
-            })));
-            signal.setData(data.date.map((d, i) => ({ 
-                time: d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8), value: data.macd9[i] 
-            })));
-        } catch (err) {
-            console.error("차트 로드 실패:", code, err);
-            el.dataset.done = ""; // 실패 시 다시 시도
-        }
+        // 70 이상 영역
+        const over70 = chart.addSeries(LightweightCharts.AreaSeries, {
+            lineColor: 'transparent',
+            topColor: 'rgba(255,0,0,0.25)',
+            bottomColor: 'rgba(255,0,0,0.25)',
+            baseValue: { type: 'price', price: 70 },
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        const white70 = chart.addSeries(LightweightCharts.AreaSeries, {
+            lineColor: 'transparent',
+            topColor: 'rgba(255,255,255,1)',
+            bottomColor: 'rgba(255,255,255,1)',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        white70.setData(chartData.map(d => ({
+            time: d.time,
+            value: 70
+        })));
+
+
+
+
+
+        
+
+        over70.setData(chartData.map(d => ({
+            time: d.time,
+            value: d.value >= 70 ? d.value : 0
+        })));
+
+        // 30 이하 영역
+        const under30 = chart.addSeries(LightweightCharts.AreaSeries, {
+            lineColor: 'transparent',
+            topColor: 'rgba(0,0,255,0.25)',
+            bottomColor: 'rgba(0,0,255,0.25)',
+            baseValue: { type: 'price', price: 30 },
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        under30.setData(chartData.map(d => ({
+            time: d.time,
+            value: 30
+        })));
+
+
+
+        const white30 = chart.addSeries(LightweightCharts.AreaSeries, {
+            lineColor: 'transparent',
+            topColor: 'rgba(255,255,255,1)',
+            bottomColor: 'rgba(255,255,255,1)',
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        white30.setData(chartData.map(d => ({
+            time: d.time,
+            value: d.value <= 30 ? d.value : 30
+        })));
+
+
+
+
+        
+
+        // RSI
+        const rsi = chart.addSeries(LightweightCharts.LineSeries, {
+            color: '#7B1FA2',
+            lineWidth: 1.5,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        rsi.setData(chartData);
+
+        rsi.applyOptions({
+            autoscaleInfoProvider: () => ({
+                priceRange: {
+                    minValue: 0,
+                    maxValue: 100
+                }
+            })
+        });
+
+
+
+        rsi.createPriceLine({
+            price: 70,
+            color: 'rgba(255,205,210,0.7)',
+            lineVisible: false,
+            axisLabelVisible: true,
+            title: ''
+        });
+
+        rsi.createPriceLine({
+            price: 30,
+            color: 'rgba(187,222,251,0.5)',
+            lineVisible: false,
+            axisLabelVisible: true,
+            title: ''
+        });
+
+
+
+        
+
+        // 70선
+        const line70 = chart.addSeries(LightweightCharts.LineSeries, {
+            color: 'rgba(211,47,47,0.7)',
+            lineWidth: 1,
+            lineStyle: 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        line70.setData([
+            { time: chartData[0].time, value: 70 },
+            { time: chartData[chartData.length - 1].time, value: 70 }
+        ]);
+
+        // 50선
+        const line50 = chart.addSeries(LightweightCharts.LineSeries, {
+            color: 'rgba(100,100,100,0.7)',
+            lineWidth: 1,
+            lineStyle: 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        line50.setData([
+            { time: chartData[0].time, value: 50 },
+            { time: chartData[chartData.length - 1].time, value: 50 }
+        ]);
+
+        // 30선
+        const line30 = chart.addSeries(LightweightCharts.LineSeries, {
+            color: 'rgba(25,118,210,0.7)',
+            lineWidth: 1,
+            lineStyle: 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        line30.setData([
+            { time: chartData[0].time, value: 30 },
+            { time: chartData[chartData.length - 1].time, value: 30 }
+        ]);
+
+    } catch (err) {
+        console.error("차트 로드 실패:", code, err);
+        el.dataset.done = "";
     }
 
 
+
+el.style.position = 'relative';
+
+function addScaleMask(top, height) {
+    const mask = document.createElement('div');
+
+    mask.style.position = 'absolute';
+    mask.style.right = '3px';   // 필요하면 이 값만 조정
+    mask.style.width = '30px';
+    mask.style.top = top + 'px';
+    mask.style.height = height + 'px';
+    mask.style.background = '#fff';
+    mask.style.pointerEvents = 'none';
+    mask.style.zIndex = '100';
+
+    el.appendChild(mask);
+}
+
+addScaleMask(9, 10);    // 80 부근 가림
+addScaleMask(50, 6);   // 40 부근 가림
+    
+}
                         
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

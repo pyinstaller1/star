@@ -193,7 +193,7 @@
     let currentMode = "{{ mode|default:'buy' }}";
     let selectedCode = '';
     let selectedName = '';
-              
+               
                         
     let currentFilteredData = [];
     let json_ilbong = {};
@@ -246,14 +246,13 @@
         stAbortController = new AbortController();
         const { signal } = stAbortController;
 
-        fetch(`/st_{{ strategy_title|cut:"🚀 "|cut:" 전략"|lower }}_data/?mode=${mode}`, { signal })
+        fetch(`/st_${location.pathname.split('/')[1].replace('st_', '')}_data/?mode=${mode}`, { signal })
         
             .then(res => {
                 if (!res.ok) throw new Error('서버 응답 오류');
                 return res.json();
             })
             .then(data => {
-                console.log("서버에서 받은 데이터:", data);
 
                 // 🔥 수정: json_ilbong이 없어도 에러를 내지 않고 빈 객체 할당
                 if (!data || !data.list_data) {
@@ -380,7 +379,7 @@
             
             try {
 
-                const response = await fetch(`/st_{{ strategy_title|cut:"🚀 "|cut:" 전략"|lower }}_data/?codes=${batch.join(',')}`);                
+                const response = await fetch(`/st_${location.pathname.split('/')[1].replace('st_', '')}_data/?codes=${batch.join(',')}`);
                 const newData = await response.json();
                 
                 Object.assign(json_ilbong, newData);
@@ -398,70 +397,175 @@
         }
     }
 
+function renderChart(el, code) {
+    const data = json_ilbong[code];
+    if (!data || !data.date) return;
 
+    el.dataset.done = "1";
 
-
-
-    function renderChart(el, code) {
-        const data = json_ilbong[code];
-        if (!data || !data.date) return;
-        
-        el.dataset.done = "1"; // 그렸음을 표시
-
-        try {
-            const chart = LightweightCharts.createChart(el, {
-                width: el.clientWidth,
-                height: 120,
-                layout: { background: { type: 'Solid', color: '#fff' }, textColor: '#64748b', attributionLogo: false },
-                    rightPriceScale: { visible: false },
-                grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-                timeScale: { visible: true, timeVisible: true, secondsVisible: false },
-                crosshair: {
-                    mode: LightweightCharts.CrosshairMode.Hidden,
-                    vertLine: { visible: true, labelVisible: false, width: 1, style: LightweightCharts.LineStyle.Dotted },
-                    horzLine: { visible: false, labelVisible: false },
+    try {
+        const chart = LightweightCharts.createChart(el, {
+            width: el.clientWidth,
+            height: 120,
+            layout: {
+                background: { type: 'Solid', color: '#fff' },
+                textColor: '#64748b',
+                attributionLogo: false
+            },
+            rightPriceScale: { visible: false },
+            grid: {
+                vertLines: { visible: false },
+                horzLines: { visible: false }
+            },
+            timeScale: {
+                visible: true,
+                timeVisible: true,
+                secondsVisible: false
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Hidden,
+                vertLine: {
+                    visible: true,
+                    labelVisible: false,
+                    width: 1,
+                    style: LightweightCharts.LineStyle.Dotted
                 },
-                localization: { priceFormatter: (price) => Math.round(price).toLocaleString('ko-KR') }
-            });
+                horzLine: {
+                    visible: false,
+                    labelVisible: false
+                }
+            },
+            localization: {
+                priceFormatter: price => Math.round(price).toLocaleString('ko-KR')
+            }
+        });
 
-            const macd = chart.addSeries(LightweightCharts.LineSeries, { color: '#1976D2', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false });
-            const signal = chart.addSeries(LightweightCharts.LineSeries, { color: '#FF9800', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false });
+        const upperData = data.date.map((d, i) => ({
+            time: d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8),
+            value: data.bol_u[i]
+        }));
 
-            macd.setData(data.date.map((d, i) => ({ 
-                time: d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8), value: data.macd[i] 
-            })));
-            signal.setData(data.date.map((d, i) => ({ 
-                time: d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8), value: data.macd9[i] 
-            })));
-        } catch (err) {
-            console.error("차트 로드 실패:", code, err);
-            el.dataset.done = ""; // 실패 시 다시 시도
-        }
+        const lowerData = data.date.map((d, i) => ({
+            time: d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8),
+            value: data.bol_l[i]
+        }));
+
+        const ma20Data = data.date.map((d, i) => ({
+            time: d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8),
+            value: data.ma20[i]
+        }));
+
+        const ma60Data = data.date.map((d, i) => ({
+            time: d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8),
+            value: data.ma60[i]
+        }));
+
+        const ma120Data = data.date.map((d, i) => ({
+            time: d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8),
+            value: data.ma120[i]
+        }));
+
+        // ===== 밴드 영역 =====
+        const band = chart.addSeries(LightweightCharts.AreaSeries, {
+            lineColor: 'transparent',
+            topColor: 'rgba(59,130,246,0.10)',
+            bottomColor: 'rgba(59,130,246,0.10)',
+            baseValue: { type: 'price', price: 0 },
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        // ===== 하단 아래 흰색 =====
+        const whiteLower = chart.addSeries(LightweightCharts.AreaSeries, {
+            lineColor: 'transparent',
+            topColor: '#ffffff',
+            bottomColor: '#ffffff',
+            baseValue: { type: 'price', price: 0 },
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        // ===== 일봉 =====
+        const candle = chart.addSeries(LightweightCharts.CandlestickSeries, {
+            upColor: '#ef4444',
+            downColor: '#2563eb',
+            borderUpColor: '#ef4444',
+            borderDownColor: '#2563eb',
+            wickUpColor: '#ef4444',
+            wickDownColor: '#2563eb',
+            priceLineVisible: false,
+            lastValueVisible: false
+        });
+
+        // ===== 볼린저 상단 =====
+        const upper = chart.addSeries(LightweightCharts.LineSeries, {
+            color: '#9ca3af',
+            lineWidth: 1,
+            lineStyle: LightweightCharts.LineStyle.Dotted,
+            priceLineVisible: false,
+            lastValueVisible: false
+        });
+
+        // ===== MA20 =====
+        const ma20 = chart.addSeries(LightweightCharts.LineSeries, {
+            color: '#2563eb',
+            lineWidth: 1.5,
+            priceLineVisible: false,
+            lastValueVisible: false
+        });
+
+        // ===== MA60 =====
+        const ma60 = chart.addSeries(LightweightCharts.LineSeries, {
+            color: '#f59e0b',
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false
+        });
+
+        // ===== MA120 =====
+        const ma120 = chart.addSeries(LightweightCharts.LineSeries, {
+            color: '#7c3aed',
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false
+        });
+
+        // ===== 볼린저 하단 =====
+        const lower = chart.addSeries(LightweightCharts.LineSeries, {
+            color: '#9ca3af',
+            lineWidth: 1,
+            lineStyle: LightweightCharts.LineStyle.Dotted,
+            priceLineVisible: false,
+            lastValueVisible: false
+        });
+
+        // ===== 그리기 =====
+        band.setData(upperData);
+        whiteLower.setData(lowerData);
+
+        candle.setData(data.date.map((d, i) => ({
+            time: d.slice(0,4) + '-' + d.slice(4,6) + '-' + d.slice(6,8),
+            open: data.open[i],
+            high: data.high[i],
+            low: data.low[i],
+            close: data.close[i]
+        })));
+
+        upper.setData(upperData);
+        ma20.setData(ma20Data);
+        ma60.setData(ma60Data);
+        ma120.setData(ma120Data);
+        lower.setData(lowerData);
+
+    } catch (err) {
+        console.error("차트 로드 실패:", code, err);
+        el.dataset.done = "";
     }
-
+}
 
                         
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

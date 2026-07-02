@@ -193,7 +193,7 @@
     let currentMode = "{{ mode|default:'buy' }}";
     let selectedCode = '';
     let selectedName = '';
-              
+         
                         
     let currentFilteredData = [];
     let json_ilbong = {};
@@ -246,14 +246,13 @@
         stAbortController = new AbortController();
         const { signal } = stAbortController;
 
-        fetch(`/st_{{ strategy_title|cut:"🚀 "|cut:" 전략"|lower }}_data/?mode=${mode}`, { signal })
+        fetch(`/st_${location.pathname.split('/')[1].replace('st_', '')}_data/?mode=${mode}`, { signal })
         
             .then(res => {
                 if (!res.ok) throw new Error('서버 응답 오류');
                 return res.json();
             })
             .then(data => {
-                console.log("서버에서 받은 데이터:", data);
 
                 // 🔥 수정: json_ilbong이 없어도 에러를 내지 않고 빈 객체 할당
                 if (!data || !data.list_data) {
@@ -380,7 +379,7 @@
             
             try {
 
-                const response = await fetch(`/st_{{ strategy_title|cut:"🚀 "|cut:" 전략"|lower }}_data/?codes=${batch.join(',')}`);                
+                const response = await fetch(`/st_${location.pathname.split('/')[1].replace('st_', '')}_data/?codes=${batch.join(',')}`);
                 const newData = await response.json();
                 
                 Object.assign(json_ilbong, newData);
@@ -398,72 +397,117 @@
         }
     }
 
+function renderChart(el, code) {
+    const data = json_ilbong[code];
+    if (!data || !data.date) return;
 
+    el.dataset.done = "1";
 
-
-
-    function renderChart(el, code) {
-        const data = json_ilbong[code];
-        if (!data || !data.date) return;
-        
-        el.dataset.done = "1"; // 그렸음을 표시
-
-        try {
-            const chart = LightweightCharts.createChart(el, {
-                width: el.clientWidth,
-                height: 120,
-                layout: { background: { type: 'Solid', color: '#fff' }, textColor: '#64748b', attributionLogo: false },
-                    rightPriceScale: { visible: false },
-                grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-                timeScale: { visible: true, timeVisible: true, secondsVisible: false },
-                crosshair: {
-                    mode: LightweightCharts.CrosshairMode.Hidden,
-                    vertLine: { visible: true, labelVisible: false, width: 1, style: LightweightCharts.LineStyle.Dotted },
-                    horzLine: { visible: false, labelVisible: false },
+    try {
+        const chart = LightweightCharts.createChart(el, {
+            width: el.clientWidth,
+            height: 120,
+            layout: {
+                background: { type: 'Solid', color: '#fff' },
+                textColor: '#64748b',
+                attributionLogo: false
+            },
+            rightPriceScale: { visible: false },
+            grid: {
+                vertLines: { visible: false },
+                horzLines: { visible: false }
+            },
+            timeScale: {
+                visible: true,
+                timeVisible: true,
+                secondsVisible: false
+            },
+            crosshair: {
+                mode: LightweightCharts.CrosshairMode.Hidden,
+                vertLine: {
+                    visible: true,
+                    labelVisible: false,
+                    width: 1,
+                    style: LightweightCharts.LineStyle.Dotted
                 },
-                localization: { priceFormatter: (price) => Math.round(price).toLocaleString('ko-KR') }
+                horzLine: {
+                    visible: false,
+                    labelVisible: false
+                }
+            },
+            localization: {
+                priceFormatter: price => Math.round(price).toLocaleString('ko-KR')
+            }
+        });
+
+        const ilmokAData = [];
+        const ilmokBData = [];
+        const candleData = [];
+
+        for (let i = 0; i < data.date.length; i++) {
+            const time =
+                data.date[i].slice(0,4) + '-' +
+                data.date[i].slice(4,6) + '-' +
+                data.date[i].slice(6,8);
+
+            candleData.push({
+                time,
+                open: data.open[i],
+                high: data.high[i],
+                low: data.low[i],
+                close: data.close[i]
             });
 
-            const macd = chart.addSeries(LightweightCharts.LineSeries, { color: '#1976D2', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false });
-            const signal = chart.addSeries(LightweightCharts.LineSeries, { color: '#FF9800', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false });
+            if (data.ilmok_a[i] != null)
+                ilmokAData.push({ time, value: data.ilmok_a[i] });
 
-            macd.setData(data.date.map((d, i) => ({ 
-                time: d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8), value: data.macd[i] 
-            })));
-            signal.setData(data.date.map((d, i) => ({ 
-                time: d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8), value: data.macd9[i] 
-            })));
-        } catch (err) {
-            console.error("차트 로드 실패:", code, err);
-            el.dataset.done = ""; // 실패 시 다시 시도
+            if (data.ilmok_b[i] != null)
+                ilmokBData.push({ time, value: data.ilmok_b[i] });
         }
+
+        // 일목 A
+        const ilmokASeries = chart.addSeries(LightweightCharts.AreaSeries, {
+            topColor: 'rgba(255,82,82,0.20)',
+            bottomColor: 'rgba(255,255,255,0.30)',
+            lineColor: '#2e7d32',
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        // 일목 B
+        const ilmokBSeries = chart.addSeries(LightweightCharts.AreaSeries, {
+            topColor: 'rgba(82,82,255,0.20)',
+            bottomColor: 'rgba(255,255,255,0.30)',
+            lineColor: '#d32f2f',
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false
+        });
+
+        // 캔들 (마지막 생성 → 항상 맨 위)
+        const candle = chart.addSeries(LightweightCharts.CandlestickSeries, {
+            upColor: '#ef4444',
+            downColor: '#2563eb',
+            borderUpColor: '#ef4444',
+            borderDownColor: '#2563eb',
+            wickUpColor: '#ef4444',
+            wickDownColor: '#2563eb',
+            priceLineVisible: false,
+            lastValueVisible: false
+        });
+
+        ilmokASeries.setData(ilmokAData);
+        ilmokBSeries.setData(ilmokBData);
+        candle.setData(candleData);
+
+    } catch (err) {
+        console.error("차트 로드 실패:", code, err);
+        el.dataset.done = "";
     }
-
-
-                        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+}                  
 
 
 

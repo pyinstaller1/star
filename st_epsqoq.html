@@ -193,7 +193,7 @@
     let currentMode = "{{ mode|default:'buy' }}";
     let selectedCode = '';
     let selectedName = '';
-              
+                
                         
     let currentFilteredData = [];
     let json_ilbong = {};
@@ -246,14 +246,13 @@
         stAbortController = new AbortController();
         const { signal } = stAbortController;
 
-        fetch(`/st_{{ strategy_title|cut:"🚀 "|cut:" 전략"|lower }}_data/?mode=${mode}`, { signal })
+        fetch(`/st_${location.pathname.split('/')[1].replace('st_', '')}_data/?mode=${mode}`, { signal })
         
             .then(res => {
                 if (!res.ok) throw new Error('서버 응답 오류');
                 return res.json();
             })
             .then(data => {
-                console.log("서버에서 받은 데이터:", data);
 
                 // 🔥 수정: json_ilbong이 없어도 에러를 내지 않고 빈 객체 할당
                 if (!data || !data.list_data) {
@@ -380,7 +379,7 @@
             
             try {
 
-                const response = await fetch(`/st_{{ strategy_title|cut:"🚀 "|cut:" 전략"|lower }}_data/?codes=${batch.join(',')}`);                
+                const response = await fetch(`/st_${location.pathname.split('/')[1].replace('st_', '')}_data/?codes=${batch.join(',')}`);
                 const newData = await response.json();
                 
                 Object.assign(json_ilbong, newData);
@@ -400,59 +399,116 @@
 
 
 
+function renderChart(el, code) {
+    const data = json_ilbong[code];
+    if (!data || !data.length) return;
 
+    el.dataset.done = "1";
+    el.innerHTML = '<canvas></canvas>';
 
-    function renderChart(el, code) {
-        const data = json_ilbong[code];
-        if (!data || !data.date) return;
-        
-        el.dataset.done = "1"; // 그렸음을 표시
-
-        try {
-            const chart = LightweightCharts.createChart(el, {
-                width: el.clientWidth,
-                height: 120,
-                layout: { background: { type: 'Solid', color: '#fff' }, textColor: '#64748b', attributionLogo: false },
-                    rightPriceScale: { visible: false },
-                grid: { vertLines: { visible: false }, horzLines: { visible: false } },
-                timeScale: { visible: true, timeVisible: true, secondsVisible: false },
-                crosshair: {
-                    mode: LightweightCharts.CrosshairMode.Hidden,
-                    vertLine: { visible: true, labelVisible: false, width: 1, style: LightweightCharts.LineStyle.Dotted },
-                    horzLine: { visible: false, labelVisible: false },
-                },
-                localization: { priceFormatter: (price) => Math.round(price).toLocaleString('ko-KR') }
-            });
-
-            const macd = chart.addSeries(LightweightCharts.LineSeries, { color: '#1976D2', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false });
-            const signal = chart.addSeries(LightweightCharts.LineSeries, { color: '#FF9800', lineWidth: 1.5, priceLineVisible: false, lastValueVisible: false });
-
-            macd.setData(data.date.map((d, i) => ({ 
-                time: d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8), value: data.macd[i] 
-            })));
-            signal.setData(data.date.map((d, i) => ({ 
-                time: d.slice(0,4)+'-'+d.slice(4,6)+'-'+d.slice(6,8), value: data.macd9[i] 
-            })));
-        } catch (err) {
-            console.error("차트 로드 실패:", code, err);
-            el.dataset.done = ""; // 실패 시 다시 시도
+    try {
+        if (el.chart) {
+            el.chart.destroy();
         }
+
+        const ctx = el.querySelector('canvas').getContext('2d');
+
+        const eps = data.map(x => x.EPSQOQ ?? 0);
+
+        const backgroundPlugin = {
+            id: 'quarterBackground',
+            beforeDraw(chart) {
+                const { ctx, chartArea, scales } = chart;
+                const meta = chart.getDatasetMeta(0);
+                if (!meta.data.length) return;
+
+                const start = Math.max(0, meta.data.length - 3);
+
+                ctx.save();
+                ctx.fillStyle = '#eeeeee';
+
+                for (let i = start; i < meta.data.length; i++) {
+                    const left = scales.x.getPixelForValue(i - 0.5);
+                    const right = scales.x.getPixelForValue(i + 0.5);
+                    ctx.fillRect(left, chartArea.top, right - left, chartArea.bottom - chartArea.top);
+                }
+
+                ctx.restore();
+            }
+        };
+
+        const fmt = p => {
+            const s = String(p || '').trim().replace(/\s+\(IFRS별도\)/, '');
+            const x = s.split('/');
+            return (x[0] ? x[0].slice(2) : '') + '/' + (x[1] || '');
+        };
+
+        el.chart = new Chart(ctx, {
+            type: 'bar',
+            plugins: [backgroundPlugin],
+
+            data: {
+                labels: data.map(d => fmt(d.기간)),
+                datasets: [
+                    {
+                        label: 'EPSQOQ',
+                        data: eps,
+                        backgroundColor: '#8b5cf6'
+                    }
+                ]
+            },
+
+            options: {
+                animation: false,
+                responsive: true,
+                maintainAspectRatio: false,
+
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: true
+                    }
+                },
+
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            font: { size: 10 },
+                            color: '#000000',
+                            autoSkip: false,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            callback: function(value) {
+                                return this.getLabelForValue(value);
+                            }
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            display: true,
+                            color: '#e5e7eb'
+                        },
+                        ticks: {
+                            display: true,
+                            font: { size: 9 },
+                            callback: value => Number(value).toLocaleString('ko-KR') + '%'
+                        }
+                    }
+                }
+            }
+        });
+
+    } catch (err) {
+        console.error("차트 로드 실패:", code, err);
+        el.dataset.done = "";
     }
-
-
-                        
-
-
-
-
-
-
-
-
-
-
-
-
+}
 
 
 
