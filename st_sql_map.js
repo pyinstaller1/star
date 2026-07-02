@@ -396,55 +396,165 @@ ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC;
 `,
 
 
+
+    st_ma5: `
+WITH A AS (
+    SELECT CODE, DATE, MA5, MA20,
+           MA5 - MA20 AS DIFF,
+           LAG(MA5 - MA20, 1) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF1,
+           LAG(MA5 - MA20, 2) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF2,
+           LAG(MA5 - MA20, 3) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF3,
+           LAG(MA5 - MA20, 5) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF5,
+           LAG(MA5 - MA20, 7) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF7,
+           LAG(MA5 - MA20,10) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF10,
+           LAG(MA5 - MA20,15) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF15,
+           ROW_NUMBER() OVER (PARTITION BY CODE ORDER BY DATE DESC) AS ROW_NO
+    FROM TB_ILBONG
+)
+
+SELECT A.CODE AS code, K."종목명" AS name
+FROM A
+JOIN TB_KOSPI K ON A.CODE = K."코드"
+WHERE ROW_NO = 1
+
+/* BUY */
+AND COALESCE(DIFF15 < DIFF7, FALSE)
+AND COALESCE(DIFF15 < DIFF3, FALSE)
+AND COALESCE(DIFF10 < DIFF3, FALSE)
+AND COALESCE(DIFF7 < DIFF3, FALSE)
+AND COALESCE(DIFF5 < DIFF1, FALSE)
+AND COALESCE(DIFF3 < DIFF, FALSE)
+AND COALESCE(DIFF2 < DIFF, FALSE)
+AND COALESCE(DIFF1 < DIFF, FALSE)
+AND COALESCE(ABS(DIFF) / GREATEST(MA20, 1) <= 0.1, FALSE)
+
+/* SELL */
+/*
+AND COALESCE(DIFF15 > DIFF7, FALSE)
+AND COALESCE(DIFF15 > DIFF3, FALSE)
+AND COALESCE(DIFF10 > DIFF3, FALSE)
+AND COALESCE(DIFF7 > DIFF3, FALSE)
+AND COALESCE(DIFF5 > DIFF1, FALSE)
+AND COALESCE(DIFF3 > DIFF, FALSE)
+AND COALESCE(DIFF2 > DIFF, FALSE)
+AND COALESCE(DIFF1 > DIFF, FALSE)
+AND COALESCE(ABS(DIFF) / GREATEST(MA20, 1) <= 0.1, FALSE)
+*/
+
+
+/* ETC (BUY/SELL 제외) */
+/*
+AND NOT (
+    (
+        COALESCE(DIFF15 < DIFF7, FALSE)
+        AND COALESCE(DIFF15 < DIFF3, FALSE)
+        AND COALESCE(DIFF10 < DIFF3, FALSE)
+        AND COALESCE(DIFF7 < DIFF3, FALSE)
+        AND COALESCE(DIFF5 < DIFF1, FALSE)
+        AND COALESCE(DIFF3 < DIFF, FALSE)
+        AND COALESCE(DIFF2 < DIFF, FALSE)
+        AND COALESCE(DIFF1 < DIFF, FALSE)
+        AND COALESCE(ABS(DIFF) / GREATEST(MA20, 1) <= 0.1, FALSE)
+    )
+    OR
+    (
+        COALESCE(DIFF15 > DIFF7, FALSE)
+        AND COALESCE(DIFF15 > DIFF3, FALSE)
+        AND COALESCE(DIFF10 > DIFF3, FALSE)
+        AND COALESCE(DIFF7 > DIFF3, FALSE)
+        AND COALESCE(DIFF5 > DIFF1, FALSE)
+        AND COALESCE(DIFF3 > DIFF, FALSE)
+        AND COALESCE(DIFF2 > DIFF, FALSE)
+        AND COALESCE(DIFF1 > DIFF, FALSE)
+        AND COALESCE(ABS(DIFF) / GREATEST(MA20, 1) <= 0.1, FALSE)
+    )
+)
+*/
+
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC;
+`,
+
+
+
+
     st_ma20: `
 WITH A AS (
     SELECT CODE, DATE, MA20, MA60,
            MA20 - MA60 AS DIFF,
-           LAG(MA20 - MA60, 1) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF1,
-           LAG(MA20 - MA60, 2) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF2,
-           LAG(MA20 - MA60, 3) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF3,
-           LAG(MA20 - MA60, 5) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF5,
-           LAG(MA20 - MA60, 7) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF7,
+           LAG(MA20 - MA60,1) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF1,
+           LAG(MA20 - MA60,2) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF2,
+           LAG(MA20 - MA60,3) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF3,
+           LAG(MA20 - MA60,5) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF5,
+           LAG(MA20 - MA60,7) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF7,
            LAG(MA20 - MA60,10) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF10,
            LAG(MA20 - MA60,15) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF15,
            ROW_NUMBER() OVER (PARTITION BY CODE ORDER BY DATE DESC) AS ROW_NO
     FROM TB_ILBONG
 )
-SELECT A.CODE, K."종목명", A.DATE, A.MA20, A.MA60
+SELECT A.CODE AS code,K."종목명" AS name
 FROM A
-JOIN TB_KOSPI K
-  ON A.CODE = K."코드"
-WHERE
-    ROW_NO = 1
+JOIN TB_KOSPI K ON A.CODE=K."코드"
+WHERE ROW_NO=1
 
-    -- BUY : 20일선이 60일선으로 접근(골든크로스 직전)
-    AND DIFF15 < DIFF7
-    AND DIFF15 < DIFF3
-    AND DIFF10 < DIFF3
-    AND DIFF7 < DIFF3
-    AND DIFF5 < DIFF1
-    AND DIFF3 < DIFF
-    AND DIFF2 < DIFF
-    AND DIFF1 < DIFF
-    AND ABS(DIFF) / GREATEST(MA60, 1) <= 0.05
+/* BUY */
+AND DIFF15<DIFF7
+AND DIFF15<DIFF3
+AND DIFF10<DIFF3
+AND DIFF7<DIFF3
+AND DIFF5<DIFF1
+AND DIFF3<DIFF
+AND DIFF2<DIFF
+AND DIFF1<DIFF
+AND ABS(DIFF)/GREATEST(MA60,1)<=0.05
 
-    -- SELL : 20일선이 60일선으로 접근(데드크로스 직전)
-    -- AND DIFF15 > DIFF7
-    -- AND DIFF15 > DIFF3
-    -- AND DIFF10 > DIFF3
-    -- AND DIFF7 > DIFF3
-    -- AND DIFF5 > DIFF1
-    -- AND DIFF3 > DIFF
-    -- AND DIFF2 > DIFF
-    -- AND DIFF1 > DIFF
-    -- AND ABS(DIFF) / GREATEST(MA60, 1) <= 0.05
+/* SELL */
+/*
+AND DIFF15>DIFF7
+AND DIFF15>DIFF3
+AND DIFF10>DIFF3
+AND DIFF7>DIFF3
+AND DIFF5>DIFF1
+AND DIFF3>DIFF
+AND DIFF2>DIFF
+AND DIFF1>DIFF
+AND ABS(DIFF)/GREATEST(MA60,1)<=0.05
+*/
 
-ORDER BY A.CODE;
+/* ETC */
+/*
+AND NOT (
+    (
+        COALESCE(DIFF15<DIFF7,FALSE)
+        AND COALESCE(DIFF15<DIFF3,FALSE)
+        AND COALESCE(DIFF10<DIFF3,FALSE)
+        AND COALESCE(DIFF7<DIFF3,FALSE)
+        AND COALESCE(DIFF5<DIFF1,FALSE)
+        AND COALESCE(DIFF3<DIFF,FALSE)
+        AND COALESCE(DIFF2<DIFF,FALSE)
+        AND COALESCE(DIFF1<DIFF,FALSE)
+        AND COALESCE(ABS(DIFF)/GREATEST(MA60,1)<=0.05,FALSE)
+    )
+    OR
+    (
+        COALESCE(DIFF15>DIFF7,FALSE)
+        AND COALESCE(DIFF15>DIFF3,FALSE)
+        AND COALESCE(DIFF10>DIFF3,FALSE)
+        AND COALESCE(DIFF7>DIFF3,FALSE)
+        AND COALESCE(DIFF5>DIFF1,FALSE)
+        AND COALESCE(DIFF3>DIFF,FALSE)
+        AND COALESCE(DIFF2>DIFF,FALSE)
+        AND COALESCE(DIFF1>DIFF,FALSE)
+        AND COALESCE(ABS(DIFF)/GREATEST(MA60,1)<=0.05,FALSE)
+    )
+)
+*/
+
+ORDER BY CAST(REPLACE(K."시가총액",',','') AS BIGINT) DESC
 `,
 
 
     st_sales: `
-WITH A AS (
+WITH Q AS (
     SELECT *,
            ROW_NUMBER() OVER (
                PARTITION BY 코드
@@ -453,53 +563,73 @@ WITH A AS (
     FROM TB_NAVER_FIN
     WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 매출 IS NOT NULL
+      AND 영업이익 IS NOT NULL
 )
+
 SELECT
-    K."코드",
-    K."종목명",
-    S1.기간,
-    S1.매출 AS 매출1,
-    S2.매출 AS 매출2,
-    S3.매출 AS 매출3,
-    S4.매출 AS 매출4,
-    S1.영업이익 AS 영업이익1,
-    S2.영업이익 AS 영업이익2,
-    S3.영업이익 AS 영업이익3,
-    S4.영업이익 AS 영업이익4
+    K."코드" AS code,
+    K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN = 4) S1
-    JOIN (SELECT * FROM A WHERE RN = 3) S2
+    (SELECT * FROM Q WHERE RN=1) S1
+    JOIN (SELECT * FROM Q WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN = 2) S3
+    JOIN (SELECT * FROM Q WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN = 1) S4
-      ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
-WHERE
+WHERE 1=1 AND
 
-    -- BUY : 최근 4개 분기 연속 증가
-    S1.매출 < S2.매출
-    AND S2.매출 < S3.매출
-    AND S3.매출 < S4.매출
-    AND S1.영업이익 < S2.영업이익
-    AND S2.영업이익 < S3.영업이익
-    AND S3.영업이익 < S4.영업이익
+    /* =========================
+       BUY (ACTIVE)
+    ========================= */
+    (
+        S1.매출 > S2.매출
+        AND S2.매출 > S3.매출
+        AND S1.영업이익 > S2.영업이익
+        AND S2.영업이익 > S3.영업이익
+    )
 
-    -- SELL : 최근 4개 분기 연속 감소
-    -- S1.매출 > S2.매출
-    -- AND S2.매출 > S3.매출
-    -- AND S3.매출 > S4.매출
-    -- AND S1.영업이익 > S2.영업이익
-    -- AND S2.영업이익 > S3.영업이익
-    -- AND S3.영업이익 > S4.영업이익
+    /* =========================
+       SELL (DISABLED)
+    ========================= */
+    /*
+    (
+        S1.매출 < S2.매출
+        AND S2.매출 < S3.매출
+        AND S1.영업이익 < S2.영업이익
+        AND S2.영업이익 < S3.영업이익
+    )
+    */
 
-ORDER BY K."종목명";
+    /* =========================
+       ETC (DISABLED or OPTIONAL)
+       → BUY/SELL 둘 다 아닌 구간
+    ========================= */
+    /*
+    NOT (
+        (
+            S1.매출 > S2.매출
+            AND S2.매출 > S3.매출
+            AND S1.영업이익 > S2.영업이익
+            AND S2.영업이익 > S3.영업이익
+        )
+        OR
+        (
+            S1.매출 < S2.매출
+            AND S2.매출 < S3.매출
+            AND S1.영업이익 < S2.영업이익
+            AND S2.영업이익 < S3.영업이익
+        )
+    )
+    */
+
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 `,
 
 
     st_salesqoq: `
-WITH A AS (
+WITH Q AS (
     SELECT *,
            ROW_NUMBER() OVER (
                PARTITION BY 코드
@@ -508,52 +638,77 @@ WITH A AS (
     FROM TB_NAVER_FIN
     WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 매출QOQ IS NOT NULL
+      AND 영업이익QOQ IS NOT NULL
 )
+
 SELECT
-    K."코드",
-    K."종목명",
-    S1.기간,
-    S1.매출QOQ AS 매출QOQ1,
-    S2.매출QOQ AS 매출QOQ2,
-    S3.매출QOQ AS 매출QOQ3,
-    S4.매출QOQ AS 매출QOQ4,
-    S1.영업이익QOQ AS 영업이익QOQ1,
-    S2.영업이익QOQ AS 영업이익QOQ2,
-    S3.영업이익QOQ AS 영업이익QOQ3,
-    S4.영업이익QOQ AS 영업이익QOQ4
+    K."코드" AS code,
+    K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN = 4) S1
-    JOIN (SELECT * FROM A WHERE RN = 3) S2
+    (SELECT * FROM Q WHERE RN=1) S1
+    JOIN (SELECT * FROM Q WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN = 2) S3
+    JOIN (SELECT * FROM Q WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN = 1) S4
-      ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
 WHERE
 
-    -- BUY : 최근 4개 분기 모두 양수
+1=1
+
+/* =========================
+   BUY (ACTIVE)
+========================= */
+AND (
     S1.매출QOQ > 0
     AND S2.매출QOQ > 0
     AND S3.매출QOQ > 0
-    AND S4.매출QOQ > 0
     AND S1.영업이익QOQ > 0
     AND S2.영업이익QOQ > 0
     AND S3.영업이익QOQ > 0
-    AND S4.영업이익QOQ > 0
+)
 
-    -- SELL : 최근 4개 분기 모두 음수
-    -- S1.매출QOQ < 0
-    -- AND S2.매출QOQ < 0
-    -- AND S3.매출QOQ < 0
-    -- AND S4.매출QOQ < 0
-    -- AND S1.영업이익QOQ < 0
-    -- AND S2.영업이익QOQ < 0
-    -- AND S3.영업이익QOQ < 0
-    -- AND S4.영업이익QOQ < 0
+/* =========================
+   SELL (DISABLED)
+========================= */
+/*
+AND (
+    S1.매출QOQ < 0
+    AND S2.매출QOQ < 0
+    AND S3.매출QOQ < 0
+    AND S1.영업이익QOQ < 0
+    AND S2.영업이익QOQ < 0
+    AND S3.영업이익QOQ < 0
+)
+*/
 
-ORDER BY K."종목명";
+/* =========================
+   ETC (DISABLED)
+========================= */
+/*
+AND NOT (
+    (
+        S1.매출QOQ > 0
+        AND S2.매출QOQ > 0
+        AND S3.매출QOQ > 0
+        AND S1.영업이익QOQ > 0
+        AND S2.영업이익QOQ > 0
+        AND S3.영업이익QOQ > 0
+    )
+    OR
+    (
+        S1.매출QOQ < 0
+        AND S2.매출QOQ < 0
+        AND S3.매출QOQ < 0
+        AND S1.영업이익QOQ < 0
+        AND S2.영업이익QOQ < 0
+        AND S3.영업이익QOQ < 0
+    )
+)
+*/
+
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 `,
 
 
@@ -565,40 +720,56 @@ WITH A AS (
                ORDER BY 기간 DESC
            ) AS RN
     FROM TB_NAVER_FIN
-    WHERE 구분 = '연도'
+    WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 자산 IS NOT NULL
+      AND 자산 != 0
 )
 SELECT
-    K."코드",
-    K."종목명",
-    S1.기간,
-    S1.자산 AS 자산1,
-    S2.자산 AS 자산2,
-    S3.자산 AS 자산3,
-    S4.자산 AS 자산4
+    K."코드" AS code,
+    K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN = 4) S1
-    JOIN (SELECT * FROM A WHERE RN = 3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN = 2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN = 1) S4
-      ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
-WHERE
+WHERE 1=1
 
-    -- BUY : 최근 4년 연속 자산 증가
+-- BUY (ACTIVE)
+AND (
+    S1.자산 > S2.자산
+    AND S2.자산 > S3.자산
+)
+
+
+-- SELL (DISABLED)
+/*
+AND (
     S1.자산 < S2.자산
     AND S2.자산 < S3.자산
-    AND S3.자산 < S4.자산
+)
+*/
 
-    -- SELL : 최근 4년 연속 자산 감소
-    -- S1.자산 > S2.자산
-    -- AND S2.자산 > S3.자산
-    -- AND S3.자산 > S4.자산
 
-ORDER BY K."종목명";
+-- ETC
+/*
+AND NOT (
+    (
+        S1.자산 > S2.자산
+        AND S2.자산 > S3.자산
+    )
+    OR
+    (
+        S1.자산 < S2.자산
+        AND S2.자산 < S3.자산
+    )
+)
+*/
+
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC;
 `,
 
 
@@ -610,43 +781,53 @@ WITH A AS (
                ORDER BY 기간 DESC
            ) AS RN
     FROM TB_NAVER_FIN
-    WHERE 구분 = '연도'
+    WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 영업현금흐름 IS NOT NULL
 )
 SELECT
-    K."코드",
-    K."종목명",
-    S1.기간,
-    S1.영업현금흐름 AS 현금흐름1,
-    S2.영업현금흐름 AS 현금흐름2,
-    S3.영업현금흐름 AS 현금흐름3,
-    S4.영업현금흐름 AS 현금흐름4
+    K."코드" AS code,
+    K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN = 4) S1
-    JOIN (SELECT * FROM A WHERE RN = 3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN = 2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN = 1) S4
-      ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
-WHERE
+WHERE 1=1
 
-    -- BUY : 최근 영업현금흐름 > 3년 전
-    S1.영업현금흐름 < S4.영업현금흐름
+-- BUY
+AND (
+    S1.영업현금흐름 > S2.영업현금흐름
+    AND S2.영업현금흐름 > S3.영업현금흐름
+)
 
-    -- SELL : 최근 영업현금흐름 < 3년 전
-    -- S1.영업현금흐름 > S4.영업현금흐름
+-- SELL
+/*
+AND (
+    S1.영업현금흐름 < S2.영업현금흐름
+    AND S2.영업현금흐름 < S3.영업현금흐름
+)
+*/
 
-    -- ETC : BUY, SELL 제외
-    -- NOT (
-    --     S1.영업현금흐름 < S4.영업현금흐름
-    --     OR
-    --     S1.영업현금흐름 > S4.영업현금흐름
-    -- )
+-- ETC
+/*
+AND NOT (
+    (
+        S1.영업현금흐름 > S2.영업현금흐름
+        AND S2.영업현금흐름 > S3.영업현금흐름
+    )
+    OR
+    (
+        S1.영업현금흐름 < S2.영업현금흐름
+        AND S2.영업현금흐름 < S3.영업현금흐름
+    )
+)
+*/
 
-ORDER BY K."종목명";
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 `,
 
 
@@ -660,38 +841,57 @@ WITH A AS (
     FROM TB_NAVER_FIN
     WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND EPS IS NOT NULL
 )
 SELECT
-    K."코드",
-    K."종목명",
-    S1.기간,
-    S1.EPS AS EPS1,
-    S2.EPS AS EPS2,
-    S3.EPS AS EPS3,
-    S4.EPS AS EPS4
+    K."코드" AS code,
+    K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN = 4) S1
-    JOIN (SELECT * FROM A WHERE RN = 3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN = 2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN = 1) S4
+    JOIN (SELECT * FROM A WHERE RN=4) S4
       ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
-WHERE
+WHERE 1=1
 
-    -- BUY : 최근 4개 분기 EPS 연속 증가
+-- BUY
+AND (
+    S1.EPS > S2.EPS
+    AND S2.EPS > S3.EPS
+    AND S3.EPS > S4.EPS
+)
+
+-- SELL
+/*
+AND (
     S1.EPS < S2.EPS
     AND S2.EPS < S3.EPS
     AND S3.EPS < S4.EPS
+)
+*/
 
-    -- SELL : 최근 4개 분기 EPS 연속 감소
-    -- S1.EPS > S2.EPS
-    -- AND S2.EPS > S3.EPS
-    -- AND S3.EPS > S4.EPS
+-- ETC
+/*
+AND NOT (
+    (
+        S1.EPS > S2.EPS
+        AND S2.EPS > S3.EPS
+        AND S3.EPS > S4.EPS
+    )
+    OR
+    (
+        S1.EPS < S2.EPS
+        AND S2.EPS < S3.EPS
+        AND S3.EPS < S4.EPS
+    )
+)
+*/
 
-ORDER BY K."종목명";
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 `,
 
 
@@ -705,35 +905,57 @@ WITH A AS (
     FROM TB_NAVER_FIN
     WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND EPSQOQ IS NOT NULL
 )
 SELECT
-    K."코드",
-    K."종목명",
-    S2.기간,
-    S2.EPSQOQ AS EPSQOQ2,
-    S3.EPSQOQ AS EPSQOQ3,
-    S4.EPSQOQ AS EPSQOQ4
+    K."코드" AS code,
+    K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN = 3) S2
-    JOIN (SELECT * FROM A WHERE RN = 2) S3
-      ON S2.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN = 1) S4
-      ON S2.코드 = S4.코드
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
+      ON S1.코드 = S2.코드
+    JOIN (SELECT * FROM A WHERE RN=3) S3
+      ON S1.코드 = S3.코드
+    JOIN (SELECT * FROM A WHERE RN=4) S4
+      ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
-      ON S2.코드 = K."코드"
-WHERE
+      ON S1.코드 = K."코드"
+WHERE 1=1
 
-    -- BUY : 최근 3개 분기 EPSQOQ 모두 양수
-    S2.EPSQOQ > 0
-    AND S3.EPSQOQ > 0
-    AND S4.EPSQOQ > 0
+-- BUY
+AND (
+    S1.EPSQOQ > S2.EPSQOQ
+    AND S2.EPSQOQ > S3.EPSQOQ
+    AND S3.EPSQOQ > S4.EPSQOQ
+)
 
-    -- SELL : 최근 3개 분기 EPSQOQ 모두 음수
-    -- S2.EPSQOQ < 0
-    -- AND S3.EPSQOQ < 0
-    -- AND S4.EPSQOQ < 0
+-- SELL
+/*
+AND (
+    S1.EPSQOQ < S2.EPSQOQ
+    AND S2.EPSQOQ < S3.EPSQOQ
+    AND S3.EPSQOQ < S4.EPSQOQ
+)
+*/
 
-ORDER BY K."종목명";
+-- ETC
+/*
+AND NOT (
+    (
+        S1.EPSQOQ > S2.EPSQOQ
+        AND S2.EPSQOQ > S3.EPSQOQ
+        AND S3.EPSQOQ > S4.EPSQOQ
+    )
+    OR
+    (
+        S1.EPSQOQ < S2.EPSQOQ
+        AND S2.EPSQOQ < S3.EPSQOQ
+        AND S3.EPSQOQ < S4.EPSQOQ
+    )
+)
+*/
+
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 `,
 
 
@@ -747,53 +969,58 @@ WITH A AS (
     FROM TB_NAVER_FIN
     WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 영업이익률 IS NOT NULL
 )
+
 SELECT
-    K."코드",
-    K."종목명",
-    S1.기간,
-    S1.영업이익률 AS 영업이익률1,
-    S2.영업이익률 AS 영업이익률2,
-    S3.영업이익률 AS 영업이익률3,
-    S4.영업이익률 AS 영업이익률4
+    K."코드" AS code,
+    K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN = 4) S1
-    JOIN (SELECT * FROM A WHERE RN = 3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN = 2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN = 1) S4
+    JOIN (SELECT * FROM A WHERE RN=4) S4
       ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
-WHERE
+WHERE 1=1
 
-    -- BUY : 최근 4개 분기 영업이익률 연속 증가
+-- BUY
+AND (
+    S1.영업이익률 > S2.영업이익률
+    AND S2.영업이익률 > S3.영업이익률
+    AND S3.영업이익률 > S4.영업이익률
+)
+
+-- SELL
+/*
+AND (
     S1.영업이익률 < S2.영업이익률
     AND S2.영업이익률 < S3.영업이익률
     AND S3.영업이익률 < S4.영업이익률
+)
+*/
 
-    -- SELL : 최근 4개 분기 영업이익률 연속 감소
-    -- S1.영업이익률 > S2.영업이익률
-    -- AND S2.영업이익률 > S3.영업이익률
-    -- AND S3.영업이익률 > S4.영업이익률
+-- ETC
+/*
+AND NOT (
+    (
+        S1.영업이익률 > S2.영업이익률
+        AND S2.영업이익률 > S3.영업이익률
+        AND S3.영업이익률 > S4.영업이익률
+    )
+    OR
+    (
+        S1.영업이익률 < S2.영업이익률
+        AND S2.영업이익률 < S3.영업이익률
+        AND S3.영업이익률 < S4.영업이익률
+    )
+)
+*/
 
-    -- ETC : BUY, SELL 제외
-    -- NOT (
-    --     (
-    --         S1.영업이익률 < S2.영업이익률
-    --         AND S2.영업이익률 < S3.영업이익률
-    --         AND S3.영업이익률 < S4.영업이익률
-    --     )
-    --     OR
-    --     (
-    --         S1.영업이익률 > S2.영업이익률
-    --         AND S2.영업이익률 > S3.영업이익률
-    --         AND S3.영업이익률 > S4.영업이익률
-    --     )
-    -- )
-
-ORDER BY
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 `,
 
 
@@ -807,53 +1034,57 @@ WITH A AS (
     FROM TB_NAVER_FIN
     WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND ROE IS NOT NULL
 )
 SELECT
-    K."코드",
-    K."종목명",
-    S1.기간,
-    S1.ROE AS ROE1,
-    S2.ROE AS ROE2,
-    S3.ROE AS ROE3,
-    S4.ROE AS ROE4
+    K."코드" AS code,
+    K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN = 4) S1
-    JOIN (SELECT * FROM A WHERE RN = 3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN = 2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN = 1) S4
+    JOIN (SELECT * FROM A WHERE RN=4) S4
       ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
-WHERE
+WHERE 1=1
 
-    -- BUY : 최근 4개 분기 ROE 연속 증가
+-- BUY
+AND (
+    S1.ROE > S2.ROE
+    AND S2.ROE > S3.ROE
+    AND S3.ROE > S4.ROE
+)
+
+-- SELL
+/*
+AND (
     S1.ROE < S2.ROE
     AND S2.ROE < S3.ROE
     AND S3.ROE < S4.ROE
+)
+*/
 
-    -- SELL : 최근 4개 분기 ROE 연속 감소
-    -- S1.ROE > S2.ROE
-    -- AND S2.ROE > S3.ROE
-    -- AND S3.ROE > S4.ROE
+-- ETC
+/*
+AND NOT (
+    (
+        S1.ROE > S2.ROE
+        AND S2.ROE > S3.ROE
+        AND S3.ROE > S4.ROE
+    )
+    OR
+    (
+        S1.ROE < S2.ROE
+        AND S2.ROE < S3.ROE
+        AND S3.ROE < S4.ROE
+    )
+)
+*/
 
-    -- ETC : BUY, SELL 제외
-    -- NOT (
-    --     (
-    --         S1.ROE < S2.ROE
-    --         AND S2.ROE < S3.ROE
-    --         AND S3.ROE < S4.ROE
-    --     )
-    --     OR
-    --     (
-    --         S1.ROE > S2.ROE
-    --         AND S2.ROE > S3.ROE
-    --         AND S3.ROE > S4.ROE
-    --     )
-    -- )
-
-ORDER BY K."종목명";
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 `,
 
 
@@ -867,53 +1098,57 @@ WITH A AS (
     FROM TB_NAVER_FIN
     WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 부채비율 IS NOT NULL
 )
 SELECT
-    K."코드",
-    K."종목명",
-    S1.기간,
-    S1.부채비율 AS 부채비율1,
-    S2.부채비율 AS 부채비율2,
-    S3.부채비율 AS 부채비율3,
-    S4.부채비율 AS 부채비율4
+    K."코드" AS code,
+    K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN = 4) S1
-    JOIN (SELECT * FROM A WHERE RN = 3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN = 2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN = 1) S4
+    JOIN (SELECT * FROM A WHERE RN=4) S4
       ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
-WHERE
+WHERE 1=1
 
-    -- BUY : 최근 4개 분기 부채비율 연속 감소
+-- BUY
+AND (
+    S1.부채비율 < S2.부채비율
+    AND S2.부채비율 < S3.부채비율
+    AND S3.부채비율 < S4.부채비율
+)
+
+-- SELL
+/*
+AND (
     S1.부채비율 > S2.부채비율
     AND S2.부채비율 > S3.부채비율
     AND S3.부채비율 > S4.부채비율
+)
+*/
 
-    -- SELL : 최근 4개 분기 부채비율 연속 증가
-    -- S1.부채비율 < S2.부채비율
-    -- AND S2.부채비율 < S3.부채비율
-    -- AND S3.부채비율 < S4.부채비율
+-- ETC
+/*
+AND NOT (
+    (
+        S1.부채비율 < S2.부채비율
+        AND S2.부채비율 < S3.부채비율
+        AND S3.부채비율 < S4.부채비율
+    )
+    OR
+    (
+        S1.부채비율 > S2.부채비율
+        AND S2.부채비율 > S3.부채비율
+        AND S3.부채비율 > S4.부채비율
+    )
+)
+*/
 
-    -- ETC : BUY, SELL 제외
-    -- NOT (
-    --     (
-    --         S1.부채비율 > S2.부채비율
-    --         AND S2.부채비율 > S3.부채비율
-    --         AND S3.부채비율 > S4.부채비율
-    --     )
-    --     OR
-    --     (
-    --         S1.부채비율 < S2.부채비율
-    --         AND S2.부채비율 < S3.부채비율
-    --         AND S3.부채비율 < S4.부채비율
-    --     )
-    -- )
-
-ORDER BY K."종목명";
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 `,
 
 

@@ -1609,11 +1609,10 @@ def select_st_macd(mode: str):
         """
 
     else:
-
         condition = f"""
             ROW_NO = 1
-            AND NOT ({buy_condition})
-            AND NOT ({sell_condition})
+            AND ({buy_condition}) IS NOT TRUE
+            AND ({sell_condition}) IS NOT TRUE
         """
 
     query = f"""
@@ -1845,9 +1844,11 @@ def select_st_bol(mode: str):
     else:
         condition = f"""
             ROW_NO = 1
-            AND NOT ({buy_condition})
-            AND NOT ({sell_condition})
+            AND ({buy_condition}) IS NOT TRUE
+            AND ({sell_condition}) IS NOT TRUE
         """
+
+        
 
     query = f"""
 WITH A AS (
@@ -2115,10 +2116,9 @@ def select_st_vol(mode: str):
     else:
         condition = f"""
             ROW_NO = 1
-            AND NOT (
-                ({buy_condition})
-                OR
-                ({sell_condition})
+            AND (
+                ({buy_condition}) IS NOT TRUE
+                AND ({sell_condition}) IS NOT TRUE
             )
         """
         
@@ -2207,45 +2207,47 @@ def select_st_ma5(mode: str):
 
     con = duckdb.connect(db_path)
 
+    buy_condition = """
+        ROW_NO = 1
+        AND DIFF15 < DIFF7
+        AND DIFF15 < DIFF3
+        AND DIFF10 < DIFF3
+        AND DIFF7 < DIFF3
+        AND DIFF5 < DIFF1
+        AND DIFF3 < DIFF
+        AND DIFF2 < DIFF
+        AND DIFF1 < DIFF
+        AND ABS(DIFF) / GREATEST(MA20, 1) <= 0.1
+    """
+
+    sell_condition = """
+        ROW_NO = 1
+        AND DIFF15 > DIFF7
+        AND DIFF15 > DIFF3
+        AND DIFF10 > DIFF3
+        AND DIFF7 > DIFF3
+        AND DIFF5 > DIFF1
+        AND DIFF3 > DIFF
+        AND DIFF2 > DIFF
+        AND DIFF1 > DIFF
+        AND ABS(DIFF) / GREATEST(MA20, 1) <= 0.1
+    """
+
     if mode == "buy":
-
-        condition = """
-            ROW_NO = 1
-
-            -- 5일선이 20일선으로 접근(골든크로스 직전)
-            AND DIFF15 < DIFF7
-            AND DIFF15 < DIFF3
-            AND DIFF10 < DIFF3
-            AND DIFF7 < DIFF3
-            AND DIFF5 < DIFF1
-            AND DIFF3 < DIFF
-            AND DIFF2 < DIFF
-            AND DIFF1 < DIFF
-
-            AND ABS(DIFF) / GREATEST(MA20, 1) <= 0.1
-        """
+        condition = f"{buy_condition}"
 
     elif mode == "sell":
-
-        condition = """
-            ROW_NO = 1
-
-            -- 5일선이 20일선으로 접근(데드크로스 직전)
-            AND DIFF15 > DIFF7
-            AND DIFF15 > DIFF3
-            AND DIFF10 > DIFF3
-            AND DIFF7 > DIFF3
-            AND DIFF5 > DIFF1
-            AND DIFF3 > DIFF
-            AND DIFF2 > DIFF
-            AND DIFF1 > DIFF
-
-            AND ABS(DIFF) / GREATEST(MA20, 1) <= 0.1
-        """
+        condition = f"{sell_condition}"
 
     else:
+        condition = f"""
+            ROW_NO = 1
+            AND (
+                ({buy_condition}) IS NOT TRUE
+                AND ({sell_condition}) IS NOT TRUE
+            )
+        """
 
-        condition = "ROW_NO = 1"
 
     query = f"""
 WITH A AS (
@@ -2328,45 +2330,46 @@ def select_st_ma20(mode: str):
 
     con = duckdb.connect(db_path)
 
+    buy_condition = """
+        ROW_NO = 1
+        AND DIFF15 < DIFF7
+        AND DIFF15 < DIFF3
+        AND DIFF10 < DIFF3
+        AND DIFF7 < DIFF3
+        AND DIFF5 < DIFF1
+        AND DIFF3 < DIFF
+        AND DIFF2 < DIFF
+        AND DIFF1 < DIFF
+        AND ABS(DIFF) / GREATEST(MA60, 1) <= 0.05
+    """
+
+    sell_condition = """
+        ROW_NO = 1
+        AND DIFF15 > DIFF7
+        AND DIFF15 > DIFF3
+        AND DIFF10 > DIFF3
+        AND DIFF7 > DIFF3
+        AND DIFF5 > DIFF1
+        AND DIFF3 > DIFF
+        AND DIFF2 > DIFF
+        AND DIFF1 > DIFF
+        AND ABS(DIFF) / GREATEST(MA60, 1) <= 0.05
+    """
+
     if mode == "buy":
-
-        condition = """
-            ROW_NO = 1
-
-            -- 20일선이 60일선으로 접근(골든크로스 직전)
-            AND DIFF15 < DIFF7
-            AND DIFF15 < DIFF3
-            AND DIFF10 < DIFF3
-            AND DIFF7 < DIFF3
-            AND DIFF5 < DIFF1
-            AND DIFF3 < DIFF
-            AND DIFF2 < DIFF
-            AND DIFF1 < DIFF
-
-            AND ABS(DIFF) / GREATEST(MA60, 1) <= 0.05
-        """
+        condition = buy_condition
 
     elif mode == "sell":
-
-        condition = """
-            ROW_NO = 1
-
-            -- 20일선이 60일선으로 접근(데드크로스 직전)
-            AND DIFF15 > DIFF7
-            AND DIFF15 > DIFF3
-            AND DIFF10 > DIFF3
-            AND DIFF7 > DIFF3
-            AND DIFF5 > DIFF1
-            AND DIFF3 > DIFF
-            AND DIFF2 > DIFF
-            AND DIFF1 > DIFF
-
-            AND ABS(DIFF) / GREATEST(MA60, 1) <= 0.05
-        """
+        condition = sell_condition
 
     else:
-
-        condition = "ROW_NO = 1"
+        condition = f"""
+            ROW_NO = 1
+            AND NOT (
+                ({buy_condition}) IS TRUE
+                OR ({sell_condition}) IS TRUE
+            )
+        """
 
     query = f"""
 WITH A AS (
@@ -2443,38 +2446,38 @@ def select_st_ma20_ilbong(code_list: list):
 
 
 
-
 def select_st_sales(mode: str):
 
     con = duckdb.connect(db_path)
 
+    buy_condition = """
+        S1.매출 > S2.매출
+        AND S2.매출 > S3.매출
+        AND S1.영업이익 > S2.영업이익
+        AND S2.영업이익 > S3.영업이익
+    """
+
+    sell_condition = """
+        S1.매출 < S2.매출
+        AND S2.매출 < S3.매출
+        AND S1.영업이익 < S2.영업이익
+        AND S2.영업이익 < S3.영업이익
+    """
+
     if mode == "buy":
-
-        condition = """
-            s1.매출 < s2.매출
-            AND s2.매출 < s3.매출
-            AND s3.매출 < s4.매출
-
-            AND s1.영업이익 < s2.영업이익
-            AND s2.영업이익 < s3.영업이익
-            AND s3.영업이익 < s4.영업이익
-        """
+        condition = f"({buy_condition})"
 
     elif mode == "sell":
-
-        condition = """
-            s1.매출 > s2.매출
-            AND s2.매출 > s3.매출
-            AND s3.매출 > s4.매출
-
-            AND s1.영업이익 > s2.영업이익
-            AND s2.영업이익 > s3.영업이익
-            AND s3.영업이익 > s4.영업이익
-        """
+        condition = f"({sell_condition})"
 
     else:
-
-        condition = "1=1"
+        condition = f"""
+            NOT (
+                ({buy_condition})
+                OR
+                ({sell_condition})
+            )
+        """
 
     query = f"""
 WITH Q AS (
@@ -2482,23 +2485,23 @@ WITH Q AS (
            ROW_NUMBER() OVER (
                PARTITION BY 코드
                ORDER BY 기간 DESC
-           ) RN
+           ) AS RN
     FROM TB_NAVER_FIN
-    WHERE 구분='분기'
+    WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 매출 IS NOT NULL
+      AND 영업이익 IS NOT NULL
 )
 
 SELECT
     K."코드" AS code,
     K."종목명" AS name
 FROM
-    (SELECT * FROM Q WHERE RN=4) S1
-    JOIN (SELECT * FROM Q WHERE RN=3) S2
+    (SELECT * FROM Q WHERE RN=1) S1
+    JOIN (SELECT * FROM Q WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM Q WHERE RN=2) S3
+    JOIN (SELECT * FROM Q WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM Q WHERE RN=1) S4
-      ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
 WHERE
@@ -2507,10 +2510,16 @@ ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 """
 
     df = con.execute(query).df()
-
     con.close()
-
     return df.to_dict("records")
+
+
+
+
+
+
+
+
 
 
 def select_st_sales_fin(code_list: list):
@@ -2548,53 +2557,38 @@ def select_st_salesqoq(mode: str):
 
     con = duckdb.connect(db_path)
 
+    buy_condition = """
+        S1.매출QOQ > 0
+        AND S2.매출QOQ > 0
+        AND S3.매출QOQ > 0
+        AND S1.영업이익QOQ > 0
+        AND S2.영업이익QOQ > 0
+        AND S3.영업이익QOQ > 0
+    """
+
+    sell_condition = """
+        S1.매출QOQ < 0
+        AND S2.매출QOQ < 0
+        AND S3.매출QOQ < 0
+        AND S1.영업이익QOQ < 0
+        AND S2.영업이익QOQ < 0
+        AND S3.영업이익QOQ < 0
+    """
+
     if mode == "buy":
-
-        condition = """
-            S1.매출QOQ > 0
-            AND S2.매출QOQ > 0
-            AND S3.매출QOQ > 0
-            AND S4.매출QOQ > 0
-
-            AND S1.매출QOQ < S2.매출QOQ
-            AND S2.매출QOQ < S3.매출QOQ
-            AND S3.매출QOQ < S4.매출QOQ
-
-            AND S1.영업이익QOQ > 0
-            AND S2.영업이익QOQ > 0
-            AND S3.영업이익QOQ > 0
-            AND S4.영업이익QOQ > 0
-
-            AND S1.영업이익QOQ < S2.영업이익QOQ
-            AND S2.영업이익QOQ < S3.영업이익QOQ
-            AND S3.영업이익QOQ < S4.영업이익QOQ
-        """
+        condition = f"({buy_condition})"
 
     elif mode == "sell":
-
-        condition = """
-            S1.매출QOQ < 0
-            AND S2.매출QOQ < 0
-            AND S3.매출QOQ < 0
-            AND S4.매출QOQ < 0
-
-            AND S1.매출QOQ > S2.매출QOQ
-            AND S2.매출QOQ > S3.매출QOQ
-            AND S3.매출QOQ > S4.매출QOQ
-
-            AND S1.영업이익QOQ < 0
-            AND S2.영업이익QOQ < 0
-            AND S3.영업이익QOQ < 0
-            AND S4.영업이익QOQ < 0
-
-            AND S1.영업이익QOQ > S2.영업이익QOQ
-            AND S2.영업이익QOQ > S3.영업이익QOQ
-            AND S3.영업이익QOQ > S4.영업이익QOQ
-        """
+        condition = f"({sell_condition})"
 
     else:
-
-        condition = "1=1"
+        condition = f"""
+            NOT (
+                ({buy_condition})
+                OR
+                ({sell_condition})
+            )
+        """
 
     query = f"""
 WITH A AS (
@@ -2604,20 +2598,21 @@ WITH A AS (
                ORDER BY 기간 DESC
            ) AS RN
     FROM TB_NAVER_FIN
-    WHERE 구분='분기'
+    WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 매출QOQ IS NOT NULL
+      AND 영업이익QOQ IS NOT NULL
 )
+
 SELECT
     K."코드" AS code,
     K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN=4) S1
-    JOIN (SELECT * FROM A WHERE RN=3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN=2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN=1) S4
-      ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
 WHERE
@@ -2626,10 +2621,13 @@ ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 """
 
     df = con.execute(query).df()
-
     con.close()
-
     return df.to_dict("records")
+
+
+
+
+
 
 
 def select_st_salesqoq_fin(code_list: list):
@@ -2663,33 +2661,34 @@ def select_st_salesqoq_fin(code_list: list):
 
 
 
-
-
-
-
 def select_st_asset(mode: str):
 
     con = duckdb.connect(db_path)
 
-    if mode == "buy":
+    buy_condition = """
+        S1.자산 > S2.자산
+        AND S2.자산 > S3.자산
+    """
 
-        condition = """
-            S1.자산 < S2.자산
-            AND S2.자산 < S3.자산
-            AND S3.자산 < S4.자산
-        """
+    sell_condition = """
+        S1.자산 < S2.자산
+        AND S2.자산 < S3.자산
+    """
+
+    if mode == "buy":
+        condition = f"({buy_condition})"
 
     elif mode == "sell":
-
-        condition = """
-            S1.자산 > S2.자산
-            AND S2.자산 > S3.자산
-            AND S3.자산 > S4.자산
-        """
+        condition = f"({sell_condition})"
 
     else:
-
-        condition = "1=1"
+        condition = f"""
+            NOT (
+                ({buy_condition})
+                OR
+                ({sell_condition})
+            )
+        """
 
     query = f"""
 WITH A AS (
@@ -2699,20 +2698,21 @@ WITH A AS (
                ORDER BY 기간 DESC
            ) AS RN
     FROM TB_NAVER_FIN
-    WHERE 구분='연도'
+    WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 자산 IS NOT NULL
+      AND 자산 != 0
 )
+
 SELECT
     K."코드" AS code,
     K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN=4) S1
-    JOIN (SELECT * FROM A WHERE RN=3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN=2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN=1) S4
-      ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
 WHERE
@@ -2721,10 +2721,12 @@ ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 """
 
     df = con.execute(query).df()
-
     con.close()
-
     return df.to_dict("records")
+
+
+
+
 
 
 def select_st_asset_fin(code_list: list):
@@ -2763,23 +2765,22 @@ def select_st_cf(mode: str):
     con = duckdb.connect(db_path)
 
     buy_condition = """
-        S1.영업현금흐름 < S4.영업현금흐름
+        S1.영업현금흐름 > S2.영업현금흐름
+        AND S2.영업현금흐름 > S3.영업현금흐름
     """
 
     sell_condition = """
-        S1.영업현금흐름 > S4.영업현금흐름
+        S1.영업현금흐름 < S2.영업현금흐름
+        AND S2.영업현금흐름 < S3.영업현금흐름
     """
 
     if mode == "buy":
-
-        condition = buy_condition
+        condition = f"({buy_condition})"
 
     elif mode == "sell":
-
-        condition = sell_condition
+        condition = f"({sell_condition})"
 
     else:
-
         condition = f"""
             NOT (
                 ({buy_condition})
@@ -2796,20 +2797,20 @@ WITH A AS (
                ORDER BY 기간 DESC
            ) AS RN
     FROM TB_NAVER_FIN
-    WHERE 구분='연도'
+    WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 영업현금흐름 IS NOT NULL
 )
+
 SELECT
     K."코드" AS code,
     K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN=4) S1
-    JOIN (SELECT * FROM A WHERE RN=3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN=2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN=1) S4
-      ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
 WHERE
@@ -2818,10 +2819,18 @@ ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 """
 
     df = con.execute(query).df()
-
     con.close()
 
     return df.to_dict("records")
+
+
+
+
+
+
+
+
+
 
 
 
@@ -2862,31 +2871,36 @@ def select_st_cf_fin(code_list: list):
 
 
 
-
-
 def select_st_eps(mode: str):
 
     con = duckdb.connect(db_path)
 
-    if mode == "buy":
+    buy_condition = """
+        S1.EPS > S2.EPS
+        AND S2.EPS > S3.EPS
+        AND S3.EPS > S4.EPS
+    """
 
-        condition = """
-            S1.EPS < S2.EPS
-            AND S2.EPS < S3.EPS
-            AND S3.EPS < S4.EPS
-        """
+    sell_condition = """
+        S1.EPS < S2.EPS
+        AND S2.EPS < S3.EPS
+        AND S3.EPS < S4.EPS
+    """
+
+    if mode == "buy":
+        condition = f"({buy_condition})"
 
     elif mode == "sell":
-
-        condition = """
-            S1.EPS > S2.EPS
-            AND S2.EPS > S3.EPS
-            AND S3.EPS > S4.EPS
-        """
+        condition = f"({sell_condition})"
 
     else:
-
-        condition = "1=1"
+        condition = f"""
+            NOT (
+                ({buy_condition})
+                OR
+                ({sell_condition})
+            )
+        """
 
     query = f"""
 WITH A AS (
@@ -2896,32 +2910,34 @@ WITH A AS (
                ORDER BY 기간 DESC
            ) AS RN
     FROM TB_NAVER_FIN
-    WHERE 구분='분기'
+    WHERE 구분 = '분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND EPS IS NOT NULL
 )
+
 SELECT
     K."코드" AS code,
     K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN=4) S1
-    JOIN (SELECT * FROM A WHERE RN=3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN=2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN=1) S4
+    JOIN (SELECT * FROM A WHERE RN=4) S4
       ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
 WHERE
     {condition}
-ORDER BY CAST(REPLACE(k.시가총액, ',', '') AS BIGINT) DESC
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
 """
 
     df = con.execute(query).df()
-
     con.close()
 
     return df.to_dict("records")
+
 
 
 def select_st_eps_fin(code_list: list):
@@ -2958,30 +2974,36 @@ def select_st_eps_fin(code_list: list):
 
 
 
-
 def select_st_epsqoq(mode: str):
 
     con = duckdb.connect(db_path)
 
-    if mode == "buy":
+    buy_condition = """
+        S1.EPSQOQ > S2.EPSQOQ
+        AND S2.EPSQOQ > S3.EPSQOQ
+        AND S3.EPSQOQ > S4.EPSQOQ
+    """
 
-        condition = """
-            S2.EPSQOQ > 0
-            AND S3.EPSQOQ > 0
-            AND S4.EPSQOQ > 0
-        """
+    sell_condition = """
+        S1.EPSQOQ < S2.EPSQOQ
+        AND S2.EPSQOQ < S3.EPSQOQ
+        AND S3.EPSQOQ < S4.EPSQOQ
+    """
+
+    if mode == "buy":
+        condition = f"({buy_condition})"
 
     elif mode == "sell":
-
-        condition = """
-            S2.EPSQOQ < 0
-            AND S3.EPSQOQ < 0
-            AND S4.EPSQOQ < 0
-        """
+        condition = f"({sell_condition})"
 
     else:
-
-        condition = "1=1"
+        condition = f"""
+            NOT (
+                ({buy_condition})
+                OR
+                ({sell_condition})
+            )
+        """
 
     query = f"""
 WITH A AS (
@@ -2993,28 +3015,33 @@ WITH A AS (
     FROM TB_NAVER_FIN
     WHERE 구분='분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND EPSQOQ IS NOT NULL
 )
+
 SELECT
     K."코드" AS code,
     K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN=3) S2
-    JOIN (SELECT * FROM A WHERE RN=2) S3
-      ON S2.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN=1) S4
-      ON S2.코드 = S4.코드
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
+      ON S1.코드 = S2.코드
+    JOIN (SELECT * FROM A WHERE RN=3) S3
+      ON S1.코드 = S3.코드
+    JOIN (SELECT * FROM A WHERE RN=4) S4
+      ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
-      ON S2.코드 = K."코드"
-WHERE {condition}
+      ON S1.코드 = K."코드"
+WHERE
+    {condition}
 ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
-"
 """
 
     df = con.execute(query).df()
-
     con.close()
 
     return df.to_dict("records")
+
+
 
 def select_st_epsqoq_fin(code_list: list):
     con = duckdb.connect(db_path)
@@ -3045,33 +3072,31 @@ def select_st_epsqoq_fin(code_list: list):
 
 
 
-
 def select_st_margin(mode: str):
 
     con = duckdb.connect(db_path)
 
+    # 상승 (BUY)
     buy_condition = """
-        S1.영업이익률 < S2.영업이익률
-        AND S2.영업이익률 < S3.영업이익률
-        AND S3.영업이익률 < S4.영업이익률
-    """
-
-    sell_condition = """
         S1.영업이익률 > S2.영업이익률
         AND S2.영업이익률 > S3.영업이익률
         AND S3.영업이익률 > S4.영업이익률
     """
 
-    if mode == "buy":
+    # 하락 (SELL)
+    sell_condition = """
+        S1.영업이익률 < S2.영업이익률
+        AND S2.영업이익률 < S3.영업이익률
+        AND S3.영업이익률 < S4.영업이익률
+    """
 
-        condition = buy_condition
+    if mode == "buy":
+        condition = f"({buy_condition})"
 
     elif mode == "sell":
-
-        condition = sell_condition
+        condition = f"({sell_condition})"
 
     else:
-
         condition = f"""
             NOT (
                 ({buy_condition})
@@ -3090,30 +3115,36 @@ WITH A AS (
     FROM TB_NAVER_FIN
     WHERE 구분='분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 영업이익률 IS NOT NULL
 )
+
 SELECT
     K."코드" AS code,
     K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN=4) S1
-    JOIN (SELECT * FROM A WHERE RN=3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN=2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN=1) S4
+    JOIN (SELECT * FROM A WHERE RN=4) S4
       ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
-WHERE {condition}
+WHERE
+    {condition}
 ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
-
 """
 
     df = con.execute(query).df()
-
     con.close()
 
     return df.to_dict("records")
+
+
+
+
+
 
 
 def select_st_margin_fin(code_list: list):
@@ -3151,27 +3182,24 @@ def select_st_roe(mode: str):
     con = duckdb.connect(db_path)
 
     buy_condition = """
-        S1.ROE < S2.ROE
-        AND S2.ROE < S3.ROE
-        AND S3.ROE < S4.ROE
-    """
-
-    sell_condition = """
         S1.ROE > S2.ROE
         AND S2.ROE > S3.ROE
         AND S3.ROE > S4.ROE
     """
 
-    if mode == "buy":
+    sell_condition = """
+        S1.ROE < S2.ROE
+        AND S2.ROE < S3.ROE
+        AND S3.ROE < S4.ROE
+    """
 
-        condition = buy_condition
+    if mode == "buy":
+        condition = f"({buy_condition})"
 
     elif mode == "sell":
-
-        condition = sell_condition
+        condition = f"({sell_condition})"
 
     else:
-
         condition = f"""
             NOT (
                 ({buy_condition})
@@ -3190,30 +3218,32 @@ WITH A AS (
     FROM TB_NAVER_FIN
     WHERE 구분='분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND ROE IS NOT NULL
 )
+
 SELECT
     K."코드" AS code,
     K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN=4) S1
-    JOIN (SELECT * FROM A WHERE RN=3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN=2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN=1) S4
+    JOIN (SELECT * FROM A WHERE RN=4) S4
       ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
-WHERE {condition}
+WHERE
+    {condition}
 ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
-
 """
 
     df = con.execute(query).df()
-
     con.close()
 
     return df.to_dict("records")
+
 
 def select_st_roe_fin(code_list: list):
     con = duckdb.connect(db_path)
@@ -3251,28 +3281,27 @@ def select_st_dept(mode: str):
 
     con = duckdb.connect(db_path)
 
+    # BUY = 부채비율 개선 (하락)
     buy_condition = """
-        S1.부채비율 > S2.부채비율
-        AND S2.부채비율 > S3.부채비율
-        AND S3.부채비율 > S4.부채비율
-    """
-
-    sell_condition = """
         S1.부채비율 < S2.부채비율
         AND S2.부채비율 < S3.부채비율
         AND S3.부채비율 < S4.부채비율
     """
 
-    if mode == "buy":
+    # SELL = 부채비율 악화 (상승)
+    sell_condition = """
+        S1.부채비율 > S2.부채비율
+        AND S2.부채비율 > S3.부채비율
+        AND S3.부채비율 > S4.부채비율
+    """
 
-        condition = buy_condition
+    if mode == "buy":
+        condition = f"({buy_condition})"
 
     elif mode == "sell":
-
-        condition = sell_condition
+        condition = f"({sell_condition})"
 
     else:
-
         condition = f"""
             NOT (
                 ({buy_condition})
@@ -3291,27 +3320,28 @@ WITH A AS (
     FROM TB_NAVER_FIN
     WHERE 구분='분기'
       AND 기간 NOT LIKE '%(E)%'
+      AND 부채비율 IS NOT NULL
 )
+
 SELECT
     K."코드" AS code,
     K."종목명" AS name
 FROM
-    (SELECT * FROM A WHERE RN=4) S1
-    JOIN (SELECT * FROM A WHERE RN=3) S2
+    (SELECT * FROM A WHERE RN=1) S1
+    JOIN (SELECT * FROM A WHERE RN=2) S2
       ON S1.코드 = S2.코드
-    JOIN (SELECT * FROM A WHERE RN=2) S3
+    JOIN (SELECT * FROM A WHERE RN=3) S3
       ON S1.코드 = S3.코드
-    JOIN (SELECT * FROM A WHERE RN=1) S4
+    JOIN (SELECT * FROM A WHERE RN=4) S4
       ON S1.코드 = S4.코드
     JOIN TB_KOSPI K
       ON S1.코드 = K."코드"
-WHERE {condition}
+WHERE
+    {condition}
 ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
-
 """
 
     df = con.execute(query).df()
-
     con.close()
 
     return df.to_dict("records")
