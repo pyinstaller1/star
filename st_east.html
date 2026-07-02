@@ -52,15 +52,19 @@ div[id^="chart-"] span[style*="z-index: 5"] {
 
 <div class="east-side">
 
+
     <div id="east-analysis-panel" style="height:100%;">
 
         <div class="empty-placeholder" style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-            <span class="icon">📊</span>
-            왼쪽 화면에서 <strong>종목을 선택하시면</strong><br>
-            이곳에 웅장한 차트 분석 세트가 1줄로 표시됩니다.
+            <span class="icon" style="font-size:80px;">🔍📈📊</span>
+            <b style="font-size:38px;">종목을 선택하시면</b>
+            <span style="font-size:35px;">차트 분석이 제공 됩니다.</span>
         </div>
 
     </div>
+
+
+
 
 </div>
 
@@ -88,12 +92,12 @@ div[id^="chart-"] span[style*="z-index: 5"] {
                 <td id="fin-rsi" style="border:1px solid #dbe4ee;padding:4px 6px;text-align:right;">-</td>
 
                 <td style="padding:4px 6px;font-weight:600;border:1px solid #dbe4ee;background:#f8fafc; width:35px;">배당</td>
-                <td id="fin-div" style="border:1px solid #dbe4ee;padding:4px 6px;text-align:right; width:58px;">-</td>
+                <td id="fin-div" style="border:1px solid #dbe4ee;padding:4px 0px;text-align:right; font-size:10px; width:35px;">-</td>
             </tr>
 
             <tr>
                 <td style="padding:4px 6px;font-weight:600;border:1px solid #dbe4ee;background:#f8fafc;">부채</td>
-                <td id="fin-debt" style="border:1px solid #dbe4ee;padding:4px 6px;text-align:left;">-</td>
+                <td id="fin-debt" style="border:1px solid #dbe4ee;padding:4px 5px;text-align:left;">-</td>
 
                 <td style="padding:4px 6px;font-weight:600;border:1px solid #dbe4ee;background:#f8fafc;">EPS</td>
                 <td id="fin-eps" style="border:1px solid #dbe4ee;padding:4px 6px;text-align:right;">-</td>
@@ -191,6 +195,9 @@ div[id^="chart-"] span[style*="z-index: 5"] {
 
 
 function selectStockCard(cardElement, stockCode, stockName) {
+
+    selectedCode = stockCode;
+    selectedName = stockName;
 
     document.querySelectorAll('.st-card')
         .forEach(el => el.classList.remove('active-target'));

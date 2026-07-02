@@ -188,6 +188,49 @@ def get_ilbong_db(shcode: str):
 
 
 
+
+
+
+def select_golden(sql):
+
+    con = duckdb.connect(db_path)
+
+    try:
+
+        cur = con.execute(sql)
+
+        return {
+            "columns": [d[0] for d in cur.description],
+            "rows": cur.fetchall()
+        }
+
+    except Exception as e:
+
+        return {
+            "error": str(e)
+        }
+
+    finally:
+
+        con.close()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def upsert_hoga_bulk(bulk_data):
     if not bulk_data:
         return
@@ -456,7 +499,7 @@ def select_st_hoga(mode):
             GREATEST({', '.join(all_rem_cols)}) as max_rem
         FROM tb_hoga a
         INNER JOIN tb_kospi b ON a.code = b.코드
-        {filter_sql}
+        {filter_sql} 
     """
 
 
@@ -1137,11 +1180,11 @@ def insert_tb_gwansim_group(group_name):
 
     sql = """
         INSERT INTO tb_gwansim_group (group_id, group_name, order_no, reg_date)
-        SELECT 
-            nextval('seq_group_id'), 
-            ?, 
+        SELECT
+            COALESCE(MAX(group_id), 0) + 1,
+            ?,
             COALESCE(MAX(order_no), 0) + 1,
-            CURRENT_TIMESTAMP 
+            CURRENT_TIMESTAMP
         FROM tb_gwansim_group
     """
 
@@ -1152,7 +1195,6 @@ def insert_tb_gwansim_group(group_name):
     except duckdb.CatalogException:
         with duckdb.connect(db_path) as conn:
             conn.execute("""
-                CREATE SEQUENCE IF NOT EXISTS seq_group_id START 1;
                 CREATE TABLE IF NOT EXISTS tb_gwansim_group (
                     group_id INTEGER PRIMARY KEY,
                     group_name VARCHAR NOT NULL,
@@ -1161,6 +1203,8 @@ def insert_tb_gwansim_group(group_name):
                 );
             """)
             conn.execute(sql, [group_name])
+            
+
 
             
 
@@ -1438,6 +1482,32 @@ def insert_tb_ilbong(ilbong_list):
 
 
 
+def insert_tb_ilbong_remain():
+    ilbong = select_tb_ilbong('005930')
+
+    if not ilbong:
+        return []
+
+    last_date = ilbong[-1]['date']
+
+    sql = """
+        SELECT A.코드, A.종목명
+        FROM TB_KOSPI A
+        LEFT JOIN (
+            SELECT code, MAX(date) AS date
+            FROM tb_ilbong
+            GROUP BY code
+        ) B
+        ON A.코드 = B.code
+        WHERE B.date IS NULL
+           OR B.date <> ?
+        ORDER BY A.시장 DESC, A.순위
+    """
+
+    with duckdb.connect(db_path) as con:
+        list_remain = con.execute(sql, [last_date]).fetchall()
+
+    return list_remain
 
 
 
@@ -1488,73 +1558,117 @@ def drop_db(code):
 
 
 
-def select_st_macd8(mode: str):
-    """
-    MACD 전략 페이지용 종목 선별 함수 (자바스크립트 차트 렌더링 버그 완벽 수정판)
-    """
-    con = duckdb.connect(db_path)
-    
-    # 💡 i.code는 무조건 영문 소문자 'code'라는 키값으로 변환하고, 
-    # k."종목명"은 템플릿 규격에 맞춰 'name'으로 정확히 뱉어내게 강제 지정합니다.
-    if mode == 'buy':
-        query = """
-            SELECT DISTINCT i.code AS code, k."종목명" AS name
-            FROM tb_ilbong i
-            JOIN tb_kospi k ON i.code = k."코드"
-            WHERE i.code LIKE '005%' 
-            LIMIT 30
-        """
-    elif mode == 'sell':
-        query = """
-            SELECT DISTINCT i.code AS code, k."종목명" AS name
-            FROM tb_ilbong i
-            JOIN tb_kospi k ON i.code = k."코드"
-            WHERE i.code LIKE '000%' 
-            LIMIT 30
-        """
-    else:  # etc 모드
-        query = """
-            SELECT DISTINCT i.code AS code, k."종목명" AS name
-            FROM tb_ilbong i
-            JOIN tb_kospi k ON i.code = k."코드"
-            WHERE i.code LIKE '001%' 
-            LIMIT 30
-        """
-        
-    try:
-        df = con.execute(query).df()
-        result = df.to_dict('records')
-    except Exception as e:
-        print(f"select_st_macd 조회 중 오류 발생 ❌: {e}")
-        result = []
-    finally:
-        con.close()
-        
-    return result
 
-
-
-
-
-
-import duckdb
-import pandas as pd
-import numpy as np
 
 def select_st_macd(mode: str):
-    """1. 모든 종목 리스트를 가져오는 함수 (LIMIT 제거)"""
+
     con = duckdb.connect(db_path)
-    pattern = '0%' if mode == 'buy' else '000%' if mode == 'sell' else '001%'
-    
-    # LIMIT 3000 제거: 전체 2,700여 건을 모두 조회
-    query = f"""
-        SELECT DISTINCT i.code, k."종목명" as name
-        FROM tb_ilbong i, tb_kospi k 
-        WHERE i.code = k."코드" AND i.code LIKE '{pattern}'
+
+    buy_condition = """
+        1=1
+        AND HIST_10 < HIST_3
+        AND HIST_7 < HIST_3
+        AND HIST_7 < HIST_1
+        AND HIST_5 < HIST_1
+        AND HIST_3 < HIST_1
+        AND HIST_12 < HIST
+        AND HIST_5 < HIST
+        AND HIST_3 < HIST
+        AND HIST_2 < HIST
+        AND HIST_1 < HIST
+        AND ABS(HIST) / GREATEST(ABS(MACD9), 0.001) <= 0.1
     """
+
+    sell_condition = """
+        1=1
+        AND HIST_10 > HIST_3
+        AND HIST_7 > HIST_3
+        AND HIST_7 > HIST_1
+        AND HIST_5 > HIST_1
+        AND HIST_3 > HIST_1
+        AND HIST_12 > HIST
+        AND HIST_5 > HIST
+        AND HIST_3 > HIST
+        AND HIST_2 > HIST
+        AND HIST_1 > HIST
+        AND ABS(HIST) / GREATEST(ABS(MACD9), 0.001) <= 0.1
+    """
+
+    if mode == "buy":
+
+        condition = f"""
+            ROW_NO = 1
+            AND ({buy_condition})
+        """
+
+    elif mode == "sell":
+
+        condition = f"""
+            ROW_NO = 1
+            AND ({sell_condition})
+        """
+
+    else:
+
+        condition = f"""
+            ROW_NO = 1
+            AND NOT ({buy_condition})
+            AND NOT ({sell_condition})
+        """
+
+    query = f"""
+WITH A AS (
+    SELECT
+        CODE,
+        DATE,
+        MACD,
+        MACD9,
+
+        MACD - MACD9 AS HIST,
+
+        LAG(MACD - MACD9, 1) OVER (PARTITION BY CODE ORDER BY DATE) AS HIST_1,
+        LAG(MACD - MACD9, 2) OVER (PARTITION BY CODE ORDER BY DATE) AS HIST_2,
+        LAG(MACD - MACD9, 3) OVER (PARTITION BY CODE ORDER BY DATE) AS HIST_3,
+        LAG(MACD - MACD9, 5) OVER (PARTITION BY CODE ORDER BY DATE) AS HIST_5,
+        LAG(MACD - MACD9, 7) OVER (PARTITION BY CODE ORDER BY DATE) AS HIST_7,
+        LAG(MACD - MACD9, 10) OVER (PARTITION BY CODE ORDER BY DATE) AS HIST_10,
+        LAG(MACD - MACD9, 12) OVER (PARTITION BY CODE ORDER BY DATE) AS HIST_12,
+
+        ROW_NUMBER() OVER (
+            PARTITION BY CODE
+            ORDER BY DATE DESC
+        ) AS ROW_NO
+
+    FROM TB_ILBONG
+)
+
+SELECT
+    A.CODE AS code,
+    K."종목명" AS name
+FROM A
+JOIN TB_KOSPI K
+  ON A.CODE = K."코드"
+WHERE
+    {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC, A.CODE
+"""
+
     df = con.execute(query).df()
+
     con.close()
-    return df.to_dict('records')
+
+    return df.to_dict("records")
+
+
+
+
+
+
+
+
+
+
+
 
 def select_st_macd_ilbong(code_list: list):
     """2. 요청받은 종목들의 전체 일봉 데이터를 가져오는 함수 (필터링 제거)"""
@@ -1583,6 +1697,1650 @@ def select_st_macd_ilbong(code_list: list):
         } for code, group in df.groupby('code')
     }
 
+
+
+
+
+def select_st_rsi(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    if mode == "buy":
+
+        condition = """
+            ROW_NO = 1
+            AND PREV_RSI < 30
+            AND RSI14 > PREV_RSI
+        """
+
+    elif mode == "sell":
+
+        condition = """
+            ROW_NO = 1
+            AND PREV_RSI > 70
+            AND RSI14 < PREV_RSI
+        """
+
+    else:
+        condition = """
+            ROW_NO = 1
+            AND NOT (
+                (PREV_RSI < 30 AND RSI14 > PREV_RSI)
+                OR
+                (PREV_RSI > 70 AND RSI14 < PREV_RSI)
+            )
+        """
+
+
+
+
+        
+
+    query = f"""
+        WITH T AS (
+            SELECT CODE, DATE, RSI14,
+                LAG(RSI14) OVER (
+                    PARTITION BY CODE
+                    ORDER BY DATE
+                ) AS PREV_RSI,
+
+                ROW_NUMBER() OVER (
+                    PARTITION BY CODE
+                    ORDER BY DATE DESC
+                ) AS ROW_NO
+            FROM TB_ILBONG
+        )
+        SELECT
+            T.CODE AS code,
+            K."종목명" AS name
+        FROM T
+        JOIN TB_KOSPI K
+          ON T.CODE = K."코드"
+        WHERE {condition}
+        ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+    """
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+
+
+
+
+
+
+def select_st_rsi_ilbong(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT code, date, rsi14
+        FROM tb_ilbong
+        WHERE code IN ({codes_str})
+        ORDER BY code, date ASC
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: {
+            'date': group['date'].tolist(),
+            'rsi14': group['rsi14'].tolist()
+        }
+        for code, group in df.groupby('code')
+    }
+
+
+
+
+
+
+
+
+def select_st_bol(mode: str):
+
+    con = duckdb.connect(db_path)
+
+
+    buy_condition = """
+        POS <= 0.15
+        AND POS15 > POS7
+        AND POS10 > POS3
+        AND POS7 > POS3
+        AND POS5 > POS1
+        AND POS1 < POS
+        AND CLOSE > CLOSE1
+    """
+
+    sell_condition = """
+        POS >= 0.85
+        AND POS15 < POS7
+        AND POS10 < POS3
+        AND POS7 < POS3
+        AND POS5 < POS1
+        AND POS1 > POS
+        AND CLOSE < CLOSE1
+    """
+
+
+    if mode == "buy":
+        condition = f"""
+            ROW_NO = 1
+            AND ({buy_condition})
+        """
+
+    elif mode == "sell":
+        condition = f"""
+            ROW_NO = 1
+            AND ({sell_condition})
+        """
+
+    else:
+        condition = f"""
+            ROW_NO = 1
+            AND NOT ({buy_condition})
+            AND NOT ({sell_condition})
+        """
+
+    query = f"""
+WITH A AS (
+    SELECT CODE, DATE, CLOSE, BOL_U, BOL_L,
+
+           (CLOSE - BOL_L) / NULLIF(BOL_U - BOL_L,0) AS POS,
+
+           LAG(CLOSE,1) OVER (PARTITION BY CODE ORDER BY DATE) AS CLOSE1,
+
+           LAG((CLOSE - BOL_L) / NULLIF(BOL_U - BOL_L,0), 1) OVER (PARTITION BY CODE ORDER BY DATE) AS POS1,
+           LAG((CLOSE - BOL_L) / NULLIF(BOL_U - BOL_L,0), 3) OVER (PARTITION BY CODE ORDER BY DATE) AS POS3,
+           LAG((CLOSE - BOL_L) / NULLIF(BOL_U - BOL_L,0), 5) OVER (PARTITION BY CODE ORDER BY DATE) AS POS5,
+           LAG((CLOSE - BOL_L) / NULLIF(BOL_U - BOL_L,0), 7) OVER (PARTITION BY CODE ORDER BY DATE) AS POS7,
+           LAG((CLOSE - BOL_L) / NULLIF(BOL_U - BOL_L,0),10) OVER (PARTITION BY CODE ORDER BY DATE) AS POS10,
+           LAG((CLOSE - BOL_L) / NULLIF(BOL_U - BOL_L,0),15) OVER (PARTITION BY CODE ORDER BY DATE) AS POS15,
+
+           ROW_NUMBER() OVER (PARTITION BY CODE ORDER BY DATE DESC) AS ROW_NO
+
+    FROM TB_ILBONG
+)
+SELECT A.CODE AS code, K."종목명" AS name
+FROM A
+JOIN TB_KOSPI K
+  ON A.CODE = K."코드"
+WHERE
+    {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+"""
+
+    df = con.execute(query).df()
+    con.close()
+    return df.to_dict("records")
+
+
+
+
+
+
+def select_st_bol_ilbong(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            code,
+            date,
+            open,
+            high,
+            low,
+            close,
+            ma20,
+            ma60,
+            ma120,
+            bol_u,
+            bol_l
+        FROM tb_ilbong
+        WHERE code IN ({codes_str})
+        ORDER BY code, date ASC
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: {
+            'date': group['date'].tolist(),
+            'open': group['open'].tolist(),
+            'high': group['high'].tolist(),
+            'low': group['low'].tolist(),
+            'close': group['close'].tolist(),
+            'ma20': group['ma20'].tolist(),
+            'ma60': group['ma60'].tolist(),
+            'ma120': group['ma120'].tolist(),
+            'bol_u': group['bol_u'].tolist(),
+            'bol_l': group['bol_l'].tolist()
+        }
+        for code, group in df.groupby('code')
+    }
+
+
+
+
+
+
+
+
+def select_st_ilmok(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    buy_condition = """
+        ILMOK_DOLPA = '상향돌파'
+        AND COALESCE(DOLPA3, '') != '상향돌파'
+        AND COALESCE(DOLPA5, '') != '상향돌파'
+        AND COALESCE(DOLPA10, '') != '상향돌파'
+    """
+
+    sell_condition = """
+        ILMOK_DOLPA = '하향돌파'
+        AND COALESCE(DOLPA3, '') != '하향돌파'
+        AND COALESCE(DOLPA5, '') != '하향돌파'
+        AND COALESCE(DOLPA10, '') != '하향돌파'
+    """
+
+    if mode == "buy":
+        condition = f"""
+            ROW_NO = 1
+            AND ({buy_condition})
+        """
+
+    elif mode == "sell":
+        condition = f"""
+            ROW_NO = 1
+            AND ({sell_condition})
+        """
+
+    else:
+        condition = f"""
+            ROW_NO = 1
+            AND (
+                (ILMOK_DOLPA NOT IN ('상향돌파', '하향돌파'))
+                OR (ILMOK_DOLPA IS NULL)
+                OR (
+                    NOT ({buy_condition.replace('ROW_NO = 1 AND ', '')})
+                    AND NOT ({sell_condition.replace('ROW_NO = 1 AND ', '')})
+                )
+            )
+        """
+
+
+    query = f"""
+WITH A AS (
+    SELECT CODE, DATE, ILMOK_DOLPA,
+           LAG(ILMOK_DOLPA, 3) OVER (PARTITION BY CODE ORDER BY DATE) AS DOLPA3,
+           LAG(ILMOK_DOLPA, 5) OVER (PARTITION BY CODE ORDER BY DATE) AS DOLPA5,
+           LAG(ILMOK_DOLPA,10) OVER (PARTITION BY CODE ORDER BY DATE) AS DOLPA10,
+           ROW_NUMBER() OVER (PARTITION BY CODE ORDER BY DATE DESC) AS ROW_NO
+    FROM TB_ILBONG
+)
+SELECT A.CODE AS code, K."종목명" AS name
+FROM A
+JOIN TB_KOSPI K
+  ON A.CODE = K."코드"
+WHERE
+    {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+
+
+def select_st_ilmok_ilbong(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            code,
+            date,
+            open,
+            high,
+            low,
+            close,
+            ilmok_a,
+            ilmok_b,
+            ilmok_dolpa,
+            ilmok_yang
+        FROM tb_ilbong
+        WHERE code IN ({codes_str})
+        ORDER BY code, date ASC
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: {
+            'date': group['date'].tolist(),
+            'open': group['open'].tolist(),
+            'high': group['high'].tolist(),
+            'low': group['low'].tolist(),
+            'close': group['close'].tolist(),
+            'ilmok_a': group['ilmok_a'].tolist(),
+            'ilmok_b': group['ilmok_b'].tolist(),
+            'ilmok_dolpa': group['ilmok_dolpa'].tolist(),
+            'ilmok_yang': group['ilmok_yang'].tolist()
+        }
+        for code, group in df.groupby('code')
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def select_st_vol(mode: str):
+
+    con = duckdb.connect(db_path)
+
+
+
+    buy_condition = """
+        ROW_NO = 1
+
+        -- 거래량 감소 후 오늘 급증
+        AND VOL15 > VOL7
+        AND VOL15 > VOL3
+        AND VOL10 > VOL3
+        AND VOL7 > VOL3
+        AND VOL5 > VOL1
+        AND VOL3 > VOL1
+        AND VOL2 > VOL1
+
+        -- 오늘 거래량 2배 이상
+        AND VOLUME >= VOL1 * 2
+    """
+
+    sell_condition = """
+        ROW_NO = 1
+
+        -- 거래량 증가 후 오늘 급감
+        AND VOL15 < VOL7
+        AND VOL15 < VOL3
+        AND VOL10 < VOL3
+        AND VOL7 < VOL3
+        AND VOL5 < VOL1
+        AND VOL3 < VOL1
+        AND VOL2 < VOL1
+
+        -- 오늘 거래량 절반 이하
+        AND VOLUME <= VOL1 * 0.5
+    """
+
+    if mode == "buy":
+        condition = f"""
+            {buy_condition}
+        """
+
+    elif mode == "sell":
+        condition = f"""
+            {sell_condition}
+        """
+
+    else:
+        condition = f"""
+            ROW_NO = 1
+            AND NOT (
+                ({buy_condition})
+                OR
+                ({sell_condition})
+            )
+        """
+        
+    query = f"""
+WITH A AS (
+    SELECT CODE, DATE, VOLUME,
+           LAG(VOLUME, 1) OVER (PARTITION BY CODE ORDER BY DATE) AS VOL1,
+           LAG(VOLUME, 2) OVER (PARTITION BY CODE ORDER BY DATE) AS VOL2,
+           LAG(VOLUME, 3) OVER (PARTITION BY CODE ORDER BY DATE) AS VOL3,
+           LAG(VOLUME, 5) OVER (PARTITION BY CODE ORDER BY DATE) AS VOL5,
+           LAG(VOLUME, 7) OVER (PARTITION BY CODE ORDER BY DATE) AS VOL7,
+           LAG(VOLUME,10) OVER (PARTITION BY CODE ORDER BY DATE) AS VOL10,
+           LAG(VOLUME,15) OVER (PARTITION BY CODE ORDER BY DATE) AS VOL15,
+           ROW_NUMBER() OVER (PARTITION BY CODE ORDER BY DATE DESC) AS ROW_NO
+    FROM TB_ILBONG
+)
+SELECT A.CODE AS code, K."종목명" AS name
+FROM A
+JOIN TB_KOSPI K
+  ON A.CODE = K."코드"
+WHERE
+    {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+
+
+
+
+def select_st_vol_ilbong(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            code,
+            date,
+            open,
+            high,
+            low,
+            close,
+            volume,
+            ma20
+        FROM tb_ilbong
+        WHERE code IN ({codes_str})
+        ORDER BY code, date ASC
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: {
+            'date': group['date'].tolist(),
+            'open': group['open'].tolist(),
+            'high': group['high'].tolist(),
+            'low': group['low'].tolist(),
+            'close': group['close'].tolist(),
+            'volume': group['volume'].tolist(),
+            'ma20': group['ma20'].tolist()
+        }
+        for code, group in df.groupby('code')
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+def select_st_ma5(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    if mode == "buy":
+
+        condition = """
+            ROW_NO = 1
+
+            -- 5일선이 20일선으로 접근(골든크로스 직전)
+            AND DIFF15 < DIFF7
+            AND DIFF15 < DIFF3
+            AND DIFF10 < DIFF3
+            AND DIFF7 < DIFF3
+            AND DIFF5 < DIFF1
+            AND DIFF3 < DIFF
+            AND DIFF2 < DIFF
+            AND DIFF1 < DIFF
+
+            AND ABS(DIFF) / GREATEST(MA20, 1) <= 0.1
+        """
+
+    elif mode == "sell":
+
+        condition = """
+            ROW_NO = 1
+
+            -- 5일선이 20일선으로 접근(데드크로스 직전)
+            AND DIFF15 > DIFF7
+            AND DIFF15 > DIFF3
+            AND DIFF10 > DIFF3
+            AND DIFF7 > DIFF3
+            AND DIFF5 > DIFF1
+            AND DIFF3 > DIFF
+            AND DIFF2 > DIFF
+            AND DIFF1 > DIFF
+
+            AND ABS(DIFF) / GREATEST(MA20, 1) <= 0.1
+        """
+
+    else:
+
+        condition = "ROW_NO = 1"
+
+    query = f"""
+WITH A AS (
+    SELECT CODE, DATE, MA5, MA20,
+           MA5 - MA20 AS DIFF,
+           LAG(MA5 - MA20, 1) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF1,
+           LAG(MA5 - MA20, 2) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF2,
+           LAG(MA5 - MA20, 3) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF3,
+           LAG(MA5 - MA20, 5) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF5,
+           LAG(MA5 - MA20, 7) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF7,
+           LAG(MA5 - MA20,10) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF10,
+           LAG(MA5 - MA20,15) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF15,
+           ROW_NUMBER() OVER (PARTITION BY CODE ORDER BY DATE DESC) AS ROW_NO
+    FROM TB_ILBONG
+)
+SELECT A.CODE AS code, K."종목명" AS name
+FROM A
+JOIN TB_KOSPI K
+  ON A.CODE = K."코드"
+WHERE
+    {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+
+def select_st_ma5_ilbong(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            code,
+            date,
+            open,
+            high,
+            low,
+            close,
+            ma5,
+            ma20
+        FROM tb_ilbong
+        WHERE code IN ({codes_str})
+        ORDER BY code, date ASC
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: {
+            'date': group['date'].tolist(),
+            'open': group['open'].tolist(),
+            'high': group['high'].tolist(),
+            'low': group['low'].tolist(),
+            'close': group['close'].tolist(),
+            'ma5': group['ma5'].tolist(),
+            'ma20': group['ma20'].tolist()
+        }
+        for code, group in df.groupby('code')
+    }
+
+
+
+
+
+
+
+
+
+
+def select_st_ma20(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    if mode == "buy":
+
+        condition = """
+            ROW_NO = 1
+
+            -- 20일선이 60일선으로 접근(골든크로스 직전)
+            AND DIFF15 < DIFF7
+            AND DIFF15 < DIFF3
+            AND DIFF10 < DIFF3
+            AND DIFF7 < DIFF3
+            AND DIFF5 < DIFF1
+            AND DIFF3 < DIFF
+            AND DIFF2 < DIFF
+            AND DIFF1 < DIFF
+
+            AND ABS(DIFF) / GREATEST(MA60, 1) <= 0.05
+        """
+
+    elif mode == "sell":
+
+        condition = """
+            ROW_NO = 1
+
+            -- 20일선이 60일선으로 접근(데드크로스 직전)
+            AND DIFF15 > DIFF7
+            AND DIFF15 > DIFF3
+            AND DIFF10 > DIFF3
+            AND DIFF7 > DIFF3
+            AND DIFF5 > DIFF1
+            AND DIFF3 > DIFF
+            AND DIFF2 > DIFF
+            AND DIFF1 > DIFF
+
+            AND ABS(DIFF) / GREATEST(MA60, 1) <= 0.05
+        """
+
+    else:
+
+        condition = "ROW_NO = 1"
+
+    query = f"""
+WITH A AS (
+    SELECT CODE, DATE, MA20, MA60,
+           MA20 - MA60 AS DIFF,
+           LAG(MA20 - MA60, 1) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF1,
+           LAG(MA20 - MA60, 2) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF2,
+           LAG(MA20 - MA60, 3) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF3,
+           LAG(MA20 - MA60, 5) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF5,
+           LAG(MA20 - MA60, 7) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF7,
+           LAG(MA20 - MA60,10) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF10,
+           LAG(MA20 - MA60,15) OVER (PARTITION BY CODE ORDER BY DATE) AS DIFF15,
+           ROW_NUMBER() OVER (PARTITION BY CODE ORDER BY DATE DESC) AS ROW_NO
+    FROM TB_ILBONG
+)
+SELECT A.CODE AS code, K."종목명" AS name
+FROM A
+JOIN TB_KOSPI K
+  ON A.CODE = K."코드"
+WHERE {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+
+def select_st_ma20_ilbong(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            code,
+            date,
+            open,
+            high,
+            low,
+            close,
+            ma20,
+            ma60
+        FROM tb_ilbong
+        WHERE code IN ({codes_str})
+        ORDER BY code, date ASC
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: {
+            'date': group['date'].tolist(),
+            'open': group['open'].tolist(),
+            'high': group['high'].tolist(),
+            'low': group['low'].tolist(),
+            'close': group['close'].tolist(),
+            'ma20': group['ma20'].tolist(),
+            'ma60': group['ma60'].tolist()
+        }
+        for code, group in df.groupby('code')
+    }
+
+
+
+
+
+
+
+
+
+
+def select_st_sales(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    if mode == "buy":
+
+        condition = """
+            s1.매출 < s2.매출
+            AND s2.매출 < s3.매출
+            AND s3.매출 < s4.매출
+
+            AND s1.영업이익 < s2.영업이익
+            AND s2.영업이익 < s3.영업이익
+            AND s3.영업이익 < s4.영업이익
+        """
+
+    elif mode == "sell":
+
+        condition = """
+            s1.매출 > s2.매출
+            AND s2.매출 > s3.매출
+            AND s3.매출 > s4.매출
+
+            AND s1.영업이익 > s2.영업이익
+            AND s2.영업이익 > s3.영업이익
+            AND s3.영업이익 > s4.영업이익
+        """
+
+    else:
+
+        condition = "1=1"
+
+    query = f"""
+WITH Q AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY 코드
+               ORDER BY 기간 DESC
+           ) RN
+    FROM TB_NAVER_FIN
+    WHERE 구분='분기'
+      AND 기간 NOT LIKE '%(E)%'
+)
+
+SELECT
+    K."코드" AS code,
+    K."종목명" AS name
+FROM
+    (SELECT * FROM Q WHERE RN=4) S1
+    JOIN (SELECT * FROM Q WHERE RN=3) S2
+      ON S1.코드 = S2.코드
+    JOIN (SELECT * FROM Q WHERE RN=2) S3
+      ON S1.코드 = S3.코드
+    JOIN (SELECT * FROM Q WHERE RN=1) S4
+      ON S1.코드 = S4.코드
+    JOIN TB_KOSPI K
+      ON S1.코드 = K."코드"
+WHERE
+    {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+
+def select_st_sales_fin(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            코드,
+            기간,
+            매출,
+            영업이익
+        FROM tb_naver_fin
+        WHERE 구분='분기'
+          AND 코드 IN ({codes_str})
+        ORDER BY 코드, 기간
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: group[['기간', '매출', '영업이익']].to_dict('records')
+        for code, group in df.groupby('코드')
+    }
+
+
+
+
+
+def select_st_salesqoq(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    if mode == "buy":
+
+        condition = """
+            S1.매출QOQ > 0
+            AND S2.매출QOQ > 0
+            AND S3.매출QOQ > 0
+            AND S4.매출QOQ > 0
+
+            AND S1.매출QOQ < S2.매출QOQ
+            AND S2.매출QOQ < S3.매출QOQ
+            AND S3.매출QOQ < S4.매출QOQ
+
+            AND S1.영업이익QOQ > 0
+            AND S2.영업이익QOQ > 0
+            AND S3.영업이익QOQ > 0
+            AND S4.영업이익QOQ > 0
+
+            AND S1.영업이익QOQ < S2.영업이익QOQ
+            AND S2.영업이익QOQ < S3.영업이익QOQ
+            AND S3.영업이익QOQ < S4.영업이익QOQ
+        """
+
+    elif mode == "sell":
+
+        condition = """
+            S1.매출QOQ < 0
+            AND S2.매출QOQ < 0
+            AND S3.매출QOQ < 0
+            AND S4.매출QOQ < 0
+
+            AND S1.매출QOQ > S2.매출QOQ
+            AND S2.매출QOQ > S3.매출QOQ
+            AND S3.매출QOQ > S4.매출QOQ
+
+            AND S1.영업이익QOQ < 0
+            AND S2.영업이익QOQ < 0
+            AND S3.영업이익QOQ < 0
+            AND S4.영업이익QOQ < 0
+
+            AND S1.영업이익QOQ > S2.영업이익QOQ
+            AND S2.영업이익QOQ > S3.영업이익QOQ
+            AND S3.영업이익QOQ > S4.영업이익QOQ
+        """
+
+    else:
+
+        condition = "1=1"
+
+    query = f"""
+WITH A AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY 코드
+               ORDER BY 기간 DESC
+           ) AS RN
+    FROM TB_NAVER_FIN
+    WHERE 구분='분기'
+      AND 기간 NOT LIKE '%(E)%'
+)
+SELECT
+    K."코드" AS code,
+    K."종목명" AS name
+FROM
+    (SELECT * FROM A WHERE RN=4) S1
+    JOIN (SELECT * FROM A WHERE RN=3) S2
+      ON S1.코드 = S2.코드
+    JOIN (SELECT * FROM A WHERE RN=2) S3
+      ON S1.코드 = S3.코드
+    JOIN (SELECT * FROM A WHERE RN=1) S4
+      ON S1.코드 = S4.코드
+    JOIN TB_KOSPI K
+      ON S1.코드 = K."코드"
+WHERE
+    {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+
+def select_st_salesqoq_fin(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            코드,
+            기간,
+            매출QOQ,
+            영업이익QOQ
+        FROM tb_naver_fin
+        WHERE 구분='분기'
+          AND 코드 IN ({codes_str})
+        ORDER BY 코드, 기간
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: group[['기간', '매출QOQ', '영업이익QOQ']].to_dict('records')
+        for code, group in df.groupby('코드')
+    }
+
+
+
+
+
+
+
+
+
+def select_st_asset(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    if mode == "buy":
+
+        condition = """
+            S1.자산 < S2.자산
+            AND S2.자산 < S3.자산
+            AND S3.자산 < S4.자산
+        """
+
+    elif mode == "sell":
+
+        condition = """
+            S1.자산 > S2.자산
+            AND S2.자산 > S3.자산
+            AND S3.자산 > S4.자산
+        """
+
+    else:
+
+        condition = "1=1"
+
+    query = f"""
+WITH A AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY 코드
+               ORDER BY 기간 DESC
+           ) AS RN
+    FROM TB_NAVER_FIN
+    WHERE 구분='연도'
+      AND 기간 NOT LIKE '%(E)%'
+)
+SELECT
+    K."코드" AS code,
+    K."종목명" AS name
+FROM
+    (SELECT * FROM A WHERE RN=4) S1
+    JOIN (SELECT * FROM A WHERE RN=3) S2
+      ON S1.코드 = S2.코드
+    JOIN (SELECT * FROM A WHERE RN=2) S3
+      ON S1.코드 = S3.코드
+    JOIN (SELECT * FROM A WHERE RN=1) S4
+      ON S1.코드 = S4.코드
+    JOIN TB_KOSPI K
+      ON S1.코드 = K."코드"
+WHERE
+    {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+
+def select_st_asset_fin(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            코드,
+            기간,
+            자산,
+            부채
+        FROM tb_naver_fin
+        WHERE 구분='분기'
+          AND 코드 IN ({codes_str})
+        ORDER BY 코드, 기간
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: group[['기간', '자산', '부채']].to_dict('records')
+        for code, group in df.groupby('코드')
+    }
+
+
+
+
+
+def select_st_cf(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    buy_condition = """
+        S1.영업현금흐름 < S4.영업현금흐름
+    """
+
+    sell_condition = """
+        S1.영업현금흐름 > S4.영업현금흐름
+    """
+
+    if mode == "buy":
+
+        condition = buy_condition
+
+    elif mode == "sell":
+
+        condition = sell_condition
+
+    else:
+
+        condition = f"""
+            NOT (
+                ({buy_condition})
+                OR
+                ({sell_condition})
+            )
+        """
+
+    query = f"""
+WITH A AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY 코드
+               ORDER BY 기간 DESC
+           ) AS RN
+    FROM TB_NAVER_FIN
+    WHERE 구분='연도'
+      AND 기간 NOT LIKE '%(E)%'
+)
+SELECT
+    K."코드" AS code,
+    K."종목명" AS name
+FROM
+    (SELECT * FROM A WHERE RN=4) S1
+    JOIN (SELECT * FROM A WHERE RN=3) S2
+      ON S1.코드 = S2.코드
+    JOIN (SELECT * FROM A WHERE RN=2) S3
+      ON S1.코드 = S3.코드
+    JOIN (SELECT * FROM A WHERE RN=1) S4
+      ON S1.코드 = S4.코드
+    JOIN TB_KOSPI K
+      ON S1.코드 = K."코드"
+WHERE
+    {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+
+
+
+def select_st_cf_fin(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            코드,
+            기간,
+            영업현금흐름,
+            투자현금흐름,
+            재무현금흐름,
+            FCF
+        FROM tb_naver_fin
+        WHERE 구분='분기'
+          AND 코드 IN ({codes_str})
+        ORDER BY 코드, 기간
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: group[['기간', '영업현금흐름', '투자현금흐름', '재무현금흐름', 'FCF']].to_dict('records')
+        for code, group in df.groupby('코드')
+    }
+
+
+
+
+
+
+
+
+
+
+def select_st_eps(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    if mode == "buy":
+
+        condition = """
+            S1.EPS < S2.EPS
+            AND S2.EPS < S3.EPS
+            AND S3.EPS < S4.EPS
+        """
+
+    elif mode == "sell":
+
+        condition = """
+            S1.EPS > S2.EPS
+            AND S2.EPS > S3.EPS
+            AND S3.EPS > S4.EPS
+        """
+
+    else:
+
+        condition = "1=1"
+
+    query = f"""
+WITH A AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY 코드
+               ORDER BY 기간 DESC
+           ) AS RN
+    FROM TB_NAVER_FIN
+    WHERE 구분='분기'
+      AND 기간 NOT LIKE '%(E)%'
+)
+SELECT
+    K."코드" AS code,
+    K."종목명" AS name
+FROM
+    (SELECT * FROM A WHERE RN=4) S1
+    JOIN (SELECT * FROM A WHERE RN=3) S2
+      ON S1.코드 = S2.코드
+    JOIN (SELECT * FROM A WHERE RN=2) S3
+      ON S1.코드 = S3.코드
+    JOIN (SELECT * FROM A WHERE RN=1) S4
+      ON S1.코드 = S4.코드
+    JOIN TB_KOSPI K
+      ON S1.코드 = K."코드"
+WHERE
+    {condition}
+ORDER BY CAST(REPLACE(k.시가총액, ',', '') AS BIGINT) DESC
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+
+def select_st_eps_fin(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            코드,
+            기간,
+            EPS
+        FROM tb_naver_fin
+        WHERE 구분='분기'
+          AND 코드 IN ({codes_str})
+        ORDER BY 코드, 기간
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: group[['기간', 'EPS']].to_dict('records')
+        for code, group in df.groupby('코드')
+    }
+
+
+
+
+
+
+
+
+
+
+def select_st_epsqoq(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    if mode == "buy":
+
+        condition = """
+            S2.EPSQOQ > 0
+            AND S3.EPSQOQ > 0
+            AND S4.EPSQOQ > 0
+        """
+
+    elif mode == "sell":
+
+        condition = """
+            S2.EPSQOQ < 0
+            AND S3.EPSQOQ < 0
+            AND S4.EPSQOQ < 0
+        """
+
+    else:
+
+        condition = "1=1"
+
+    query = f"""
+WITH A AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY 코드
+               ORDER BY 기간 DESC
+           ) AS RN
+    FROM TB_NAVER_FIN
+    WHERE 구분='분기'
+      AND 기간 NOT LIKE '%(E)%'
+)
+SELECT
+    K."코드" AS code,
+    K."종목명" AS name
+FROM
+    (SELECT * FROM A WHERE RN=3) S2
+    JOIN (SELECT * FROM A WHERE RN=2) S3
+      ON S2.코드 = S3.코드
+    JOIN (SELECT * FROM A WHERE RN=1) S4
+      ON S2.코드 = S4.코드
+    JOIN TB_KOSPI K
+      ON S2.코드 = K."코드"
+WHERE {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+"
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+def select_st_epsqoq_fin(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            코드,
+            기간,
+            EPSQOQ
+        FROM tb_naver_fin
+        WHERE 구분='분기'
+          AND 코드 IN ({codes_str})
+        ORDER BY 코드, 기간
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: group[['기간', 'EPSQOQ']].to_dict('records')
+        for code, group in df.groupby('코드')
+    }
+
+
+
+
+
+def select_st_margin(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    buy_condition = """
+        S1.영업이익률 < S2.영업이익률
+        AND S2.영업이익률 < S3.영업이익률
+        AND S3.영업이익률 < S4.영업이익률
+    """
+
+    sell_condition = """
+        S1.영업이익률 > S2.영업이익률
+        AND S2.영업이익률 > S3.영업이익률
+        AND S3.영업이익률 > S4.영업이익률
+    """
+
+    if mode == "buy":
+
+        condition = buy_condition
+
+    elif mode == "sell":
+
+        condition = sell_condition
+
+    else:
+
+        condition = f"""
+            NOT (
+                ({buy_condition})
+                OR
+                ({sell_condition})
+            )
+        """
+
+    query = f"""
+WITH A AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY 코드
+               ORDER BY 기간 DESC
+           ) AS RN
+    FROM TB_NAVER_FIN
+    WHERE 구분='분기'
+      AND 기간 NOT LIKE '%(E)%'
+)
+SELECT
+    K."코드" AS code,
+    K."종목명" AS name
+FROM
+    (SELECT * FROM A WHERE RN=4) S1
+    JOIN (SELECT * FROM A WHERE RN=3) S2
+      ON S1.코드 = S2.코드
+    JOIN (SELECT * FROM A WHERE RN=2) S3
+      ON S1.코드 = S3.코드
+    JOIN (SELECT * FROM A WHERE RN=1) S4
+      ON S1.코드 = S4.코드
+    JOIN TB_KOSPI K
+      ON S1.코드 = K."코드"
+WHERE {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+
+def select_st_margin_fin(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            코드,
+            기간,
+            영업이익률
+        FROM tb_naver_fin
+        WHERE 구분='분기'
+          AND 코드 IN ({codes_str})
+        ORDER BY 코드, 기간
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: group[['기간', '영업이익률']].to_dict('records')
+        for code, group in df.groupby('코드')
+    }
+
+
+
+
+
+def select_st_roe(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    buy_condition = """
+        S1.ROE < S2.ROE
+        AND S2.ROE < S3.ROE
+        AND S3.ROE < S4.ROE
+    """
+
+    sell_condition = """
+        S1.ROE > S2.ROE
+        AND S2.ROE > S3.ROE
+        AND S3.ROE > S4.ROE
+    """
+
+    if mode == "buy":
+
+        condition = buy_condition
+
+    elif mode == "sell":
+
+        condition = sell_condition
+
+    else:
+
+        condition = f"""
+            NOT (
+                ({buy_condition})
+                OR
+                ({sell_condition})
+            )
+        """
+
+    query = f"""
+WITH A AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY 코드
+               ORDER BY 기간 DESC
+           ) AS RN
+    FROM TB_NAVER_FIN
+    WHERE 구분='분기'
+      AND 기간 NOT LIKE '%(E)%'
+)
+SELECT
+    K."코드" AS code,
+    K."종목명" AS name
+FROM
+    (SELECT * FROM A WHERE RN=4) S1
+    JOIN (SELECT * FROM A WHERE RN=3) S2
+      ON S1.코드 = S2.코드
+    JOIN (SELECT * FROM A WHERE RN=2) S3
+      ON S1.코드 = S3.코드
+    JOIN (SELECT * FROM A WHERE RN=1) S4
+      ON S1.코드 = S4.코드
+    JOIN TB_KOSPI K
+      ON S1.코드 = K."코드"
+WHERE {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+def select_st_roe_fin(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            코드,
+            기간,
+            ROE
+        FROM tb_naver_fin
+        WHERE 구분='분기'
+          AND 코드 IN ({codes_str})
+        ORDER BY 코드, 기간
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: group[['기간', 'ROE']].to_dict('records')
+        for code, group in df.groupby('코드')
+    }
+
+
+
+
+
+
+
+def select_st_dept(mode: str):
+
+    con = duckdb.connect(db_path)
+
+    buy_condition = """
+        S1.부채비율 > S2.부채비율
+        AND S2.부채비율 > S3.부채비율
+        AND S3.부채비율 > S4.부채비율
+    """
+
+    sell_condition = """
+        S1.부채비율 < S2.부채비율
+        AND S2.부채비율 < S3.부채비율
+        AND S3.부채비율 < S4.부채비율
+    """
+
+    if mode == "buy":
+
+        condition = buy_condition
+
+    elif mode == "sell":
+
+        condition = sell_condition
+
+    else:
+
+        condition = f"""
+            NOT (
+                ({buy_condition})
+                OR
+                ({sell_condition})
+            )
+        """
+
+    query = f"""
+WITH A AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               PARTITION BY 코드
+               ORDER BY 기간 DESC
+           ) AS RN
+    FROM TB_NAVER_FIN
+    WHERE 구분='분기'
+      AND 기간 NOT LIKE '%(E)%'
+)
+SELECT
+    K."코드" AS code,
+    K."종목명" AS name
+FROM
+    (SELECT * FROM A WHERE RN=4) S1
+    JOIN (SELECT * FROM A WHERE RN=3) S2
+      ON S1.코드 = S2.코드
+    JOIN (SELECT * FROM A WHERE RN=2) S3
+      ON S1.코드 = S3.코드
+    JOIN (SELECT * FROM A WHERE RN=1) S4
+      ON S1.코드 = S4.코드
+    JOIN TB_KOSPI K
+      ON S1.코드 = K."코드"
+WHERE {condition}
+ORDER BY CAST(REPLACE(K."시가총액", ',', '') AS BIGINT) DESC
+
+"""
+
+    df = con.execute(query).df()
+
+    con.close()
+
+    return df.to_dict("records")
+
+def select_st_dept_fin(code_list: list):
+    con = duckdb.connect(db_path)
+
+    codes_str = ", ".join([f"'{c}'" for c in code_list])
+
+    query = f"""
+        SELECT
+            코드,
+            기간,
+            부채비율
+        FROM tb_naver_fin
+        WHERE 구분='분기'
+          AND 코드 IN ({codes_str})
+        ORDER BY 코드, 기간
+    """
+
+    df = con.execute(query).df()
+    con.close()
+
+    df = df.replace({np.nan: None})
+
+    return {
+        code: group[['기간', '부채비율']].to_dict('records')
+        for code, group in df.groupby('코드')
+    }
 
 
 
