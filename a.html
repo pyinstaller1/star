@@ -1,27 +1,22 @@
 ﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
-
 <meta charset="UTF-8">
 <title>건강보험 서버 인프라 운영현황</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0"></script>
 
-
 <style>
-
 body{
     font-family:"Malgun Gothic";
     background:#f3f5f7;
     margin:10px;
 }
 
-
 .dashboard{
     width:50%;
 }
-
 
 h1{
     text-align:center;
@@ -29,216 +24,137 @@ h1{
     margin:5px 0 12px;
 }
 
-
 .section{
-
     background:white;
     border-radius:8px;
     padding:8px;
     margin-bottom:16px;
-
 }
 
-
-
 .title-bar{
-
     display:flex;
     align-items:center;
     gap:10px;
-
 }
 
-
-
 .title-bar h3{
-
     background:#d9d9d9;
     padding:5px 12px;
     margin:0;
     font-size:15px;
-
 }
-
-
 
 button{
-
     font-size:12px;
     padding:4px 12px;
-
 }
 
-
-
 .content{
-
     display:flex;
     gap:15px;
     margin-top:8px;
-
 }
-
-
 
 .table-box{
-
     width:150px;
     flex:0 0 150px;
-
 }
-
-
 
 .graph-box{
-
     flex:1;
-    min-width:0;
-
 }
 
-
-
 table{
-
     width:100%;
     border-collapse:collapse;
     font-size:12px;
-
 }
 
-
-
 th,td{
-
     border:1px solid #bbb;
     padding:4px;
     text-align:center;
     white-space:nowrap;
-
 }
-
-
 
 th{
-
     background:#eee;
-
 }
-
-
 
 td:first-child{
-
     background:#f7f7f7;
-
 }
-
-
 
 .tree-table td:nth-child(2){
-
     text-align:right;
-
 }
-
-
 
 .gauge-area{
-
     display:flex;
     gap:10px;
-
 }
-
-
 
 .gauge-item{
-
     flex:1;
-
 }
-
-
 
 .gauge-item canvas{
-
     height:150px!important;
-
 }
-
-
 
 #treeChart{
-
     height:280px!important;
-
 }
-
-
 
 .radar-box{
-
-    margin-left:30px;
-    margin-top:-80px;
-
+    margin-left:70px;
+    margin-top:-88px;
 }
-
-
 
 #radarChart{
-
     width:400px!important;
     height:360px!important;
-
 }
 
+.radar-table{
+    table-layout:fixed;
+}
 
+.radar-table th:first-child,
+.radar-table td:first-child{
+    width:70px;
+}
 
+.radar-table th:nth-child(2),
+.radar-table td:nth-child(2),
+.radar-table th:nth-child(3),
+.radar-table td:nth-child(3){
+    width:55px;
+}
 </style>
 
 </head>
 
-
 <body>
 
-
 <div class="dashboard">
-
 
 <h1>
 건강보험 서버 인프라 운영현황
 </h1>
 
 
-
-
-
-
-
-
-<!-- 게이지 -->
-
 <div class="section">
 
-
 <div class="title-bar">
-
 <h3>서버 자원 현황</h3>
-
-<button onclick="showGauge()">
-게이지 그래프
-</button>
-
+<button onclick="showGauge()">게이지 그래프</button>
 </div>
-
 
 
 <div class="content">
 
-
 <div class="table-box">
-
 
 <table>
 
@@ -247,93 +163,52 @@ td:first-child{
 <th>사용률</th>
 </tr>
 
-<tr>
-<td>CPU</td>
-<td>72%</td>
-</tr>
-
-<tr>
-<td>Memory</td>
-<td>64%</td>
-</tr>
-
-<tr>
-<td>Disk</td>
-<td>48%</td>
-</tr>
-
+<tbody id="serverTable"></tbody>
 
 </table>
-
 
 </div>
 
 
-
 <div class="graph-box">
 
-
 <div class="gauge-area">
-
 
 <div class="gauge-item">
 <canvas id="cpu"></canvas>
 </div>
 
-
 <div class="gauge-item">
 <canvas id="memory"></canvas>
 </div>
-
 
 <div class="gauge-item">
 <canvas id="disk"></canvas>
 </div>
 
+</div>
 
 </div>
 
-
 </div>
-
-
-</div>
-
 
 </div>
 
 
 
-
-
-
-
-
-
-<!-- 트리맵 -->
 
 
 <div class="section">
 
-
 <div class="title-bar">
-
 <h3>시스템별 사용량</h3>
-
-<button onclick="showTree()">
-트리맵 그래프
-</button>
-
-
+<button onclick="showTree()">트리맵 그래프</button>
 </div>
-
 
 
 <div class="content">
 
-
 <div class="table-box">
-
 
 <table class="tree-table">
 
@@ -342,71 +217,38 @@ td:first-child{
 <th>접속건수</th>
 </tr>
 
-
-<tr><td>징수통합</td><td>379,988</td></tr>
-<tr><td>자격부과</td><td>219,945</td></tr>
-<tr><td>통합급여</td><td>179,838</td></tr>
-<tr><td>건강정보</td><td>119,988</td></tr>
-<tr><td>장기요양</td><td>70,421</td></tr>
-<tr><td>ERP</td><td>53,878</td></tr>
-
+<tbody id="systemTable"></tbody>
 
 </table>
 
-
 </div>
-
 
 
 <div class="graph-box">
-
 <canvas id="treeChart"></canvas>
+</div>
+
+</div>
 
 </div>
 
 
-</div>
 
-
-</div>
-
-
-
-
-
-
-
-
-
-<!-- 레이더 -->
 
 
 <div class="section">
 
-
 <div class="title-bar">
-
 <h3>서비스 운영 능력</h3>
-
-
-<button onclick="showRadar()">
-레이더 그래프
-</button>
-
-
+<button onclick="showRadar()">레이더 그래프</button>
 </div>
-
-
 
 
 <div class="content">
 
-
 <div class="table-box">
 
-
-<table>
-
+<table class="radar-table">
 
 <tr>
 <th>항목</th>
@@ -414,251 +256,230 @@ td:first-child{
 <th>포털</th>
 </tr>
 
-
-<tr>
-<td>처리속도</td>
-<td>95</td>
-<td>88</td>
-</tr>
-
-
-<tr>
-<td>안정성</td>
-<td>92</td>
-<td>90</td>
-</tr>
-
-
-<tr>
-<td>사용량</td>
-<td>100</td>
-<td>85</td>
-</tr>
-
-
-<tr>
-<td>중요도</td>
-<td>95</td>
-<td>90</td>
-</tr>
-
-
-<tr>
-<td>동시접속</td>
-<td>90</td>
-<td>85</td>
-</tr>
-
+<tbody id="serviceTable"></tbody>
 
 </table>
 
-
 </div>
-
 
 
 <div class="graph-box radar-box">
-
-
 <canvas id="radarChart"></canvas>
-
-
 </div>
 
 
 </div>
 
-
 </div>
 
 
-
-
-
 </div>
-
-
-
-
-
-
-
 
 
 <script>
 
+const dashboardData={
+
+server:{
+cpu:{
+name:"CPU",
+value:72,
+color:"#2563eb"
+},
+memory:{
+name:"Memory",
+value:64,
+color:"#059669"
+},
+disk:{
+name:"Disk",
+value:48,
+color:"#d97706"
+}
+},
+
+
+system:[
+
+{name:"징수통합",value:379988},
+{name:"자격부과",value:219945},
+{name:"통합급여",value:179838},
+{name:"건강정보",value:119988},
+{name:"장기요양",value:70421},
+{name:"ERP",value:53878}
+
+],
+
+
+service:{
+labels:[
+"처리속도",
+"안정성",
+"사용량",
+"중요도",
+"동시접속"
+],
+
+internal:[
+95,
+92,
+100,
+95,
+90
+],
+
+portal:[
+88,
+90,
+85,
+90,
+85
+]
+
+}
+
+
+};
+
 
 let gauges=[];
-
-let treeChart;
-
-let radarChart;
+let treeChart=null;
+let radarChart=null;
 
 
 
+function loadTable(){
+
+let server="";
+
+Object.values(dashboardData.server).forEach(x=>{
+
+server+=`
+<tr>
+<td>${x.name}</td>
+<td>${x.value}%</td>
+</tr>
+`;
+
+});
+
+document.getElementById("serverTable").innerHTML=server;
 
 
 
+let system="";
+
+dashboardData.system.forEach(x=>{
+
+system+=`
+<tr>
+<td>${x.name}</td>
+<td>${x.value.toLocaleString()}</td>
+</tr>
+`;
+
+});
+
+document.getElementById("systemTable").innerHTML=system;
 
 
-function createGauge(id,title,value,color){
+
+let service="";
+
+dashboardData.service.labels.forEach((x,i)=>{
+
+service+=`
+<tr>
+<td>${x}</td>
+<td>${dashboardData.service.internal[i]}</td>
+<td>${dashboardData.service.portal[i]}</td>
+</tr>
+`;
+
+});
+
+document.getElementById("serviceTable").innerHTML=service;
+
+}
 
 
-return new Chart(
-
-document.getElementById(id),
-
-{
+loadTable();
 
 
+function createGauge(id,item){
+return new Chart(document.getElementById(id),{
 type:"doughnut",
-
-
 data:{
-
 datasets:[{
-
-data:[
-
-value,
-
-100-value
-
-],
-
-backgroundColor:[
-
-color,
-
-"#e5e7eb"
-
-],
-
+data:[0,100],
+backgroundColor:[item.color,"#e5e7eb"],
 borderWidth:0
-
 }]
-
 },
-
-
-
 options:{
-
 rotation:-90,
-
 circumference:180,
-
 cutout:"60%",
-
-
-plugins:{
-
-legend:false,
-
-tooltip:false
-
-}
-
+animation:{
+duration:1500,
+easing:"easeOutQuart"
 },
-
-
-
+plugins:{
+legend:false,
+tooltip:false
+}
+},
 plugins:[{
-
 id:"centerText",
-
-
 afterDraw(chart){
-
-
 let ctx=chart.ctx;
-
-
-let x=
-(chart.chartArea.left+
-chart.chartArea.right)/2;
-
-
-let y=
-(chart.chartArea.top+
-chart.chartArea.bottom)/2+20;
-
-
-
+let x=(chart.chartArea.left+chart.chartArea.right)/2;
+let y=(chart.chartArea.top+chart.chartArea.bottom)/2+20;
 ctx.textAlign="center";
-
-
 ctx.fillStyle="#333";
-
-
 ctx.font="bold 13px Malgun Gothic";
-
-ctx.fillText(
-title,
-x,
-y-5
-);
-
-
-
+ctx.fillText(item.name,x,y-5);
 ctx.font="bold 24px Malgun Gothic";
-
-ctx.fillText(
-value+"%",
-x,
-y+25
-);
-
-
+ctx.fillText(item.value+"%",x,y+25);
 }
-
-
 }]
-
-
+});
 }
-
-
-);
-
-
-}
-
-
-
-
-
-
-
 
 function showGauge(){
-
-
 gauges.forEach(c=>c.destroy());
-
 gauges=[];
 
+let cpu=createGauge("cpu",dashboardData.server.cpu);
+let memory=createGauge("memory",dashboardData.server.memory);
+let disk=createGauge("disk",dashboardData.server.disk);
 
-gauges.push(
-createGauge("cpu","CPU",72,"#2563eb")
-);
+gauges=[cpu,memory,disk];
 
+setTimeout(()=>{
+cpu.data.datasets[0].data=[
+dashboardData.server.cpu.value,
+100-dashboardData.server.cpu.value
+];
+cpu.update();
+},200);
 
-gauges.push(
-createGauge("memory","Memory",64,"#059669")
-);
+setTimeout(()=>{
+memory.data.datasets[0].data=[
+dashboardData.server.memory.value,
+100-dashboardData.server.memory.value
+];
+memory.update();
+},400);
 
-
-gauges.push(
-createGauge("disk","Disk",48,"#d97706")
-);
-
-
+setTimeout(()=>{
+disk.data.datasets[0].data=[
+dashboardData.server.disk.value,
+100-dashboardData.server.disk.value
+];
+disk.update();
+},600);
 }
-
-
-
-
 
 
 
@@ -680,27 +501,20 @@ document.getElementById("treeChart"),
 
 type:"treemap",
 
+
 data:{
+
 
 datasets:[{
 
-tree:[
-
-{name:"징수통합",value:379988},
-{name:"자격부과",value:219945},
-{name:"통합급여",value:179838},
-{name:"건강정보",value:119988},
-{name:"장기요양",value:70421},
-{name:"ERP",value:53878}
-
-],
+tree:[],
 
 key:"value",
 
 
 backgroundColor(ctx){
 
-let colors=[
+return [
 
 "#2563eb",
 "#059669",
@@ -709,11 +523,14 @@ let colors=[
 "#7c3aed",
 "#475569"
 
-];
-
-return colors[ctx.dataIndex];
+][ctx.dataIndex];
 
 },
+
+
+borderColor:"#fff",
+
+borderWidth:1,
 
 
 labels:{
@@ -733,12 +550,7 @@ size:15,
 weight:"bold"
 }
 
-},
-
-
-borderColor:"#fff",
-
-borderWidth:1
+}
 
 
 }]
@@ -750,25 +562,35 @@ options:{
 
 plugins:{
 
-
 tooltip:{
 enabled:false
 },
-
 
 legend:{
 display:false
 }
 
-
 }
 
 }
-
 
 }
 
 );
+
+
+
+setTimeout(()=>{
+
+
+treeChart.data.datasets[0].tree=
+dashboardData.system;
+
+
+treeChart.update();
+
+
+},200);
 
 
 }
@@ -801,15 +623,8 @@ type:"radar",
 data:{
 
 
-labels:[
-
-"처리속도",
-"안정성",
-"사용량",
-"중요도",
-"동시접속"
-
-],
+labels:
+dashboardData.service.labels,
 
 
 datasets:[
@@ -818,30 +633,31 @@ datasets:[
 
 label:"내부웹",
 
-data:[
-95,92,100,95,90
-]
+data:
+dashboardData.service.internal
 
 },
+
 
 {
 
 label:"포털",
 
-data:[
-88,90,85,90,85
-]
+data:
+dashboardData.service.portal
 
 }
 
 ]
-
 
 },
 
 
 
 options:{
+
+
+responsive:false,
 
 
 scales:{
@@ -864,18 +680,29 @@ stepSize:20
 
 grid:{
 
-color:"#666",
+color:"#888",
 
-lineWidth:2
+lineWidth:1
 
 },
 
 
 angleLines:{
 
-color:"#555",
+color:"#777",
 
-lineWidth:2
+lineWidth:1
+
+},
+
+
+pointLabels:{
+
+font:{
+
+size:14
+
+}
 
 }
 
@@ -897,7 +724,6 @@ position:"right"
 }
 
 
-
 }
 
 
@@ -905,7 +731,6 @@ position:"right"
 
 
 );
-
 
 
 }
@@ -917,3 +742,10 @@ position:"right"
 
 </body>
 </html>
+
+
+
+
+
+
+
