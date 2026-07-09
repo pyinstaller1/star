@@ -1,347 +1,296 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<title>건강보험 서버 인프라</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<style>
-body{font-family:"Malgun Gothic";background:#f3f5f7;margin:8px}
-h1{text-align:center;font-size:22px;margin:5px 0 10px}
-.section{background:white;border-radius:8px;padding:10px;margin-bottom:18px}
-.title-bar{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.title-bar h3{background:#d9d9d9;padding:5px 12px;border-radius:4px;margin:0;font-size:15px}
-button{padding:4px 12px;font-size:12px}
-.content{display:flex;gap:18px;align-items:flex-start}
-.table-box{width:160px}
-.graph-box{flex:1}
-table{border-collapse:collapse;font-size:12px}
-th,td{border:1px solid #bbb;padding:4px 8px;text-align:center;white-space:nowrap}
-table tr:first-child th{background:#eeeeee}
-table tr td:first-child{background:#f7f7f7}
-.month-table{width:38%;margin-bottom:8px}
-.month-chart-box{width:30%}
-canvas{height:220px!important}
-#monthChart{width:100%!important;height:170px!important}
-#serviceChart{height:250px!important;margin-top:-45px}
-</style>
+    <meta charset="UTF-8">
+    <title>건강보험 서버 인프라</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: "Malgun Gothic"; background: #f3f5f7; margin: 8px; }
+        h1 { text-align: center; font-size: 22px; margin: 5px 0 10px; }
+        .section { background: white; border-radius: 8px; padding: 10px; margin-bottom: 18px; }
+        .title-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .title-bar h3 { background: #d9d9d9; padding: 5px 12px; border-radius: 4px; margin: 0; font-size: 15px; }
+        button { padding: 4px 12px; font-size: 12px; }
+        .content { display: flex; gap: 18px; align-items: flex-start; }
+        .table-box { width: 160px; }
+        .graph-box { flex: 1; }
+        table { border-collapse: collapse; font-size: 12px; }
+        th, td { border: 1px solid #bbb; padding: 4px 8px; text-align: center; white-space: nowrap; }
+        table tr:first-child th { background: #eeeeee; }
+        table tr td:first-child { background: #f7f7f7; }
+        .month-table { width: 38%; margin-bottom: 8px; }
+        .month-chart-box { width: 30%; }
+        canvas { height: 220px !important; }
+        #monthChart { width: 100% !important; height: 170px !important; }
+        #serviceChart { height: 250px !important; margin-top: -45px; }
+    </style>
 </head>
 
 <body>
 
-<h1>건강보험 서버 인프라</h1>
+    <h1>건강보험 서버 인프라</h1>
 
-<div class="section">
-<div class="title-bar">
-<h3>시스템별 사용량</h3>
-<button onclick="showGraph('system')">그래프</button>
-</div>
-<div class="content">
-<div class="table-box">
-<table id="systemTable"></table>
-</div>
-<div class="graph-box">
-<canvas id="systemChart"></canvas>
-</div>
-</div>
-</div>
+    <div class="section">
+        <div class="title-bar">
+            <h3>시스템별 사용량</h3>
+            <button onclick="showGraph('system')">그래프</button>
+        </div>
+        <div class="content">
+            <div class="table-box">
+                <table id="systemTable"></table>
+            </div>
+            <div class="graph-box">
+                <canvas id="systemChart"></canvas>
+            </div>
+        </div>
+    </div>
 
+    <div class="section">
+        <div class="title-bar">
+            <h3>전체 월 접속량</h3>
+            <button onclick="showGraph('month')">그래프</button>
+        </div>
+        <table id="monthTable" class="month-table"></table>
+        <div class="month-chart-box">
+            <canvas id="monthChart"></canvas>
+        </div>
+    </div>
 
-<div class="section">
-<div class="title-bar">
-<h3>전체 월 접속량</h3>
-<button onclick="showGraph('month')">그래프</button>
-</div>
-<table id="monthTable" class="month-table"></table>
-<div class="month-chart-box">
-<canvas id="monthChart"></canvas>
-</div>
-</div>
+    <div class="section">
+        <div class="title-bar">
+            <h3>서비스 종류</h3>
+            <button onclick="showGraph('service')">그래프</button>
+        </div>
+        <div class="content">
+            <div class="table-box">
+                <table id="serviceTable"></table>
+            </div>
+            <div class="graph-box">
+                <canvas id="serviceChart"></canvas>
+            </div>
+        </div>
+    </div>
 
+    <script>
+        const dashboardData = {
+            system: {
+                labels: [
+                    "자격부과",
+                    "징수통합",
+                    "통합급여",
+                    "건강정보",
+                    "장기요양",
+                    "ERP"
+                ],
+                values: {
+                    "자격부과": 219945,
+                    "징수통합": 379988,
+                    "통합급여": 179838,
+                    "건강정보": 119988,
+                    "장기요양": 70421,
+                    "ERP": 53878
+                }
+            },
+            month: {
+                labels: [
+                    "1월", "2월", "3월", "4월",
+                    "5월", "6월", "7월", "8월",
+                    "9월", "10월", "11월", "12월"
+                ],
+                values: [
+                    280000,
+                    295000,
+                    310000,
+                    330000,
+                    315000,
+                    320000,
+                    335000,
+                    342000,
+                    325000,
+                    338000,
+                    345000,
+                    350738
+                ]
+            },
+            service: {
+                labels: [
+                    "내부웹",
+                    "포털",
+                    "모바일",
+                    "배치",
+                    "EDI"
+                ],
+                values: {
+                    "내부웹": 387587,
+                    "포털": 220000,
+                    "모바일": 140000,
+                    "배치": 80000,
+                    "EDI": 30000
+                }
+            }
+        };
 
-<div class="section">
-<div class="title-bar">
-<h3>서비스 종류</h3>
-<button onclick="showGraph('service')">그래프</button>
-</div>
-<div class="content">
-<div class="table-box">
-<table id="serviceTable"></table>
-</div>
-<div class="graph-box">
-<canvas id="serviceChart"></canvas>
-</div>
-</div>
-</div>
+        let systemChart = null;
+        let monthChart = null;
+        let serviceChart = null;
 
+        function makeTable(id, labels, values) {
+            let html = "<tr><th>구분</th><th>접속건수</th></tr>";
+            labels.forEach(k => {
+                html += `
+                <tr>
+                <td>${k}</td>
+                <td>${values[k].toLocaleString()}</td>
+                </tr>
+                `;
+            });
+            document.getElementById(id).innerHTML = html;
+        }
 
-<script>
+        function makeMonthTable() {
+            let html = "<tr>";
+            dashboardData.month.labels.forEach(x => {
+                html += `<th>${x}</th>`;
+            });
+            html += "</tr><tr>";
+            dashboardData.month.values.forEach(x => {
+                html += `<td>${x.toLocaleString()}</td>`;
+            });
+            html += "</tr>";
+            document.getElementById("monthTable").innerHTML = html;
+        }
 
-const dashboardData={
-system:{
-labels:[
-"자격부과",
-"징수통합",
-"통합급여",
-"건강정보",
-"장기요양",
-"ERP"
-],
-values:{
-"자격부과":219945,
-"징수통합":379988,
-"통합급여":179838,
-"건강정보":119988,
-"장기요양":70421,
-"ERP":53878
-}
-},
+        function run() {
+            makeTable(
+                "systemTable",
+                dashboardData.system.labels,
+                dashboardData.system.values
+            );
+            makeMonthTable();
+            makeTable(
+                "serviceTable",
+                dashboardData.service.labels,
+                dashboardData.service.values
+            );
+        }
+        run();
 
-month:{
-labels:[
-"1월","2월","3월","4월",
-"5월","6월","7월","8월",
-"9월","10월","11월","12월"
-],
-values:[
-280000,
-295000,
-310000,
-330000,
-315000,
-320000,
-335000,
-342000,
-325000,
-338000,
-345000,
-350738
-]
-},
+        function showGraph(type) {
+            if (type == "system") {
+                if (systemChart) systemChart.destroy();
+                systemChart = new Chart(
+                    document.getElementById("systemChart"),
+                    {
+                        type: "bar",
+                        data: {
+                            labels: dashboardData.system.labels,
+                            datasets: [{
+                                label: "접속건수",
+                                data: Object.values(dashboardData.system.values)
+                            }]
+                        },
+                        options: {
+                            animation: {
+                                duration: 1500,
+                                easing: "easeOutQuart",
+                                delay: function(context) {
+                                    return context.dataIndex * 150;
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    position: "top"
+                                }
+                            }
+                        }
+                    }
+                );
+            }
 
-service:{
-labels:[
-"내부웹",
-"포털",
-"모바일",
-"배치",
-"EDI"
-],
-values:{
-"내부웹":387587,
-"포털":220000,
-"모바일":140000,
-"배치":80000,
-"EDI":30000
-}
-}
-};
+            if (type == "month") {
+                if (monthChart) monthChart.destroy();
+                monthChart = new Chart(
+                    document.getElementById("monthChart"),
+                    {
+                        type: "line",
+                        data: {
+                            labels: dashboardData.month.labels,
+                            datasets: [{
+                                label: "월 접속건수",
+                                data: dashboardData.month.values
+                            }]
+                        },
+                        options: {
+                            maintainAspectRatio: false,
+                            animation: {
+                                duration: 1500,
+                                easing: "easeOutQuart"
+                            },
+                            plugins: {
+                                legend: {
+                                    position: "top",
+                                    labels: {
+                                        font: {
+                                            size: 15
+                                        },
+                                        boxWidth: 12
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    ticks: {
+                                        font: {
+                                            size: 13
+                                        }
+                                    }
+                                },
+                                y: {
+                                    ticks: {
+                                        font: {
+                                            size: 13
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                );
+            }
 
-
-let systemChart=null;
-let monthChart=null;
-let serviceChart=null;
-
-
-function makeTable(id,labels,values){
-
-let html="<tr><th>구분</th><th>접속건수</th></tr>";
-
-labels.forEach(k=>{
-
-html+=`
-<tr>
-<td>${k}</td>
-<td>${values[k].toLocaleString()}</td>
-</tr>
-`;
-
-});
-
-document.getElementById(id).innerHTML=html;
-
-}
-
-
-function makeMonthTable(){
-
-let html="<tr>";
-
-dashboardData.month.labels.forEach(x=>{
-html+=`<th>${x}</th>`;
-});
-
-html+="</tr><tr>";
-
-dashboardData.month.values.forEach(x=>{
-html+=`<td>${x.toLocaleString()}</td>`;
-});
-
-html+="</tr>";
-
-document.getElementById("monthTable").innerHTML=html;
-
-}
-
-
-function run(){
-
-makeTable(
-"systemTable",
-dashboardData.system.labels,
-dashboardData.system.values
-);
-
-makeMonthTable();
-
-makeTable(
-"serviceTable",
-dashboardData.service.labels,
-dashboardData.service.values
-);
-
-}
-
-run();
-
-
-
-
-function showGraph(type){
-
-if(type=="system"){
-
-if(systemChart)systemChart.destroy();
-
-systemChart=new Chart(
-document.getElementById("systemChart"),
-{
-type:"bar",
-data:{
-labels:dashboardData.system.labels,
-datasets:[{
-label:"접속건수",
-data:Object.values(dashboardData.system.values)
-}]
-},
-options:{
-animation:{
-duration:1500,
-easing:"easeOutQuart",
-delay:function(context){
-return context.dataIndex*150;
-}
-},
-plugins:{
-legend:{
-position:"top"
-}
-}
-}
-}
-);
-
-}
-
-
-
-if(type=="month"){
-
-if(monthChart)monthChart.destroy();
-
-monthChart=new Chart(
-document.getElementById("monthChart"),
-{
-type:"line",
-data:{
-labels:dashboardData.month.labels,
-datasets:[{
-label:"월 접속건수",
-data:dashboardData.month.values
-}]
-},
-options:{
-maintainAspectRatio:false,
-animation:{
-duration:1500,
-easing:"easeOutQuart"
-},
-plugins:{
-legend:{
-position:"top",
-labels:{
-font:{
-size:15
-},
-boxWidth:12
-}
-}
-},
-scales:{
-x:{
-ticks:{
-font:{
-size:13
-}
-}
-},
-y:{
-ticks:{
-font:{
-size:13
-}
-}
-}
-}
-}
-}
-);
-
-}
-
-
-
-if(type=="service"){
-
-if(serviceChart)serviceChart.destroy();
-
-serviceChart=new Chart(
-document.getElementById("serviceChart"),
-{
-type:"doughnut",
-
-data:{
-labels:dashboardData.service.labels,
-datasets:[{
-data:Object.values(dashboardData.service.values)
-}]
-},
-
-options:{
-animation:{
-duration:1500,
-easing:"easeOutQuart"
-},
-plugins:{
-legend:{
-position:"right",
-labels:{
-font:{
-size:10
-},
-boxWidth:10
-}
-}
-}
-}
-
-}
-);
-
-}
-
-}
-
-</script>
-
+            if (type == "service") {
+                if (serviceChart) serviceChart.destroy();
+                serviceChart = new Chart(
+                    document.getElementById("serviceChart"),
+                    {
+                        type: "doughnut",
+                        data: {
+                            labels: dashboardData.service.labels,
+                            datasets: [{
+                                data: Object.values(dashboardData.service.values)
+                            }]
+                        },
+                        options: {
+                            animation: {
+                                duration: 1500,
+                                easing: "easeOutQuart"
+                            },
+                            plugins: {
+                                legend: {
+                                    position: "right",
+                                    labels: {
+                                        font: {
+                                            size: 10
+                                        },
+                                        boxWidth: 10
+                                    }
+                                }
+                            }
+                        }
+                    }
+                );
+            }
+        }
+    </script>
 </body>
 </html>
