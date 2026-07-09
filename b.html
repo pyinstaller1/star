@@ -1,0 +1,677 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>건강보험 서버 인프라</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+    font-family:"Malgun Gothic";
+    background:#f3f5f7;
+    margin:8px;
+}
+
+h1{
+    text-align:center;
+    font-size:22px;
+    margin:5px 0 10px;
+}
+
+
+.section{
+    background:white;
+    border-radius:8px;
+    padding:10px;
+    margin-bottom:18px;
+}
+
+
+.title-bar{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:8px;
+}
+
+
+.title-bar h3{
+    background:#d9d9d9;
+    padding:5px 12px;
+    border-radius:4px;
+    margin:0;
+    font-size:15px;
+}
+
+
+button{
+    padding:4px 12px;
+    font-size:12px;
+}
+
+
+.content{
+    display:flex;
+    gap:18px;
+    align-items:flex-start;
+}
+
+
+.table-box{
+    width:160px;
+}
+
+
+.graph-box{
+    flex:1;
+}
+
+
+table{
+    border-collapse:collapse;
+    font-size:12px;
+}
+
+
+th,td{
+    border:1px solid #bbb;
+    padding:4px 8px;
+    text-align:center;
+    white-space:nowrap;
+}
+
+
+table tr:first-child th{
+    background:#eeeeee;
+}
+
+
+table tr td:first-child{
+    background:#f7f7f7;
+}
+
+
+.month-table{
+    width:38%;
+    margin-bottom:8px;
+}
+
+
+.month-chart-box{
+    width:30%;
+}
+
+
+canvas{
+    height:220px !important;
+}
+
+
+#monthChart{
+    width:100% !important;
+    height:170px !important;
+}
+
+
+#serviceChart{
+    height:250px !important;
+    margin-top:-45px;
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<h1>
+건강보험 서버 인프라
+</h1>
+
+
+
+<div class="section">
+
+<div class="title-bar">
+<h3>시스템별 사용량</h3>
+<button onclick="showGraph('system')">그래프</button>
+</div>
+
+
+<div class="content">
+
+<div class="table-box">
+<table id="systemTable"></table>
+</div>
+
+<div class="graph-box">
+<canvas id="systemChart"></canvas>
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+<div class="section">
+
+<div class="title-bar">
+<h3>전체 월 접속량</h3>
+<button onclick="showGraph('month')">그래프</button>
+</div>
+
+
+<table id="monthTable" class="month-table"></table>
+
+
+<div class="month-chart-box">
+<canvas id="monthChart"></canvas>
+</div>
+
+</div>
+
+
+
+
+
+
+<div class="section">
+
+<div class="title-bar">
+<h3>서비스 종류</h3>
+<button onclick="showGraph('service')">그래프</button>
+</div>
+
+
+<div class="content">
+
+<div class="table-box">
+<table id="serviceTable"></table>
+</div>
+
+
+<div class="graph-box">
+<canvas id="serviceChart"></canvas>
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+<script>
+
+
+let systemChart;
+let monthChart;
+let serviceChart;
+
+
+let systemData={};
+let monthData={};
+let serviceData={};
+
+
+
+
+
+function randomSystem(){
+
+let r=Math.random()*100;
+
+if(r<38) return "징수통합";
+if(r<60) return "자격부과";
+if(r<78) return "통합급여";
+if(r<90) return "건강정보";
+if(r<97) return "장기요양";
+
+return "ERP";
+
+}
+
+
+
+
+
+function randomService(){
+
+let r=Math.random()*100;
+
+if(r<45) return "내부웹";
+if(r<70) return "포털";
+if(r<85) return "모바일";
+if(r<95) return "배치";
+
+return "EDI";
+
+}
+
+
+
+
+
+function randomMonth(){
+
+let r=Math.random()*100;
+
+if(r<10)return 1;
+if(r<25)return 2;
+if(r<38)return 3;
+if(r<65)return 4;
+if(r<72)return 5;
+if(r<86)return 6;
+if(r<91)return 7;
+if(r<96)return 8;
+if(r<98)return 9;
+if(r<99)return 10;
+if(r<100)return 11;
+
+return 12;
+
+}
+
+
+
+
+
+function generateData(count){
+
+let data=[];
+
+for(let i=0;i<count;i++){
+
+data.push({
+
+system:randomSystem(),
+month:randomMonth(),
+service:randomService()
+
+});
+
+}
+
+return data;
+
+}
+
+
+
+
+
+
+function makeTable(id,data,order){
+
+let html=
+"<tr><th>구분</th><th>접속건수</th></tr>";
+
+
+order.forEach(k=>{
+
+html+=`
+
+<tr>
+<td>${k}</td>
+<td>${(data[k]||0).toLocaleString()}</td>
+</tr>
+
+`;
+
+});
+
+
+document.getElementById(id).innerHTML=html;
+
+}
+
+
+
+
+
+
+function makeMonthTable(){
+
+let html="<tr>";
+
+for(let i=1;i<=12;i++)
+html+=`<th>${i}월</th>`;
+
+html+="</tr><tr>";
+
+for(let i=1;i<=12;i++)
+html+=`<td>${monthData[i].toLocaleString()}</td>`;
+
+html+="</tr>";
+
+document.getElementById("monthTable").innerHTML=html;
+
+}
+
+
+
+
+
+
+
+function run(){
+
+let logs=generateData(1000000);
+
+
+logs.forEach(row=>{
+
+systemData[row.system]=(systemData[row.system]||0)+1;
+
+monthData[row.month]=(monthData[row.month]||0)+1;
+
+serviceData[row.service]=(serviceData[row.service]||0)+1;
+
+});
+
+
+monthData[12]=350738;
+
+serviceData["내부웹"]=387587;
+
+
+
+makeTable(
+"systemTable",
+systemData,
+[
+"자격부과",
+"징수통합",
+"통합급여",
+"건강정보",
+"장기요양",
+"ERP"
+]
+);
+
+
+makeMonthTable();
+
+
+makeTable(
+"serviceTable",
+serviceData,
+[
+"내부웹",
+"포털",
+"모바일",
+"배치",
+"EDI"
+]
+);
+
+}
+
+
+
+
+
+
+
+
+function showGraph(type){
+
+
+if(type=="system"){
+
+if(systemChart)
+systemChart.destroy();
+
+
+systemChart=new Chart(
+document.getElementById("systemChart"),
+{
+
+type:"bar",
+
+data:{
+
+labels:[
+"자격부과",
+"징수통합",
+"통합급여",
+"건강정보",
+"장기요양",
+"ERP"
+],
+
+datasets:[{
+
+label:"접속건수",
+
+data:[
+systemData["자격부과"],
+systemData["징수통합"],
+systemData["통합급여"],
+systemData["건강정보"],
+systemData["장기요양"],
+systemData["ERP"]
+]
+
+}]
+
+}
+
+});
+
+}
+
+
+
+
+
+
+
+if(type=="month"){
+
+
+if(monthChart)
+monthChart.destroy();
+
+
+
+let values=[];
+
+for(let i=1;i<=12;i++)
+values.push(monthData[i]);
+
+
+
+monthChart=new Chart(
+
+document.getElementById("monthChart"),
+
+{
+
+type:"line",
+
+data:{
+
+labels:[
+"1월","2월","3월","4월",
+"5월","6월","7월","8월",
+"9월","10월","11월","12월"
+],
+
+datasets:[{
+
+label:"월 접속건수",
+
+data:values
+
+}]
+
+},
+
+
+options:{
+
+maintainAspectRatio:false,
+
+
+plugins:{
+
+legend:{
+
+position:"top",
+
+labels:{
+
+font:{
+size:15
+},
+
+boxWidth:12
+
+}
+
+}
+
+},
+
+
+scales:{
+
+x:{
+
+ticks:{
+
+font:{
+
+size:13
+
+}
+
+}
+
+},
+
+
+y:{
+
+ticks:{
+
+font:{
+
+size:13
+
+}
+
+}
+
+}
+
+}
+
+}
+
+});
+
+
+
+}
+
+
+
+
+
+
+
+if(type=="service"){
+
+
+if(serviceChart)
+serviceChart.destroy();
+
+
+
+serviceChart=new Chart(
+
+document.getElementById("serviceChart"),
+
+{
+
+type:"doughnut",
+
+data:{
+
+labels:[
+"내부웹",
+"포털",
+"모바일",
+"배치",
+"EDI"
+],
+
+datasets:[{
+
+data:[
+serviceData["내부웹"],
+serviceData["포털"],
+serviceData["모바일"],
+serviceData["배치"],
+serviceData["EDI"]
+]
+
+}]
+
+},
+
+
+options:{
+
+plugins:{
+
+legend:{
+
+position:"right",
+
+labels:{
+
+font:{
+size:10
+},
+
+boxWidth:10
+
+}
+
+}
+
+}
+
+}
+
+});
+
+}
+
+
+}
+
+
+
+
+
+run();
+
+
+</script>
+
+</body>
+</html>
