@@ -19,11 +19,26 @@ load_dotenv()
 DB_URL = f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@127.0.0.1:3306/db_ls?charset=utf8mb4"
 engine = create_engine(DB_URL)
 
-# 2. SQLite 경로 설정 (기존 stock.db 유지)
-# base_dir = os.path.dirname(os.path.abspath(__file__))
-# db_path = os.path.abspath(os.path.join(base_dir, '..', 'stock.db'))
 
 
+base_dir = os.path.dirname(os.path.abspath(__file__))
+db_path = os.path.abspath(os.path.join(base_dir, '..', '..', 'stock.duckdb'))
+db_path_checkbox = os.path.abspath(os.path.join(base_dir, '..', '..', 'checkbox.duckdb'))
+
+
+db_path_tb_checkbox = os.path.abspath(os.path.join(base_dir, '..', '..', 'tb_checkbox.duckdb'))
+db_path_tb_theme = os.path.abspath(os.path.join(base_dir, '..', '..', 'tb_theme.duckdb'))
+db_path_tb_naver_fin = os.path.abspath(os.path.join(base_dir, '..', '..', 'tb_naver_fin.duckdb'))
+db_path_tb_kospi = os.path.abspath(os.path.join(base_dir, '..', '..', 'tb_kospi.duckdb'))
+
+
+
+
+
+
+
+
+print(7)
 
 
 
@@ -48,11 +63,6 @@ def get_ilbong_data(shcode: str):
 
 
 
-
-
-base_dir = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.abspath(os.path.join(base_dir, '..', '..', 'stock.duckdb'))
-# db_path = os.path.abspath(os.path.join(base_dir, '..', '..', 'stock.duckdb'))
 
 
 
@@ -587,7 +597,7 @@ def get_kospi300_code():
 
 def create_tb_kospi(df, option="replace"):
 
-    con = duckdb.connect(db_path)
+    con = duckdb.connect(db_path_tb_kospi)
 
     try:
         if option == "replace":
@@ -608,7 +618,7 @@ def create_tb_kospi(df, option="replace"):
 
 def select_tb_kospi_code():
 
-    con = duckdb.connect(db_path)
+    con = duckdb.connect(db_path_tb_kospi)
     sql = 'SELECT "코드" FROM tb_kospi'
 
     res = con.execute(sql).fetchall()
@@ -621,7 +631,7 @@ def select_tb_kospi_code():
 
 def select_tb_kospi_name(shcode=None):
 
-    con = duckdb.connect(db_path)
+    con = duckdb.connect(db_path_tb_kospi)
     sql = 'SELECT "코드", "종목명" FROM tb_kospi'
     
     if shcode:
@@ -630,56 +640,58 @@ def select_tb_kospi_name(shcode=None):
         res = con.execute(sql, [shcode]).fetchall()
     else:
         res = con.execute(sql).fetchall()
+
+
         
     con.close()
     return res
+
 
 
 
 
 def select_tb_kospi(shcode=None):
-    """전체 코스피 종목과 최신 일봉 RSI를 계산하여 순서대로 반환"""
-    con = duckdb.connect(db_path)
-    
-    # 0=코드, 1=종목명, 2=현재가, 3=등락률, 4=시가총액, 5=RSI
-    sql = """
-        SELECT 
-            "코드", "종목명", "현재가", "등락률", "시가총액",
-            (SELECT ROUND(rsi14, 0) FROM tb_ilbong WHERE code = tb_kospi."코드" ORDER BY date DESC LIMIT 1) as rsi
-        FROM tb_kospi
-    """
-    
-    if shcode:
+
+    with duckdb.connect(db_path_tb_kospi) as con:
+
+        con.execute(f"ATTACH '{db_path}' AS stock")
+
         sql = """
-            SELECT 
-                "코드", "종목명", "현재가", "등락률", "시가총액",
-                (SELECT ROUND(rsi14, 0) FROM tb_ilbong WHERE code = tb_kospi."코드" ORDER BY date DESC LIMIT 1) as rsi
-            FROM tb_kospi WHERE "코드" = ?
+            SELECT "코드", "종목명", "현재가", "등락률", "시가총액",
+            (SELECT ROUND(rsi14,0) FROM stock.tb_ilbong 
+             WHERE code = tb_kospi."코드" 
+             ORDER BY date DESC LIMIT 1) AS rsi
+            FROM tb_kospi
         """
-        res = con.execute(sql, [shcode]).fetchall()
-    else:
-        res = con.execute(sql).fetchall()
-        
-    con.close()
+
+        if shcode:
+            sql += ' WHERE "코드" = ?'
+            res = con.execute(sql, [shcode]).fetchall()
+        else:
+            res = con.execute(sql).fetchall()
+            
+
     return res
 
 
-def select_tb_kospi8(code=None):
-    """MariaDB tb_kospi 조회 (views.py 호출용)"""
-    with engine.connect() as conn:
-        if code:
-            query = text("""SELECT 코드, 종목명, 현재가, 등락률, 시가총액, 매출, 영업이익, 배당금, 외국인, PER, 
-                            concat(replace(replace(시장, '코스피', ''), '코스닥', 'Q'), 순위) as 순위, '' as 섹터,
-                            (SELECT ROUND(rsi14, 0) FROM tb_ilbong WHERE code = tb_kospi.코드 ORDER BY date DESC LIMIT 1) as rsi 
-                            FROM tb_kospi WHERE 코드 = :code""")
-            result = conn.execute(query, {"code": code})
-        else:
-            query = text("""SELECT 코드, 종목명, 현재가, 등락률, 시가총액, 매출, 영업이익, 배당금, 외국인, PER, 
-                            concat(replace(replace(시장, '코스피', ''), '코스닥', 'Q'), 순위) as 순위, '' as 섹터,
-                            (SELECT ROUND(rsi14, 0) FROM tb_ilbong WHERE code = tb_kospi.코드 ORDER BY date DESC LIMIT 1) as rsi 
-                            FROM tb_kospi""")
-            result = conn.execute(query)
-        return [tuple(row) for row in result.fetchall()]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -3399,8 +3411,6 @@ def select_st_dept_fin(code_list: list):
 
 
 
-
-
 def insert_naver_fin(dict_total):
     """
     정통 SQL 쿼리 방식으로 데이터를 하나씩 삽입합니다.
@@ -3465,7 +3475,6 @@ def insert_naver_fin(dict_total):
 
 
 
-
 def select_naver_fin(code):
 
     query = """
@@ -3489,36 +3498,83 @@ def select_naver_fin(code):
 
 
 
+
+
+
+
+
+
+
+
+
+
+# select_tb_kospi()
+
+print(8)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def insert_tb_theme(list_theme):
-    """
-    수집된 테마 데이터 리스트를 받아 tb_theme 테이블을 재생성하고 적재합니다.
-    Args:
-        list_theme (list of dict): [{"stock_code": "...", "stock_name": "...", "theme_name": "..."}, ...]
-    """
+
     if not list_theme:
         print("❌ 적재할 데이터가 없습니다.")
         return False
 
     try:
-        with duckdb.connect(db_path) as conn:
-            # 1. 테이블 초기화 및 생성
+        with duckdb.connect(db_path_tb_theme) as conn:
+
             conn.execute("DROP TABLE IF EXISTS tb_theme;")
+
             conn.execute("""
                 CREATE TABLE tb_theme (
                     code VARCHAR,
                     name VARCHAR,
-                    theme VARCHAR,
+                    theme VARCHAR
                 );
             """)
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_theme_code ON tb_theme (code);")
-            
-            # 2. 데이터 적재 (리스트를 판다스 데이터프레임으로 변환 후 적재)
+
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_theme_code 
+                ON tb_theme (code);
+            """)
+
             df = pd.DataFrame(list_theme)
-            conn.execute("INSERT INTO tb_theme SELECT * FROM df")
-            
-        print(f"✅ tb_theme 테이블 재생성 및 {len(df)}건 적재 완료!")
+
+            conn.execute("""
+                INSERT INTO tb_theme 
+                SELECT * FROM df
+            """)
+
+        print(f"✅ tb_theme.duckdb : {len(df)}건 적재 완료!")
         return True
-        
+
     except Exception as e:
         print(f"❌ DB 작업 중 오류 발생: {e}")
         return False
@@ -3534,16 +3590,9 @@ def insert_tb_theme(list_theme):
 
 
 
-
-
-
-
-
-
-
 def create_tb_checkbox():
 
-    with duckdb.connect(db_path) as conn:
+    with duckdb.connect(db_path_tb_checkbox) as conn:
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS tb_checkbox (
@@ -3562,31 +3611,22 @@ def create_tb_checkbox():
             ('toggleMACD', TRUE),
             ('toggleFlow', TRUE)
         """)
-
-
-
-
-
-
+        
 
 def update_tb_checkbox(checkbox_id, checked):
 
-    with duckdb.connect(db_path) as conn:
+    with duckdb.connect(db_path_tb_checkbox) as conn:
 
         conn.execute("""
             INSERT OR REPLACE INTO tb_checkbox
             (checkbox_id, checked)
             VALUES (?, ?)
         """, [checkbox_id, checked])
-
-
-
-
-
+        
 
 def select_tb_checkbox():
 
-    with duckdb.connect(db_path) as conn:
+    with duckdb.connect(db_path_tb_checkbox) as conn:
 
         rows = conn.execute("""
             SELECT checkbox_id, checked
@@ -3599,5 +3639,5 @@ def select_tb_checkbox():
 
 
 
-create_tb_checkbox()
+
 
