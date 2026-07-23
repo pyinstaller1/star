@@ -1,0 +1,199 @@
+﻿<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>대용량 파일 비교</title>
+
+<style>
+body { font-family: Arial, sans-serif; margin:30px; }
+
+/* 파일 선택 줄: 세로 정렬을 위쪽(flex-start)으로 맞춰 3줄 박스와 버튼의 시작 위치 기준선 고정 */
+.file-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+
+/* '파일1' 텍스트와 버튼을 묶어주는 내부 그룹 */
+.input-group { display: flex; align-items: center; gap: 2px; }
+
+/* '파일1', '파일2' 텍스트 크기 확대 및 세로 중앙 맞춤용 패딩/마진 조정 */
+.file-title { font-weight: bold; font-size: 20px; width: 75px; flex-shrink: 0; padding-top: 14px; }
+
+/* 파일 선택 버튼 크게 수정 */
+input[type="file"] { font-size: 16px; padding: 14px 16px; cursor: pointer; border: 2px dashed #ccc; border-radius: 6px; background: #fafafa; width: 340px; box-sizing: border-box; }
+input[type="file"]:hover { background: #f0f0f0; border-color: #888; }
+
+/* 오른쪽 3줄 미리보기 div (가로 너비 확장 및 버튼과 상단 라인이 정확히 일치하도록 설정) */
+.file-preview { display: inline-block; width: 490px; height: 6.2em; line-height: 1.8em; font-family: monospace; font-size: 12px; padding: 4px 12px 18px 12px; background: #fff; border: 1px solid #ccc; border-radius: 6px; overflow: hidden; box-sizing: border-box; white-space: pre-wrap; word-break: break-all; margin-top: 0; }
+
+/* 비교 시작 버튼 크게 수정 */
+button { padding: 14px 30px; font-size: 18px; font-weight: bold; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; }
+button:hover { background: #0056b3; }
+
+#result { margin-top:20px; padding:20px; background:#f5f5f5; white-space:pre; overflow-x:auto; line-height:1.6; }
+.diff { color:red; font-weight:bold; }
+</style>
+</head>
+
+<body>
+
+<h2>대용량 파일 비교</h2>
+
+<div class="file-row">
+    <div class="input-group">
+        <div class="file-title">파일1</div>
+        <input type="file" id="file1" onchange="previewFile(this, 'preview1')">
+    </div>
+    <div id="preview1" class="file-preview">파일 1을 선택하면 앞부분 3줄이 표시됩니다.</div>
+</div>
+
+<div class="file-row">
+    <div class="input-group">
+        <div class="file-title">파일2</div>
+        <input type="file" id="file2" onchange="previewFile(this, 'preview2')">
+    </div>
+    <div id="preview2" class="file-preview">파일 2를 선택하면 앞부분 3줄이 표시됩니다.</div>
+</div>
+
+<button onclick="compareFiles()">비교 시작</button>
+
+<div id="result"></div>
+
+<script>
+
+const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB
+
+async function previewFile(input, targetId) {
+    const file = input.files[0];
+    const previewArea = document.getElementById(targetId);
+    if (!file) return;
+
+    const blob = file.slice(0, 2048);
+    const text = await blob.text();
+    const lines = text.split("\n").slice(0, 3);
+    
+    let resultText = "";
+    for (let i = 0; i < lines.length; i++) {
+        resultText += `Line ${i + 1}: ${lines[i]}\n`;
+    }
+    previewArea.textContent = resultText.trimEnd();
+}
+
+async function compareFiles(){
+
+    const file1 = document.getElementById("file1").files[0];
+    const file2 = document.getElementById("file2").files[0];
+    const result = document.getElementById("result");
+
+    if(!file1 || !file2){
+        result.textContent = "파일 두 개를 선택하세요.";
+        return;
+    }
+
+    const sizeDiff = Math.abs(file1.size - file2.size);
+    const sizeResult = file1.size === file2.size ? "동일" : `다름 (${sizeDiff.toLocaleString()} byte 차이)`;
+
+    const size = Math.min(file1.size,file2.size);
+
+    let position = 0;
+    let lineNumber = 1;
+
+    while(position < size){
+
+        const end = Math.min(position + CHUNK_SIZE,size);
+
+        const buffer1 = await file1.slice(position,end).arrayBuffer();
+        const buffer2 = await file2.slice(position,end).arrayBuffer();
+
+        const a = new Uint8Array(buffer1);
+        const b = new Uint8Array(buffer2);
+
+        for(let i=0;i<a.length;i++){
+
+            if(a[i] !== b[i]){
+
+                const diffPos = position + i;
+                const line = lineNumber;
+
+                const text1 = await file1.slice(position, end).text();
+                const text2 = await file2.slice(position, end).text();
+
+                const chunkPrefix1 = await file1.slice(position, diffPos).text();
+                const relativeLineIndex = chunkPrefix1.split("\n").length - 1;
+
+                const lines1 = text1.split("\n");
+                const lines2 = text2.split("\n");
+
+                const line1 = lines1[relativeLineIndex] || "";
+                const line2 = lines2[relativeLineIndex] || "";
+
+                result.innerHTML =
+`1. 파일 Size 비교: ${sizeResult}
+     파일1 : ${file1.size.toLocaleString()} byte
+     파일2 : ${file2.size.toLocaleString()} byte
+
+2. 틀린 줄 번호: ${line.toLocaleString()} 번째 줄
+
+3. 틀린 줄 내용
+     파일1: ${highlightDiff(line1,line2)}
+     파일2: ${highlightDiff(line2,line1)}`;
+
+                return;
+            }
+
+            if(a[i] === 10) lineNumber++;
+        }
+
+        position = end;
+
+        result.textContent =
+`1. 파일 Size 비교: ${sizeResult}
+     파일1 : ${file1.size.toLocaleString()} byte
+     파일2 : ${file2.size.toLocaleString()} byte
+
+현재 ${lineNumber.toLocaleString()} 번째 줄 비교중...
+진행률: ${ ((position/size)*100).toFixed(2) }%`;
+    }
+
+    if(file1.size === file2.size){
+        result.textContent =
+`1. 파일 Size 비교: 동일
+     파일1 : ${file1.size.toLocaleString()} byte
+     파일2 : ${file2.size.toLocaleString()} byte
+
+결과:
+두 파일은 완전히 동일합니다.`;
+    }
+    else{
+        result.textContent =
+`1. 파일 Size 비교: ${sizeResult}
+     파일1 : ${file1.size.toLocaleString()} byte
+     파일2 : ${file2.size.toLocaleString()} byte
+
+결과:
+내용은 동일하지만 파일 크기가 다릅니다.`;
+    }
+}
+
+function highlightDiff(a,b){
+
+    let result = "";
+    const len = Math.max(a.length,b.length);
+
+    for(let i=0;i<len;i++){
+        if(a[i] !== b[i]){
+            result += `<span class="diff">${escapeHtml(a[i] || "")}</span>`;
+        }
+        else{
+            result += escapeHtml(a[i] || "");
+        }
+    }
+
+    return result;
+}
+
+function escapeHtml(str){
+    return str.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+}
+
+</script>
+
+</body>
+</html>
