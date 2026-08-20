@@ -1,255 +1,774 @@
 ﻿<!DOCTYPE html>
-<html lang="ko">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>건강보험 서버 인프라 운영현황</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2.3.0"></script>
-    <style>
-        body { font-family: "Malgun Gothic"; background: #f3f5f7; margin: 10px; }
-        .dashboard { width: 50%; }
-        h1 { text-align: center; font-size: 22px; margin: 5px 0 12px; }
-        .section { background: white; border-radius: 8px; padding: 8px; margin-bottom: 16px; }
-        .title-bar { display: flex; align-items: center; gap: 10px; }
-        .title-bar h3 { background: #d9d9d9; padding: 5px 12px; margin: 0; font-size: 15px; }
-        button { font-size: 12px; padding: 4px 12px; }
-        .content { display: flex; gap: 15px; margin-top: 8px; }
-        .table-box { width: 150px; flex: 0 0 150px; }
-        .graph-box { flex: 1; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; }
-        th, td { border: 1px solid #bbb; padding: 4px; text-align: center; white-space: nowrap; }
-        th { background: #eee; }
-        td:first-child { background: #f7f7f7; }
-        .tree-table td:nth-child(2) { text-align: right; }
-        .gauge-area { display: flex; gap: 10px; }
-        .gauge-item { flex: 1; }
-        .gauge-item canvas { height: 150px !important; }
-        #treeChart { height: 280px !important; }
-        .radar-box { margin-left: 70px; margin-top: -88px; }
-        #radarChart { width: 400px !important; height: 360px !important; }
-        .radar-table { table-layout: fixed; }
-        .radar-table th:first-child, .radar-table td:first-child { width: 70px; }
-        .radar-table th:nth-child(2), .radar-table td:nth-child(2), .radar-table th:nth-child(3), .radar-table td:nth-child(3) { width: 55px; }
-    </style>
+<meta charset="UTF-8">
+
+<title>OCR 문자 인식</title>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+
+<style>
+
+body {
+    font-family:"Segoe UI", Arial, sans-serif;
+    background:#f5f6fa;
+    padding:25px;
+}
+
+
+h2 {
+    margin-bottom:15px;
+    color:#333;
+}
+
+
+
+/* 사용법 */
+
+.info {
+
+    width:900px;
+
+    background:white;
+
+    padding:15px 20px;
+
+    border-radius:12px;
+
+    box-shadow:
+    0 3px 15px rgba(0,0,0,0.1);
+
+    line-height:1.6;
+
+    color:#555;
+
+}
+
+
+
+
+/* OCR 결과 */
+
+#resultBox {
+
+    margin-top:20px;
+
+    width:900px;
+
+    min-height:300px;
+
+    background:white;
+
+    border-radius:15px;
+
+    padding:25px;
+
+    box-shadow:
+    0 5px 20px rgba(0,0,0,0.15);
+
+}
+
+
+
+#status {
+
+    font-size:18px;
+
+    color:#555;
+
+    margin-bottom:15px;
+
+}
+
+
+
+#result {
+
+    font-size:20px;
+
+    line-height:1.6;
+
+    white-space:pre-wrap;
+
+}
+
+
+
+
+
+/* OCR 영역 */
+
+#box {
+
+    position:absolute;
+
+    left:1000px;
+
+    top:150px;
+
+    width:500px;
+
+    height:200px;
+
+    border:5px solid red;
+
+    box-sizing:border-box;
+
+    cursor:move;
+
+}
+
+
+
+
+/* 크기 조절 */
+
+#resize {
+
+    position:absolute;
+
+    width:18px;
+
+    height:18px;
+
+    right:-9px;
+
+    bottom:-9px;
+
+    background:red;
+
+    border-radius:50%;
+
+    cursor:se-resize;
+
+}
+
+
+
+/* 우클릭 메뉴 */
+
+#menu {
+
+    display:none;
+
+    position:absolute;
+
+    background:white;
+
+    border:1px solid #ccc;
+
+    box-shadow:
+    0 3px 10px rgba(0,0,0,0.2);
+
+    z-index:9999;
+
+}
+
+
+#menu div {
+
+    padding:10px 40px;
+
+    cursor:pointer;
+
+}
+
+
+#menu div:hover {
+
+    background:#eee;
+
+}
+
+
+</style>
+
 </head>
+
+
+
+
 <body>
-    <div class="dashboard">
-        <h1>건강보험 서버 인프라 운영현황</h1>
-        
-        <div class="section">
-            <div class="title-bar">
-                <h3>서버 자원 현황</h3>
-                <button onclick="showGauge()">게이지 그래프</button>
-            </div>
-            <div class="content">
-                <div class="table-box">
-                    <table>
-                        <tr><th>구분</th><th>사용률</th></tr>
-                        <tbody id="serverTable"></tbody>
-                    </table>
-                </div>
-                <div class="graph-box">
-                    <div class="gauge-area">
-                        <div class="gauge-item"><canvas id="cpu"></canvas></div>
-                        <div class="gauge-item"><canvas id="memory"></canvas></div>
-                        <div class="gauge-item"><canvas id="disk"></canvas></div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <div class="section">
-            <div class="title-bar">
-                <h3>시스템별 사용량</h3>
-                <button onclick="showTree()">트리맵 그래프</button>
-            </div>
-            <div class="content">
-                <div class="table-box">
-                    <table class="tree-table">
-                        <tr><th>시스템</th><th>접속건수</th></tr>
-                        <tbody id="systemTable"></tbody>
-                    </table>
-                </div>
-                <div class="graph-box"><canvas id="treeChart"></canvas></div>
-            </div>
-        </div>
 
-        <div class="section">
-            <div class="title-bar">
-                <h3>서비스 운영 능력</h3>
-                <button onclick="showRadar()">레이더 그래프</button>
-            </div>
-            <div class="content">
-                <div class="table-box">
-                    <table class="radar-table">
-                        <tr><th>항목</th><th>내부웹</th><th>포털</th></tr>
-                        <tbody id="serviceTable"></tbody>
-                    </table>
-                </div>
-                <div class="graph-box radar-box"><canvas id="radarChart"></canvas></div>
-            </div>
-        </div>
+<h2>OCR 문자 인식</h2>
+
+
+<div class="info">
+
+<b>사용 방법</b><br>
+
+1. 빨간 영역을 원하는 위치로 이동하세요.<br>
+2. 오른쪽 아래 빨간 점으로 크기를 조절하세요.<br>
+3. 다른 화면에서 Print Screen을 누르세요.<br>
+4. Ctrl + V 또는 우클릭 → 붙여넣기
+
+</div>
+
+
+
+<div id="resultBox">
+
+    <div id="status">
+        대기중...
     </div>
 
-    <script>
-        const dashboardData = {
-            server: {
-                cpu: { name: "CPU", value: 72, color: "#2563eb" },
-                memory: { name: "Memory", value: 64, color: "#059669" },
-                disk: { name: "Disk", value: 48, color: "#d97706" }
-            },
-            system: [
-                {name: "징수통합", value: 379988},
-                {name: "자격부과", value: 219945},
-                {name: "통합급여", value: 179838},
-                {name: "건강정보", value: 119988},
-                {name: "장기요양", value: 70421},
-                {name: "ERP", value: 53878}
-            ],
-            service: {
-                labels: ["처리속도", "안정성", "사용량", "중요도", "동시접속"],
-                internal: [95, 92, 100, 95, 90],
-                portal: [88, 90, 85, 90, 85]
+
+    <div id="result"></div>
+
+</div>
+
+
+
+
+<!-- OCR 영역 -->
+
+<div id="box">
+
+    <div id="resize"></div>
+
+</div>
+
+
+
+<!-- 우클릭 메뉴 -->
+
+<div id="menu">
+
+    <div id="pasteBtn">
+        붙여넣기
+    </div>
+
+</div>
+
+
+
+
+<script>
+
+
+let box = document.getElementById("box");
+
+let resize = document.getElementById("resize");
+
+
+
+// ==========================
+// OCR 로딩 표시
+// ==========================
+
+
+let loadingTimer = null;
+
+let loadingIndex = 0;
+
+
+const loadingChars = [
+
+    "╱",
+    "━",
+    "╲",
+    "┃"
+
+];
+
+
+
+
+// ==========================
+// 영역 이동
+// ==========================
+
+
+let moving=false;
+
+let offsetX=0;
+
+let offsetY=0;
+
+
+
+box.addEventListener("mousedown",function(e){
+
+
+    if(e.target===resize)
+        return;
+
+
+    moving=true;
+
+
+    offsetX =
+    e.clientX - box.offsetLeft;
+
+
+    offsetY =
+    e.clientY - box.offsetTop;
+
+
+});
+
+
+
+
+document.addEventListener("mousemove",function(e){
+
+
+    if(moving){
+
+
+        box.style.left =
+        e.clientX-offsetX+"px";
+
+
+        box.style.top =
+        e.clientY-offsetY+"px";
+
+
+    }
+
+
+});
+
+
+
+
+document.addEventListener("mouseup",function(){
+
+    moving=false;
+
+});
+
+
+
+
+
+
+
+// ==========================
+// 크기 조절
+// ==========================
+
+
+let resizing=false;
+
+
+
+resize.addEventListener("mousedown",function(e){
+
+
+    e.stopPropagation();
+
+
+    resizing=true;
+
+
+});
+
+
+
+
+
+document.addEventListener("mousemove",function(e){
+
+
+
+    if(resizing){
+
+
+        let width =
+        e.clientX-box.offsetLeft;
+
+
+        let height =
+        e.clientY-box.offsetTop;
+
+
+
+        if(width>50)
+
+            box.style.width =
+            width+"px";
+
+
+        if(height>30)
+
+            box.style.height =
+            height+"px";
+
+
+    }
+
+
+});
+
+
+
+
+
+document.addEventListener("mouseup",function(){
+
+
+    resizing=false;
+
+
+});
+
+
+
+
+
+// ==========================
+// OCR 실행
+// ==========================
+
+function runOCR(blob){
+
+
+    document.getElementById("result").innerText="";
+
+
+    clearInterval(loadingTimer);
+
+
+    loadingIndex=0;
+
+
+
+    loadingTimer=setInterval(function(){
+
+
+        document.getElementById("status").innerText =
+        "OCR 인식중 " + loadingChars[loadingIndex];
+
+
+        loadingIndex++;
+
+
+        if(loadingIndex>=loadingChars.length)
+
+            loadingIndex=0;
+
+
+    },400);
+
+
+
+
+    let img=new Image();
+
+
+
+    img.onload=function(){
+
+
+
+        /*
+          Print Screen 이미지 크기
+        */
+
+        let imgWidth = img.width;
+
+        let imgHeight = img.height;
+
+
+
+        /*
+          현재 화면 크기
+        */
+
+        let screenWidth = screen.width;
+
+        let screenHeight = screen.height;
+
+
+
+        /*
+          화면 비율 보정
+        */
+
+        let scaleX =
+        imgWidth / screenWidth;
+
+
+        let scaleY =
+        imgHeight / screenHeight;
+
+
+
+
+        /*
+          빨간 박스 실제 위치
+          브라우저 좌표
+        */
+
+        let rect =
+        box.getBoundingClientRect();
+
+
+
+        let x =
+        rect.left * scaleX;
+
+
+        let y =
+        rect.top * scaleY;
+
+
+        let w =
+        rect.width * scaleX;
+
+
+        let h =
+        rect.height * scaleY;
+
+
+
+
+        let crop =
+        document.createElement("canvas");
+
+
+
+        crop.width=w;
+
+        crop.height=h;
+
+
+
+
+        let ctx =
+        crop.getContext("2d");
+
+
+
+
+        ctx.drawImage(
+
+            img,
+
+            x,
+            y,
+            w,
+            h,
+
+            0,
+            0,
+            w,
+            h
+
+        );
+
+
+
+
+
+        Tesseract.recognize(
+
+            crop,
+
+            "kor+eng",
+
+            {
+
+                logger:function(m){
+
+                    console.log(m);
+
+                }
+
             }
-        };
 
-        let gauges = [];
-        let treeChart = null;
-        let radarChart = null;
+        )
 
-        function loadTable() {
-            let server = "";
-            Object.values(dashboardData.server).forEach(x => {
-                server += `<tr><td>${x.name}</td><td>${x.value}%</td></tr>`;
-            });
-            document.getElementById("serverTable").innerHTML = server;
+        .then(({data:{text}})=>{
 
-            let system = "";
-            dashboardData.system.forEach(x => {
-                system += `<tr><td>${x.name}</td><td>${x.value.toLocaleString()}</td></tr>`;
-            });
-            document.getElementById("systemTable").innerHTML = system;
 
-            let service = "";
-            dashboardData.service.labels.forEach((x, i) => {
-                service += `<tr><td>${x}</td><td>${dashboardData.service.internal[i]}</td><td>${dashboardData.service.portal[i]}</td></tr>`;
-            });
-            document.getElementById("serviceTable").innerHTML = service;
-        }
-        loadTable();
+            clearInterval(loadingTimer);
 
-        function createGauge(id, item) {
-            return new Chart(document.getElementById(id), {
-                type: "doughnut",
-                data: {
-                    datasets: [{
-                        data: [0, 100],
-                        backgroundColor: [item.color, "#e5e7eb"],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    rotation: -90,
-                    circumference: 180,
-                    cutout: "60%",
-                    animation: { duration: 1500, easing: "easeOutQuart" },
-                    plugins: { legend: false, tooltip: false }
-                },
-                plugins: [{
-                    id: "centerText",
-                    afterDraw(chart) {
-                        let ctx = chart.ctx;
-                        let x = (chart.chartArea.left + chart.chartArea.right) / 2;
-                        let y = (chart.chartArea.top + chart.chartArea.bottom) / 2 + 20;
-                        ctx.textAlign = "center";
-                        ctx.fillStyle = "#333";
-                        ctx.font = "bold 13px Malgun Gothic";
-                        ctx.fillText(item.name, x, y - 5);
-                        ctx.font = "bold 24px Malgun Gothic";
-                        ctx.fillText(item.value + "%", x, y + 25);
-                    }
-                }]
-            });
+
+
+            document.getElementById("status").innerText =
+            "OCR 완료";
+
+
+
+            document.getElementById("result").innerText =
+            text;
+
+
+        });
+
+
+
+    };
+
+
+
+    img.src =
+    URL.createObjectURL(blob);
+
+
+}
+
+
+
+
+
+
+// ==========================
+// Ctrl + V
+// ==========================
+
+
+document.addEventListener("paste",function(e){
+
+
+    for(let item of e.clipboardData.items){
+
+
+        if(item.type.startsWith("image")){
+
+
+            runOCR(item.getAsFile());
+
+
         }
 
-        function showGauge() {
-            gauges.forEach(c => c.destroy());
-            gauges = [];
-            let cpu = createGauge("cpu", dashboardData.server.cpu);
-            let memory = createGauge("memory", dashboardData.server.memory);
-            let disk = createGauge("disk", dashboardData.server.disk);
-            gauges = [cpu, memory, disk];
-            setTimeout(() => {
-                cpu.data.datasets[0].data = [dashboardData.server.cpu.value, 100 - dashboardData.server.cpu.value];
-                cpu.update();
-            }, 200);
-            setTimeout(() => {
-                memory.data.datasets[0].data = [dashboardData.server.memory.value, 100 - dashboardData.server.memory.value];
-                memory.update();
-            }, 400);
-            setTimeout(() => {
-                disk.data.datasets[0].data = [dashboardData.server.disk.value, 100 - dashboardData.server.disk.value];
-                disk.update();
-            }, 600);
-        }
 
-        function showTree() {
-            if (treeChart) treeChart.destroy();
-            treeChart = new Chart(document.getElementById("treeChart"), {
-                type: "treemap",
-                data: {
-                    datasets: [{
-                        tree: [],
-                        key: "value",
-                        backgroundColor(ctx) {
-                            return ["#2563eb", "#059669", "#d97706", "#dc2626", "#7c3aed", "#475569"][ctx.dataIndex];
-                        },
-                        borderColor: "#fff",
-                        borderWidth: 1,
-                        labels: {
-                            display: true,
-                            formatter(ctx) { return ctx.raw._data.name; },
-                            color: "#fff",
-                            font: { size: 15, weight: "bold" }
-                        }
-                    }]
-                },
-                options: {
-                    plugins: { tooltip: { enabled: false }, legend: { display: false } }
+    }
+
+
+});
+
+
+
+
+
+
+// ==========================
+// 우클릭 메뉴
+// ==========================
+
+
+let menu =
+document.getElementById("menu");
+
+
+
+document.addEventListener("contextmenu",function(e){
+
+
+    e.preventDefault();
+
+
+
+    menu.style.left =
+    e.clientX+"px";
+
+
+    menu.style.top =
+    e.clientY+"px";
+
+
+    menu.style.display="block";
+
+
+});
+
+
+
+
+
+document.addEventListener("click",function(){
+
+
+    menu.style.display="none";
+
+
+});
+
+
+
+
+
+
+// ==========================
+// 우클릭 붙여넣기
+// ==========================
+
+
+document.getElementById("pasteBtn")
+.addEventListener("click",function(){
+
+
+
+    menu.style.display="none";
+
+
+
+    navigator.clipboard.read()
+
+    .then(function(items){
+
+
+
+        for(let item of items){
+
+
+            for(let type of item.types){
+
+
+                if(type.startsWith("image")){
+
+
+                    item.getType(type)
+
+                    .then(function(blob){
+
+
+                        runOCR(blob);
+
+
+                    });
+
+
                 }
-            });
-            setTimeout(() => {
-                treeChart.data.datasets[0].tree = dashboardData.system;
-                treeChart.update();
-            }, 200);
+
+
+            }
+
+
         }
 
-        function showRadar() {
-            if (radarChart) radarChart.destroy();
-            radarChart = new Chart(document.getElementById("radarChart"), {
-                type: "radar",
-                data: {
-                    labels: dashboardData.service.labels,
-                    datasets: [
-                        { label: "내부웹", data: dashboardData.service.internal },
-                        { label: "포털", data: dashboardData.service.portal }
-                    ]
-                },
-                options: {
-                    responsive: false,
-                    scales: {
-                        r: {
-                            min: 0, max: 100,
-                            ticks: { stepSize: 20 },
-                            grid: { color: "#888", lineWidth: 1 },
-                            angleLines: { color: "#777", lineWidth: 1 },
-                            pointLabels: { font: { size: 14 } }
-                        }
-                    },
-                    plugins: { legend: { position: "right" } }
-                }
-            });
-        }
-    </script>
+
+    });
+
+
+});
+
+
+
+</script>
+
+
 </body>
+
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
