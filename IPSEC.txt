@@ -55,6 +55,22 @@
 
 
 
+26
+17.	(가), (나)에 들어갈 용어를 바르게 연결한 것은?
+
+IPSec(RFC 2401)에서 
+(가)
+는 기밀성(confidentiality), 데이터 발신 인증(data origin authentication), 비연결 무결성(connectionless integrity) 등을 제공하는 프로토콜이다. 이 프로토콜은 기밀성을 제공하기 위해 
+(나)
+ 암호 알고리즘을 사용하여 데이터를 암호화한다.
+
+			(가)	(나)
+		①	AH	공개키
+		②	AH	대칭키
+		③	ESP	공개키
+		④	ESP	대칭키
+4
+
 
 
 
