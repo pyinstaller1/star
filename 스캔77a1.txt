@@ -29,6 +29,13 @@
 2
 
 
+22
+문  5.	보안 공격 유형에는 적극적 공격과 소극적 공격이 있다. 다음 중 공격 유형이 다른 하나는?
+	①	메시지 내용 공개(release of message contents)
+	②	신분 위장(masquerade)
+	③	메시지 수정(modification of message)
+	④	서비스 거부(denial of service)
+1
 
 
 
