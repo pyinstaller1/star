@@ -2,87 +2,59 @@
 
 
 
+TCP/IP
+네트워크 접근 계층
+HW 지원 : 네트워크 카드, 디바이스 드라이버
+송신측 : 인터넷 계층의 패킷에 MAC 주소를 포함한 헤더 추가 => 프레임
+이더넷, 802.1x, MAC/LLC, SLIP, PPP
+
+인터넷 계층
+IP : 네트워크 주소 관리
+데이터그램 정의, 전송 경로 결정
+IP, ARP, RARP, RIP, ICMP, IGMP
+
+전송 계층
+송수신 호스트 간 신뢰성 있는 전송
+논리 주소, 포트로 상위 계층 프로세스 연결
+TCP, UDP
+
+이더넷 : LAN 프로토콜
+SLIP : IP 기본 프레임 정의
+PPP : 프레임, 보안 강화
+
+IP : 주소 체계 관리, 데이터그램 정의, 경로 결정
+ARP : IP 주소 => MAC 주소
+RARP : MAC 주소 => IP 주소
+ICMP : 에러, 경로
+IGMP : 멀티캐스팅
+
+
+
+물리 주소 : MAC 주소 (링크 주소)
+   이더넷 NIC에 고유 부여, 호스트 식별
+   데이터 링크 계층의 프레임에서 사용
+인터넷 주소 : 호스트 식별, IPv4 32비트, IPv6 128비트
+포트 주소 : 프로세스 주소, 16비트
+응용 계층 : 사용자 서비스
+   FTP, SMTP, SNMP
+
+응용 프로토콜
+FTP : 파일 전송
+TFTP : 단순한 파일 전송, 간단, 임베디드 OS
+RTP : 실시간 음성, 동영상, UDP의 상위 규약, 타임스탬프 동기화
+HTTP : 웹, HTML 문서 교환, 텍스트, 이미지 전송
+SMTP : 이메일 송신
+POP3 : 이메일 수신
+IMAP : 이메일 저장, 수신
+텔넷 : 원격 컴퓨터를 로컬처럼 사용하는 가상 단말
+SNMP : 네트워크 장치 원격 관리
+DHCP : IP 주소 자동 할당
+DNS : 호스트 이름 ↔ IP 주소
 
 
 
 
 
-
-
-
-
-01 TCP/IP
-
-인터넷의 기본이 되는 프로토콜이다.
-전송 제어 프로토콜(TCP : Transmission Control Protocol)과 인터넷 프로토콜(IP : Internet Protocol)을 의미한다.
-
-⁠1. 네트워크 접근 계층
-① 운영체제의 네트워크 카드와 디바이스 드라이버 등과 같이 하드웨어적인 요소와 관련된 모든 것을 지원하는 계층이다.
-
-② 송신측 단말기는 인터넷 계층으로부터 전달받은 패킷에 물리적 주소인 MAC 주소 정보를 갖는 헤더를 추가하여 프레임을 만들어 전달한다.
-③ 대표 프로토콜로는 이더넷(ethernet), 802.1x, MAC/LLC, SLIP, PPP 등이 있다.
-
-보충학습
-
-네트워크 접근 계층 대표 프로토콜
-• 이더넷(ethernet) : 근거리통신망(LAN)의 대표적인 통신 프로토콜이다.
-• MAC(Multiple Access Control)/LLC(Logical Link Control) : IEEE 802 표준으로 규정하는 각종 연결 방식에서 공통으로 사용하는 통신규약이다.
-• SLIP(Serial Line Internet Protocol) : IP에 대한 기본 프레임을 정의하는 매우 간단한 2계층 프로토콜이다.
-• PPP(Point-To-Point Protocol) : 프레임, 보안과 성능을 강화하기 위한 추가기능을 제공하는 프로토콜이다.
-
-⁠2. 인터넷 계층
-① IP는 네트워크의 주소 체계를 관리하며, 데이터그램을 정의하고 전송을 위한 경로 결정을 담당한다.
-② 대표 프로토콜로는 IP, ARP, RARP, ICMP, IGMP 등이 있다.
-
-보충학습
-
-인터넷 계층 대표 프로토콜
-• IP(Internet Protocol) : 네트워크의 주소 체계를 관리하며, 데이터그램을 정의하고 전송을 위한 경로 결정을 담당한다.
-• ARP(Address Resolution Protocol) : IP 주소를 MAC 주소로 변환한다.
-• RARP(Reverse ARP) : MAC주소를 IP주소로 변환한다.
-• ICMP(Internet Control Message Protocol) : 에러 보고, 경로를 제어하는 정보 전달 기능이 있다.
-• IGMP(Internet Group Management Protocol) : 멀티캐스팅 기능을 수행하는 프로토콜이다.
-
-⁠3. 전송 계층
-① 네트워크 양단의 송수신 호스트 사이의 신뢰성 있는 전송 기능을 제공한다.
-② 시스템의 논리 주소와 포트를 가지므로 각 상위 계층의 프로세스를 연결한다.
-③ 대표 프로토콜로는 TCP와 UDP가 사용된다.
-
-
-ICMP 질의 메시지
-① Echo 요청 메시지 : ping 구현시 사용하는 메시지
-② 타임스탬프 요청 및 응답 : 호스트나 라우터에서 현재 날짜와 시간을 지시하는 메시지
-③ 주소 마스크 요청 및 응답 : 호스트의 서브넷 마스크를 알아보기 위한 메시지
-④ 라우터 정보 요청 : 다른 네트워크의 호스트에게 데이터 전송 시 자신의 네트워크에 연결된 라우터 주소를 요청하는 메시지
-
-ICMP 오류 메시지
-① Destination Unreachable 메시지 : 도달할 수 없는 목적지에 계속하여 패킷을 보내는 것은 수신측에게 알려준다.
-② Packet Too Big 메시지 : 목적지가 가능한 경로 중 라우터에서 전송 가능한 데이터그램 크기보다 보내는 IP 단편화하도록 알려준다.
-③ Redirect 메시지 : 송신측으로부터 패킷을 수신 받는 라우터가 특정 목적지로 가는 더 짧은 경로가 있음을 알려준다.
-④ Time Exceeded 메시지
-
-Time to Live Exceeded in Transit : 목적지 시스템에 도달하기 이전에 TTL 값이 0이 된 경우(trace route)
-Fragment Reassembly Time Exceeded : traceroute가 중간에 거치는 라우터들을 확인할 때 사용
-⑤ Parameter Problem 메시지 등
-
-TCP/IP 계층별 주소
-
-① 물리 주소
-물리 주소(MAC 주소)는 링크 주소로 이더넷 네트워크 카드(NIC) 등에 고유하게 부여되는 주소를 의미한다.
-MAC 주소는 이더넷 상의 각 호스트를 구별하기 위해 각각의 이더넷 카드에 부여되는 고유 번호를 의미한다.
-데이터 링크 계층에서 사용되는 프레임에서 이용된다.
-
-② 인터넷 주소
-현재 인터넷에 연결된 호스트를 유일하게 식별할 수 있는 32비트 주소 체계(IPv4) 또는 128비트 주소 체계(IPv6)를 사용한다.
-
-③ 포트 주소
-인터넷 통신의 최종 목적을 한 프로세스가 다른 프로세스와 통신하는 주소이다.
-프로세스 식별 주소로 포트 주소를 사용하며, 16비트이다.
-
-
-⁠4. 응용 계층
-① 사용자에게 서비스를 제공해준다.
-② 대표 프로토콜로는 FTP(file transfer protocol), SMTP(simple mail transfer protocol), SNMP(simple network management protocol) 등이 있다.
 
 보충학습
 
